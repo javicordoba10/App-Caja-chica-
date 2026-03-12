@@ -120,7 +120,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
 
     final movement = MovementModel(
       id: movementId,
-      userId: userId,
+      userId: userId ?? 'unknown',
       type: _selectedType,
       netAmount: net,
       grossAmount: gross,
@@ -152,7 +152,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
       
     // 2. Upload async if image exists
     if (widget.data.bytes != null) {
-      _uploadInBackground(userId, movementId, widget.data.bytes!, widget.data.isPdf, movementRepo, movement, scaffoldMessenger);
+      _uploadInBackground(userId ?? 'unknown', movementId, widget.data.bytes!, widget.data.isPdf, movementRepo, movement, scaffoldMessenger);
     }
 
     // 3. Immediately close the form screen and return to Dashboard

@@ -30,15 +30,13 @@ class DashboardScreen extends ConsumerWidget {
       if (next.value == null && !next.isLoading && !next.hasError) {
         print('>>> Dashboard: User missing, initializing doc for $userId');
         userRepo.createUser(UserModel(
-          id: userId,
+          id: userId ?? 'unknown',
           name: 'Javier',
           cashBalance: 0.0,
           debitBalance: 0.0,
         ));
       }
     });
-
-    final user = userAsyncValue.value;
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
@@ -521,6 +519,8 @@ class _MovementItem extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final formatCurrency = NumberFormat.currency(locale: 'es_AR', symbol: '\$');
     final isIncome = movement.type == MovementType.income;
+    final currentUser = ref.watch(currentUserProvider).value;
+    final isAdmin = currentUser?.role == 'admin';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
@@ -618,10 +618,11 @@ class _MovementItem extends ConsumerWidget {
                    }
                 },
               ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, size: 20, color: AppTheme.textGrey),
-              onPressed: () => _confirmDelete(context, ref, movement),
-            ),
+            if (isAdmin)
+              IconButton(
+                icon: const Icon(Icons.delete_outline, size: 20, color: AppTheme.textGrey),
+                onPressed: () => _confirmDelete(context, ref, movement),
+              ),
           ],
         ),
       ),
@@ -639,9 +640,7 @@ class _MovementItem extends ConsumerWidget {
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              final movementRepo = ref.read(movementRepositoryProvider);
               final userRepo = ref.read(userRepositoryProvider);
-              final userId = ref.read(currentUserIdProvider);
 
               try {
                 await userRepo.deleteMovementWithBalanceUpdate(movement);

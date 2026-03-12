@@ -21,11 +21,14 @@ class MovementRepository {
     }
   }
 
-  Stream<List<MovementModel>> getMovements(String userId) {
-    return _movements
-        .where('userId', isEqualTo: userId)
-        .snapshots()
-        .map((snapshot) {
+  Stream<List<MovementModel>> getMovements(String userId, String role) {
+    Query query = _movements;
+    
+    if (role != 'admin') {
+      query = query.where('userId', isEqualTo: userId);
+    }
+    
+    return query.snapshots().map((snapshot) {
       return snapshot.docs.map((doc) => 
         MovementModel.fromMap(doc.data() as Map<String, dynamic>, doc.id)
       ).toList();

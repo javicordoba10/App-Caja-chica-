@@ -10,19 +10,25 @@ final userRepositoryProvider = Provider<UserRepository>((ref) => UserRepository(
 final movementRepositoryProvider = Provider<MovementRepository>((ref) => MovementRepository(ref.watch(firestoreProvider)));
 
 
-// Current logged in user ID (Hardcoded for initial development, would be replaced by Auth)
-final currentUserIdProvider = Provider<String>((ref) => 'user_demo');
+// Current logged in user ID (Set during LoginScreen)
+final currentUserIdProvider = StateProvider<String?>((ref) => null);
 
 // Streams the current user's profile and live balance
 final currentUserProvider = StreamProvider<UserModel?>((ref) {
   final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) return const Stream.empty();
+  
   final userRepository = ref.watch(userRepositoryProvider);
   return userRepository.streamUser(userId);
 });
 
-// Streams the current user's movements
+// Streams the current user's movements (or ALL movements if admin)
 final movementsProvider = StreamProvider<List<MovementModel>>((ref) {
   final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) return const Stream.empty();
+
+  final role = ref.watch(currentUserProvider).value?.role ?? 'user';
   final movementRepository = ref.watch(movementRepositoryProvider);
-  return movementRepository.getMovements(userId);
+  
+  return movementRepository.getMovements(userId, role);
 });

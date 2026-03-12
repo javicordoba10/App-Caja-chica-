@@ -1,0 +1,68 @@
+Analyzing petty_cash_app...                                     
+
+   info - The file name 'Prototipo.dart' isn't a lower_case_with_underscores identifier - Prototipo.dart:1:1 - file_names
+warning - Unused import: 'package:flutter_riverpod/flutter_riverpod.dart' - Prototipo.dart:2:8 - unused_import
+   info - Don't invoke 'print' in production code - Prototipo.dart:14:5 - avoid_print
+   info - Don't invoke 'print' in production code - Prototipo.dart:17:7 - avoid_print
+   info - Don't invoke 'print' in production code - Prototipo.dart:19:7 - avoid_print
+   info - Don't invoke 'print' in production code - Prototipo.dart:36:5 - avoid_print
+   info - The constant name 'Administracion' isn't a lowerCamelCase identifier - lib\models\movement_model.dart:4:3 - constant_identifier_names
+   info - The constant name 'PuestoDeLuna' isn't a lowerCamelCase identifier - lib\models\movement_model.dart:5:3 - constant_identifier_names
+   info - The constant name 'SanIsidro' isn't a lowerCamelCase identifier - lib\models\movement_model.dart:6:3 - constant_identifier_names
+   info - The constant name 'FeedLot' isn't a lowerCamelCase identifier - lib\models\movement_model.dart:7:3 - constant_identifier_names
+   info - The constant name 'LaCarlota' isn't a lowerCamelCase identifier - lib\models\movement_model.dart:8:3 - constant_identifier_names
+   info - The constant name 'ElSiete' isn't a lowerCamelCase identifier - lib\models\movement_model.dart:9:3 - constant_identifier_names
+   info - The constant name 'ElMoro' isn't a lowerCamelCase identifier - lib\models\movement_model.dart:10:3 - constant_identifier_names
+   info - The constant name 'LaHuella' isn't a lowerCamelCase identifier - lib\models\movement_model.dart:11:3 - constant_identifier_names
+warning - Unused import: 'package:flutter_riverpod/flutter_riverpod.dart' - lib\repositories\movement_repository.dart:2:8 - unused_import
+   info - Don't invoke 'print' in production code - lib\repositories\movement_repository.dart:14:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\repositories\movement_repository.dart:17:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\repositories\movement_repository.dart:19:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\repositories\movement_repository.dart:39:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\repositories\movement_repository.dart:45:5 - avoid_print
+warning - Unused import: 'package:flutter_riverpod/flutter_riverpod.dart' - lib\repositories\user_repository.dart:2:8 - unused_import
+   info - Don't invoke 'print' in production code - lib\repositories\user_repository.dart:40:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\repositories\user_repository.dart:49:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\repositories\user_repository.dart:51:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\repositories\user_repository.dart:64:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\repositories\user_repository.dart:78:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\repositories\user_repository.dart:80:7 - avoid_print
+   info - Use 'rethrow' to rethrow a caught exception - lib\repositories\user_repository.dart:81:7 - use_rethrow_when_possible
+   info - Don't invoke 'print' in production code - lib\repositories\user_repository.dart:94:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\repositories\user_repository.dart:108:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\repositories\user_repository.dart:110:7 - avoid_print
+   info - Use 'rethrow' to rethrow a caught exception - lib\repositories\user_repository.dart:111:7 - use_rethrow_when_possible
+   info - Don't invoke 'print' in production code - lib\services\ocr_service.dart:50:11 - avoid_print
+   info - 'dart:js_util' is deprecated and shouldn't be used. Use dart:js_interop instead - lib\services\ocr_web.dart:1:1 - deprecated_member_use
+   info - Don't use web-only libraries outside Flutter web plugins - lib\services\ocr_web.dart:1:1 - avoid_web_libraries_in_flutter
+warning - Unused import: 'dart:typed_data' - lib\services\pdf_service.dart:1:8 - unused_import
+   info - Statements in an if should be enclosed in a block - lib\services\pdf_service.dart:21:51 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\services\pdf_service.dart:22:14 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\services\pdf_service.dart:24:51 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\services\pdf_service.dart:25:14 - curly_braces_in_flow_control_structures
+   info - 'Table.fromTextArray' is deprecated and shouldn't be used. Use TableHelper.fromTextArray() instead - lib\services\pdf_service.dart:121:15 - deprecated_member_use
+   info - 'Table.fromTextArray' is deprecated and shouldn't be used. Use TableHelper.fromTextArray() instead - lib\services\pdf_service.dart:184:13 - deprecated_member_use
+   info - Don't invoke 'print' in production code - lib\ui\screens\dashboard_screen.dart:31:9 - avoid_print
+  error - The argument type 'String?' can't be assigned to the parameter type 'String'.  - lib\ui\screens\dashboard_screen.dart:33:15 - argument_type_not_assignable
+warning - The value of the local variable 'user' isn't used - lib\ui\screens\dashboard_screen.dart:41:11 - unused_local_variable
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\dashboard_screen.dart:108:35 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\dashboard_screen.dart:287:35 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\dashboard_screen.dart:547:56 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\dashboard_screen.dart:547:95 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\dashboard_screen.dart:573:58 - deprecated_member_use
+warning - The value of the local variable 'movementRepo' isn't used - lib\ui\screens\dashboard_screen.dart:645:21 - unused_local_variable
+warning - The value of the local variable 'userId' isn't used - lib\ui\screens\dashboard_screen.dart:647:21 - unused_local_variable
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\history_screen.dart:82:76 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\history_screen.dart:82:115 - deprecated_member_use
+  error - The getter 'notifier' isn't defined for the type 'StreamProvider<UserModel?>' - lib\ui\screens\login_screen.dart:31:38 - undefined_getter
+warning - Unused import: '../../models/user_model.dart' - lib\ui\screens\register_screen.dart:3:8 - unused_import
+warning - The value of the field '_phoneCtrl' isn't used - lib\ui\screens\register_screen.dart:17:9 - unused_field
+warning - Unused import: '../../repositories/user_repository.dart' - lib\ui\screens\validation_form_screen.dart:10:8 - unused_import
+  error - The argument type 'String?' can't be assigned to the parameter type 'String'.  - lib\ui\screens\validation_form_screen.dart:123:15 - argument_type_not_assignable
+  error - The argument type 'String?' can't be assigned to the parameter type 'String'.  - lib\ui\screens\validation_form_screen.dart:155:27 - argument_type_not_assignable
+   info - Don't invoke 'print' in production code - lib\ui\screens\validation_form_screen.dart:172:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\ui\screens\validation_form_screen.dart:174:7 - avoid_print
+   info - 'background' is deprecated and shouldn't be used. Use surface instead. This feature was deprecated after v3.18.0-0.1.pre - lib\ui\theme\app_theme.dart:30:9 - deprecated_member_use
+  error - The name 'MyApp' isn't a class - test\widget_test.dart:16:35 - creation_with_non_type
+
+64 issues found. (ran in 27.6s)
