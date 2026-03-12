@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Petty Cash Preview</title>
+    <style>
+        :root {
+            --primary-black: #1A1A1A;
+            --income-green: #4CAF50;
+            --expense-red: #F44336;
+            --background-white: #F8F9FA;
+            --text-grey: #757575;
+            --card-white: #FFFFFF;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--background-white);
+            margin: 0;
+            padding: 24px;
+            color: var(--primary-black);
+            display: flex;
+            justify-content: center;
+        }
+
+        .phone-container {
+            width: 375px;
+            height: 812px;
+            background: var(--background-white);
+            border-radius: 40px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .greeting { font-size: 14px; color: var(--text-grey); }
+        .user-name { font-weight: bold; font-size: 18px; display: block; color: var(--primary-black); }
+
+        .balance-scroll {
+            display: flex;
+            overflow-x: auto;
+            padding: 0 24px;
+            gap: 16px;
+            margin-bottom: 24px;
+            scrollbar-width: none;
+        }
+        .balance-scroll::-webkit-scrollbar { display: none; }
+
+        .balance-card {
+            min-width: 140px;
+            padding: 20px;
+            border-radius: 24px;
+            color: white;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .card-cash { background-color: var(--income-green); }
+        .card-debit { background-color: var(--primary-black); opacity: 0.9; }
+
+        .card-title { font-size: 12px; opacity: 0.8; }
+        .card-amount { font-size: 18px; font-weight: bold; margin-top: 4px; }
+
+        .chart-container {
+            background: var(--card-white);
+            margin: 0 24px;
+            padding: 20px;
+            border-radius: 24px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            margin-bottom: 32px;
+        }
+        .chart-title { font-size: 13px; font-weight: bold; margin-bottom: 16px; }
+        .bars {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 100px;
+        }
+        .bar {
+            width: 12px;
+            background: var(--expense-red);
+            border-radius: 4px 4px 0 0;
+            transition: height 0.3s ease;
+        }
+
+        .movements-title {
+            padding: 0 24px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+
+        .movement-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 24px;
+        }
+
+        .movement-item {
+            display: flex;
+            align-items: center;
+            background: var(--card-white);
+            padding: 12px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .icon-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+        }
+        .icon-income { background: rgba(76, 175, 80, 0.1); color: var(--income-green); }
+        .icon-expense { background: rgba(244, 67, 54, 0.1); color: var(--expense-red); }
+
+        .mv-details { flex: 1; }
+        .mv-desc { font-size: 14px; font-weight: bold; }
+        .mv-date { font-size: 11px; color: var(--text-grey); }
+        .mv-amount { font-weight: bold; font-size: 14px; }
+
+        .bottom-nav {
+            padding: 24px;
+            background: var(--card-white);
+            display: flex;
+            gap: 16px;
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.03);
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 16px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn-income { background: var(--primary-black); }
+        .btn-expense { background: var(--expense-red); }
+
+        /* Animation overlay */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: flex-end;
+            z-index: 100;
+        }
+        .modal {
+            background: white;
+            width: 100%;
+            padding: 32px 24px;
+            border-radius: 32px 32px 0 0;
+            transform: translateY(100%);
+            transition: transform 0.3s ease-out;
+        }
+        .modal.active { transform: translateY(0); }
+    </style>
+</head>
+<body>
+    <div class="phone-container">
+        <div class="header">
+            <div>
+                <span class="greeting">Hola,</span>
+                <span class="user-name">Javier</span>
+            </div>
+            <div style="display:flex; gap: 8px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"></path><path d="M6 14h12v8H6z"></path></svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            </div>
+        </div>
+
+        <div class="balance-scroll">
+            <div class="balance-card card-cash">
+                <div class="card-title">Efectivo</div>
+                <div class="card-amount">$12.500,00</div>
+            </div>
+            <div class="balance-card card-debit">
+                <div class="card-title">Tarjeta Débito</div>
+                <div class="card-amount">$45.000,00</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">Gastos por Centro (Mes Actual)</div>
+            <div class="bars">
+                <div class="bar" style="height: 60%;"></div>
+                <div class="bar" style="height: 40%;"></div>
+                <div class="bar" style="height: 85%;"></div>
+                <div class="bar" style="height: 30%;"></div>
+                <div class="bar" style="height: 55%;"></div>
+                <div class="bar" style="height: 20%;"></div>
+                <div class="bar" style="height: 45%;"></div>
+                <div class="bar" style="height: 70%;"></div>
+            </div>
+            <div style="display:flex; justify-content:space-around; margin-top:8px; font-size:9px; color:var(--text-grey); font-weight:bold;">
+                <span>Adm</span><span>FL</span><span>PDL</span><span>SI</span><span>LC</span><span>LH</span><span>EM</span><span>E7</span>
+            </div>
+        </div>
+
+        <div class="movements-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Últimos Movimientos</span>
+            <span style="font-size:9px; background:#e0e0e0; padding:2px 6px; border-radius:4px;">ORDEN: LIFO (Nuevos primero)</span>
+        </div>
+        
+        <div class="movement-list">
+            <!-- Newest Item First -->
+            <div class="movement-item" style="border-left: 4px solid var(--income-green);">
+                <div class="icon-circle icon-income">↓</div>
+                <div class="mv-details">
+                    <div class="mv-desc">Carga de Caja (Reciente)</div>
+                    <div class="mv-date">11 Mar, 22:15</div>
+                </div>
+                <div class="mv-amount" style="color:var(--income-green)">+$2.500,00</div>
+            </div>
+            <div class="movement-item">
+                <div class="icon-circle icon-expense">↑</div>
+                <div class="mv-details">
+                    <div class="mv-desc">Compra Insumos</div>
+                    <div class="mv-date">10 Mar, 14:30</div>
+                </div>
+                <div class="mv-amount" style="color:var(--expense-red)">-$1.500,00</div>
+            </div>
+            <div class="movement-item">
+                <div class="icon-circle icon-income">↓</div>
+                <div class="mv-details">
+                    <div class="mv-desc">Carga de Caja</div>
+                    <div class="mv-date">09 Mar, 09:15</div>
+                </div>
+                <div class="mv-amount" style="color:var(--income-green)">+$5.000,00</div>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <button class="btn btn-income" onclick="showModal()">Ingreso</button>
+            <button class="btn btn-expense" onclick="showModal()">Egreso</button>
+        </div>
+
+        <div id="overlay" class="overlay" onclick="hideModal()">
+            <div id="modal" class="modal">
+                <h2 style="margin-top:0; font-size:20px;">Nuevo Registro</h2>
+                <p style="color:var(--text-grey); font-size:14px; margin-bottom:24px;">Selecciona el tipo de carga. <br><b>Consistencia atómica garantizada por Firestore.</b></p>
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                    <div onclick="simulateSuccess()" style="padding:16px; background:#f0f0f0; border-radius:16px; font-weight:bold; display:flex; align-items:center; cursor:pointer;">
+                        <span style="margin-right:12px;">✏️</span> Carga Manual
+                    </div>
+                    <div style="padding:16px; background:#f0f0f0; border-radius:16px; font-weight:bold; display:flex; align-items:center;">
+                        <span style="margin-right:12px;">📷</span> Escanear Foto (OCR)
+                    </div>
+                </div>
+                <div id="success-notif" style="display:none; margin-top:20px; padding:12px; background:var(--income-green); color:white; border-radius:12px; font-size:12px; text-align:center;">
+                    ✓ Transacción Atómica Completa: Movimiento + Saldo actualizados.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showModal() {
+            document.getElementById('overlay').style.display = 'flex';
+            setTimeout(() => {
+                document.getElementById('modal').classList.add('active');
+            }, 10);
+        }
+        function hideModal() {
+            document.getElementById('success-notif').style.display = 'none';
+            document.getElementById('modal').classList.remove('active');
+            setTimeout(() => {
+                document.getElementById('overlay').style.display = 'none';
+            }, 300);
+        }
+        function simulateSuccess() {
+            document.getElementById('success-notif').style.display = 'block';
+            setTimeout(hideModal, 2000);
+        }
+    </script>
+</body>
+</html>

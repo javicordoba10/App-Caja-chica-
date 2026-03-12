@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "426337625591",
+    "project_id": "pettycashapp-80f5e",
+    "storage_bucket": "pettycashapp-80f5e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:426337625591:android:797b47f3154fecd7e4baf2",
+        "android_client_info": {
+          "package_name": "com.example.petty_cash_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDuQa7DCq8dg-B4U86hr3G8a3fWPQgCGhI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

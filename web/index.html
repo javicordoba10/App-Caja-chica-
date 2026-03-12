@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="petty_cash_app">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>petty_cash_app</title>
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@2.12.313/build/pdf.js"></script>
+  <script type="text/javascript">
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@2.12.313/build/pdf.worker.js";
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script type="text/javascript">
+    async function performWebOCR(base64Data, isPdf) {
+      try {
+        let imageDataUrl = 'data:image/png;base64,' + base64Data;
+        
+        if (isPdf) {
+          try {
+            const res = await fetch('data:application/pdf;base64,' + base64Data);
+            const blob = await res.blob();
+            const arrayBuffer = await blob.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            
+            const loadingTask = pdfjsLib.getDocument({data: uint8Array});
+            const pdf = await loadingTask.promise;
+            const page = await pdf.getPage(1);
+            const viewport = page.getViewport({scale: 2.0}); 
+            
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            
+            await page.render({ canvasContext: context, viewport: viewport }).promise;
+            imageDataUrl = canvas.toDataURL('image/jpeg');
+          } catch (pdfErr) {
+            return '[OCR PDF ERROR] ' + pdfErr.toString();
+          }
+        }
+
+        try {
+          const worker = await Tesseract.createWorker('spa');
+          const ret = await worker.recognize(imageDataUrl);
+          await worker.terminate();
+          return ret.data.text;
+        } catch (tessErr) {
+          return '[OCR TESSERACT ERROR] ' + tessErr.toString();
+        }
+      } catch (e) {
+        console.error('OCR Global Error:', e);
+        return '[OCR GLOBAL ERROR] ' + e.toString();
+      }
+    }
+  </script>
+</head>
+<body>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
