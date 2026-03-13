@@ -325,7 +325,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                     height: 50,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _save,
-                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryBlack, foregroundColor: Colors.white),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryOrange, foregroundColor: Colors.white),
                       child: const Text('Confirmar y Guardar'),
                     ),
                   ),

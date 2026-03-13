@@ -1,0 +1,27 @@
+Analyzing 2 items...                                            
+
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\dashboard_screen.dart:69:38 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\dashboard_screen.dart:92:41 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\dashboard_screen.dart:130:33 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\dashboard_screen.dart:197:32 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\dashboard_screen.dart:324:59 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\dashboard_screen.dart:366:51 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\history_screen.dart:172:61 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\history_screen.dart:198:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\history_screen.dart:235:61 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\login_screen.dart:256:30 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\login_screen.dart:262:41 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\login_screen.dart:269:41 - deprecated_member_use
+  error - Undefined name 'userRepo' - lib\ui\screens\register_screen.dart:42:34 - undefined_identifier
+  error - Undefined name 'userId' - lib\ui\screens\register_screen.dart:42:51 - undefined_identifier
+  error - Undefined name 'userId' - lib\ui\screens\register_screen.dart:56:13 - undefined_identifier
+  error - Undefined name 'userRepo' - lib\ui\screens\register_screen.dart:64:13 - undefined_identifier
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\register_screen.dart:167:61 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\register_screen.dart:255:30 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\register_screen.dart:260:41 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\register_screen.dart:266:41 - deprecated_member_use
+warning - Unused import: '../../repositories/user_repository.dart' - lib\ui\screens\validation_form_screen.dart:10:8 - unused_import
+   info - Don't invoke 'print' in production code - lib\ui\screens\validation_form_screen.dart:172:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\ui\screens\validation_form_screen.dart:174:7 - avoid_print
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\widgets\sidebar.dart:98:35 - deprecated_member_use
+

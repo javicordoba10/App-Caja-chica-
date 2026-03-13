@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../providers/app_providers.dart';
 import '../theme/app_theme.dart';
-import 'dashboard_screen.dart';
+import '../widgets/main_layout.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -18,29 +19,56 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLoading = false;
 
   Future<void> _login() async {
-    if (_emailCtrl.text.isEmpty || _passCtrl.text.isEmpty) return;
-    
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty || _passCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, ingresa tus credenciales.')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
-    
+
     try {
       final userRepo = ref.read(userRepositoryProvider);
-      // In a real app, integrate FirebaseAuth here.
-      // Currently simulating login and fetching the dummy user. 
-      final user = await userRepo.getUser('debug-user-123');
+      final String userId = email.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
+      final user = await userRepo.getUser(userId);
+
       if (user != null) {
         ref.read(currentUserIdProvider.notifier).state = user.id;
-        
         if (mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const DashboardScreen()),
+            MaterialPageRoute(builder: (_) => const MainLayout()),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Usuario no encontrado. Por favor, regístrate.'),
+              backgroundColor: AppTheme.expenseRed,
+            ),
           );
         }
       }
     } catch (e) {
+      String errorMessage = e.toString();
+      if (errorMessage.contains('unavailable')) {
+        errorMessage = "Error de conexión: El servidor no responde. Por favor:\n1. Revisa que tus datos/WiFi funcionen.\n2. Asegúrate de haber agregado la Huella Digital (SHA-1) en Firebase.";
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.expenseRed),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: AppTheme.expenseRed,
+            duration: const Duration(seconds: 8),
+            action: SnackBarAction(
+              label: 'REINTENTAR',
+              textColor: Colors.white,
+              onPressed: _login,
+            ),
+          ),
         );
       }
     } finally {
@@ -51,97 +79,184 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SingleChildScrollView(
+      body: Container(
+        decoration: BoxDecoration(gradient: AppTheme.headerGradient),
         child: Column(
           children: [
-            // Curved blue header
-            ClipPath(
-              clipper: _HeaderClipper(),
-              child: Container(
-                width: double.infinity,
-                height: 300,
-                color: const Color(0xFF1E88E5), // Corporate blue
-                child: const Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(height: 50),
-                    Icon(CustomIcons.arrowDownCircle, size: 60, color: Colors.white),
-                    SizedBox(height: 16),
-                    Text(
-                      'Control de Caja Chica',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+            // --- HEADER (40%) ---
+            Expanded(
+              flex: 40,
+              child: SafeArea(
+                bottom: false,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // V14 Surgical Logo ALM (Custom Seedling Ring)
+                      CustomPaint(
+                        size: const Size(100, 100),
+                        painter: SurgicalLogoPainter(),
                       ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Agropecuaria Las Marías',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
+                      const SizedBox(height: 20),
+                      Text(
+                        'REGISTRO DE\nCAJA CHICA',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.montserrat(
+                          color: Colors.white,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 2.5,
+                          height: 1.1,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-            
-            // Login Form Card
-            Transform.translate(
-              offset: const Offset(0, -40),
+
+            // --- FORM PANEL (60%) ---
+            Expanded(
+              flex: 60,
               child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 24),
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+                decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: const [
-                    BoxShadow(color: Colors.black12, blurRadius: 15, offset: Offset(0, 5)),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(50),
+                    topRight: Radius.circular(50),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 20,
+                      offset: Offset(0, -5),
+                    )
                   ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildTextField(_emailCtrl, 'Usuario / Email', Icons.email_outlined),
-                    const SizedBox(height: 16),
-                    _buildTextField(_passCtrl, 'Contraseña', Icons.lock_outline, obscure: true),
-                    const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton(
-                        onPressed: () {},
-                        child: const Text('¿Olvidaste tu contraseña?', style: TextStyle(color: Colors.grey)),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildTextField(
+                        _emailCtrl,
+                        'Usuario / Correo',
+                        Icons.email_outlined,
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E88E5),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      const SizedBox(height: 20),
+                      _buildTextField(
+                        _passCtrl,
+                        'Contraseña',
+                        Icons.lock_outline,
+                        obscure: true,
+                        isPassword: true,
                       ),
-                      onPressed: _isLoading ? null : _login,
-                      child: _isLoading 
-                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white))
-                        : const Text('Ingresar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text("¿No tienes cuenta? ", style: TextStyle(color: Colors.grey)),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen()));
-                          },
-                          child: const Text("Registrarse", style: TextStyle(color: Color(0xFF1E88E5), fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.center,
+                        child: TextButton(
+                          onPressed: () {},
+                          child: const Text(
+                            '¿Olvidaste tu contraseña?',
+                            style: TextStyle(color: Colors.grey, fontSize: 13),
+                          ),
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Gradient Button
+                      Container(
+                        height: 55,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: AppTheme.buttonGradient,
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 10,
+                              offset: Offset(0, 4),
+                            )
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _login,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : Text(
+                                  'Ingresar',
+                                  style: GoogleFonts.montserrat(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Register Link
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            "¿No tienes cuenta? ",
+                            style: TextStyle(color: Colors.grey, fontSize: 14),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                              );
+                            },
+                            child: const Text(
+                              "Registrarse",
+                              style: TextStyle(
+                                color: AppTheme.primaryOrange,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 60),
+
+                      const SizedBox(height: 80),
+
+                      const SizedBox(height: 20),
+
+                      // Footer
+                      Column(
+                        children: [
+                          Text(
+                            'AGROPECUARIA',
+                            style: GoogleFonts.montserrat(
+                              color: Colors.black45,
+                              fontSize: 13,
+                              letterSpacing: 3,
+                            ),
+                          ),
+                          Text(
+                            'LAS MARÍAS',
+                            style: GoogleFonts.montserrat(
+                              color: Colors.black87,
+                              fontSize: 19,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -150,41 +265,77 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
     );
   }
+}
 
-  Widget _buildTextField(TextEditingController ctrl, String hint, IconData icon, {bool obscure = false}) {
+class SurgicalLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    // Outer Shadow
+    final shadowPaint = Paint()
+      ..color = Colors.black.withOpacity(0.25)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+    canvas.drawCircle(center + const Offset(0, 5), radius - 5, shadowPaint);
+
+    // Outer Ring
+    final ringPaint = Paint()
+      ..color = const Color(0xFFE5A102).withOpacity(0.9)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4;
+    canvas.drawCircle(center, radius - 5, ringPaint);
+
+    // Inner Circle Background
+    final innerPaint = Paint()
+      ..color = const Color(0xFF7A2C0A).withOpacity(0.05)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, radius - 10, innerPaint);
+
+    // Asymmetric Leaves
+    final leafPaint = Paint()
+      ..color = const Color(0xFFE5A102)
+      ..style = PaintingStyle.fill;
+
+    // Right (Main) Leaf
+    final rightPath = Path()
+      ..moveTo(center.dx, center.dy + 15)
+      ..quadraticBezierTo(center.dx + 40, center.dy - 10, center.dx + 25, center.dy - 40)
+      ..quadraticBezierTo(center.dx - 10, center.dy - 20, center.dx, center.dy + 15);
+    canvas.drawPath(rightPath, leafPaint);
+
+    // Left (Smaller) Leaf
+    final leftPath = Path()
+      ..moveTo(center.dx, center.dy + 15)
+      ..quadraticBezierTo(center.dx - 30, center.dy - 5, center.dx - 20, center.dy - 25)
+      ..quadraticBezierTo(center.dx, center.dy - 10, center.dx, center.dy + 15);
+    canvas.drawPath(leftPath, leafPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+Widget _buildTextField(TextEditingController ctrl, String hint, IconData icon,
+      {bool obscure = false, bool isPassword = false}) {
     return TextField(
       controller: ctrl,
       obscureText: obscure,
+      style: GoogleFonts.montserrat(fontSize: 15),
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: Colors.grey),
+        suffixIcon: isPassword
+            ? const Icon(Icons.visibility_off_outlined, color: Colors.grey)
+            : null,
         hintText: hint,
+        hintStyle: const TextStyle(color: AppTheme.textGrey),
         filled: true,
-        fillColor: Colors.grey[100],
+        fillColor: const Color(0xFFF4F5F7),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(vertical: 18),
       ),
     );
   }
-}
-
-class CustomIcons {
-  static const IconData arrowDownCircle = Icons.change_circle_outlined; // Placeholder approx
-}
-
-class _HeaderClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    var path = Path();
-    path.lineTo(0, size.height - 50);
-    path.quadraticBezierTo(size.width / 2, size.height, size.width, size.height - 50);
-    path.lineTo(size.width, 0);
-    path.close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
-}

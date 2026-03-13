@@ -12,3 +12,13 @@
 
 # Play Core library (used by Flutter dynamic features)
 -dontwarn com.google.android.play.core.**
+
+# Firestore and gRPC
+-keep class com.google.firebase.firestore.** { *; }
+-keep enum com.google.firebase.firestore.** { *; }
+-keep class com.google.common.base.** { *; }
+-keep class io.grpc.** { *; }
+-keep class com.google.protobuf.** { *; }
+-dontwarn io.grpc.**
+-dontwarn com.google.common.base.**
+-dontwarn com.google.protobuf.**
