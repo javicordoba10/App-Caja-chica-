@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../models/user_model.dart';
+import '../../models/movement_model.dart';
 import '../../providers/app_providers.dart';
 import '../theme/app_theme.dart';
 import '../widgets/main_layout.dart';
@@ -30,9 +33,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Step 1: Authenticate with Firebase Auth
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: _passCtrl.text.trim(),
+      );
+
+      final firebaseUser = credential.user;
+      if (firebaseUser == null) throw Exception('No se pudo autenticar el usuario.');
+
+      // Step 2: Fetch the user profile from Firestore using Firebase UID
       final userRepo = ref.read(userRepositoryProvider);
-      final String userId = email.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
-      final user = await userRepo.getUser(userId);
+      final user = await userRepo.getUser(firebaseUser.uid);
 
       if (user != null) {
         ref.read(currentUserIdProvider.notifier).state = user.id;
@@ -43,24 +55,71 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           );
         }
       } else {
+        // No Firestore profile found — auto-create one using Firebase Auth data
+        final displayName = firebaseUser.displayName ?? 
+            firebaseUser.email?.split('@').first ?? 'Usuario';
+        
+        final userRepo = ref.read(userRepositoryProvider);
+        final newUser = UserModel(
+          id: firebaseUser.uid,
+          name: displayName,
+          email: firebaseUser.email ?? email,
+          cashBalance: 0.0,
+          debitBalance: 0.0,
+          establishment: CostCenter.Administracion,
+          role: 'user',
+        );
+        await userRepo.createUser(newUser);
+
+        ref.read(currentUserIdProvider.notifier).state = firebaseUser.uid;
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Usuario no encontrado. Por favor, regístrate.'),
-              backgroundColor: AppTheme.expenseRed,
-            ),
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MainLayout()),
           );
         }
       }
-    } catch (e) {
-      String errorMessage = e.toString();
-      if (errorMessage.contains('unavailable')) {
-        errorMessage = "Error de conexión: El servidor no responde. Por favor:\n1. Revisa que tus datos/WiFi funcionen.\n2. Asegúrate de haber agregado la Huella Digital (SHA-1) en Firebase.";
+    } on FirebaseAuthException catch (e) {
+      String message;
+      switch (e.code) {
+        case 'user-not-found':
+        case 'invalid-credential':
+          message = 'Correo o contrase\u00f1a incorrectos.';
+          break;
+        case 'wrong-password':
+          message = 'Contrase\u00f1a incorrecta. Por favor, intenta de nuevo.';
+          break;
+        case 'invalid-email':
+          message = 'El correo electr\u00f3nico no es v\u00e1lido.';
+          break;
+        case 'user-disabled':
+          message = 'Esta cuenta ha sido deshabilitada.';
+          break;
+        case 'too-many-requests':
+          message = 'Demasiados intentos. Por favor, espera un momento.';
+          break;
+        default:
+          message = 'Error de autenticaci\u00f3n: ${e.message}';
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage),
+            content: Text(message),
+            backgroundColor: AppTheme.expenseRed,
+            duration: const Duration(seconds: 6),
+            action: SnackBarAction(
+              label: 'REINTENTAR',
+              textColor: Colors.white,
+              onPressed: _login,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error inesperado: ${e.toString()}'),
             backgroundColor: AppTheme.expenseRed,
             duration: const Duration(seconds: 8),
             action: SnackBarAction(
@@ -103,12 +162,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         textAlign: TextAlign.center,
                         style: GoogleFonts.montserrat(
                           color: Colors.white,
-                          fontSize: 26,
+                          fontSize: 28,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: 2.5,
+                          letterSpacing: 4.5,
                           height: 1.1,
                         ),
                       ),
+                      const SizedBox(height: 10),
                     ],
                   ),
                 ),
@@ -253,6 +313,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               letterSpacing: 1.5,
                             ),
                           ),
+                          const SizedBox(height: 10),
                         ],
                       ),
                     ],

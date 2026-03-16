@@ -1,0 +1,152 @@
+Initialized native services in: C:\Users\JCORDOBA-NTBK\.gradle\native
+Initialized jansi services in: C:\Users\JCORDOBA-NTBK\.gradle\native
+
+Welcome to Gradle 8.4!
+
+Here are the highlights of this release:
+ - Compiling and testing with Java 21
+ - Faster Java compilation on Windows
+ - Role focused dependency configurations creation
+
+For more details see https://docs.gradle.org/8.4/release-notes.html
+
+Received JVM installation metadata from 'C:\Program Files\Android\Android Studio\jbr': {JAVA_HOME=C:\Program Files\Android\Android Studio\jbr, JAVA_VERSION=21.0.9, JAVA_VENDOR=JetBrains s.r.o., RUNTIME_NAME=OpenJDK Runtime Environment, RUNTIME_VERSION=21.0.9+-14787801-b1163.94, VM_NAME=OpenJDK 64-Bit Server VM, VM_VERSION=21.0.9+-14787801-b1163.94, VM_VENDOR=JetBrains s.r.o., OS_ARCH=amd64}
+The client will now receive all logging from the daemon (pid: 19896). The daemon log file: C:\Users\JCORDOBA-NTBK\.gradle\daemon\8.4\daemon-19896.out.log
+Starting 2nd build in daemon [uptime: 1 mins 40.01 secs, performance: 100%, GC rate: 0.00/s, heap usage: 0% of 8 GiB, non-heap usage: 4% of 4 GiB]
+Using 16 worker leases.
+Now considering [C:\Users\JCORDOBA-NTBK\Documents\Javi\petty_cash_app\android, C:\src\flutter\packages\flutter_tools\gradle] as hierarchies to watch
+Watching the file system is configured to be enabled if available
+File system watching is active
+Starting Build
+Now considering [C:\src\flutter\packages\flutter_tools\gradle, C:\Users\JCORDOBA-NTBK\Documents\Javi\petty_cash_app\android] as hierarchies to watch
+
+> Configure project :gradle
+Evaluating project ':gradle' using build file 'C:\src\flutter\packages\flutter_tools\gradle\build.gradle.kts'.
+Using Kotlin Gradle Plugin gradle81 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+WARNING: Unsupported Kotlin plugin version.
+The `embedded-kotlin` and `kotlin-dsl` plugins rely on features of Kotlin `1.9.10` that might work differently than in the requested version `1.9.20`.
+file or directory 'C:\src\flutter\packages\flutter_tools\gradle\src\main\java', not found
+Caching disabled for Kotlin DSL accessors for project ':gradle' because:
+  Build cache is disabled
+Skipping Kotlin DSL accessors for project ':gradle' as it is up-to-date.
+Resolve mutations for :gradle:checkKotlinGradlePluginConfigurationErrors (Thread[#249,Execution worker,5,main]) started.
+:gradle:checkKotlinGradlePluginConfigurationErrors (Thread[#249,Execution worker,5,main]) started.
+
+> Task :gradle:checkKotlinGradlePluginConfigurationErrors
+Caching disabled for task ':gradle:checkKotlinGradlePluginConfigurationErrors' because:
+  Build cache is disabled
+Task ':gradle:checkKotlinGradlePluginConfigurationErrors' is not up-to-date because:
+  Task has not declared any outputs despite executing actions.
+Resolve mutations for :gradle:compileKotlin (Thread[#249,Execution worker,5,main]) started.
+:gradle:compileKotlin (Thread[#249,Execution worker,5,main]) started.
+
+> Task :gradle:compileKotlin UP-TO-DATE
+Transforming gradle-api-8.4.jar with ClasspathEntrySnapshotTransform
+Transforming groovy-3.0.17.jar with ClasspathEntrySnapshotTransform
+Transforming groovy-ant-3.0.17.jar with ClasspathEntrySnapshotTransform
+Transforming groovy-astbuilder-3.0.17.jar with ClasspathEntrySnapshotTransform
+Transforming groovy-console-3.0.17.jar with ClasspathEntrySnapshotTransform
+Transforming groovy-datetime-3.0.17.jar with ClasspathEntrySnapshotTransform
+Transforming groovy-dateutil-3.0.17.jar with ClasspathEntrySnapshotTransform
+Transforming groovy-groovydoc-3.0.17.jar with ClasspathEntrySnapshotTransform
+Transforming groovy-json-3.0.17.jar with ClasspathEntrySnapshotTransform
+Transforming groovy-nio-3.0.17.jar with ClasspathEntrySnapshotTransform
+Transforming groovy-sql-3.0.17.jar with ClasspathEntrySnapshotTransform
+Transforming groovy-templates-3.0.17.jar with ClasspathEntrySnapshotTransform
+Transforming groovy-test-3.0.17.jar with ClasspathEntrySnapshotTransform
+Transforming groovy-xml-3.0.17.jar with ClasspathEntrySnapshotTransform
+Transforming javaparser-core-3.17.0.jar with ClasspathEntrySnapshotTransform
+Transforming kotlin-stdlib-1.9.10.jar with ClasspathEntrySnapshotTransform
+Transforming kotlin-stdlib-common-1.9.10.jar with ClasspathEntrySnapshotTransform
+Transforming kotlin-reflect-1.9.10.jar with ClasspathEntrySnapshotTransform
+Transforming gradle-installation-beacon-8.4.jar with ClasspathEntrySnapshotTransform
+Transforming gradle-kotlin-dsl-extensions-8.4.jar with ClasspathEntrySnapshotTransform
+Transforming gradle-kotlin-dsl-8.4.jar with ClasspathEntrySnapshotTransform
+Transforming gradle-kotlin-dsl-tooling-models-8.4.jar with ClasspathEntrySnapshotTransform
+Transforming gradle-8.7.3.jar with ClasspathEntrySnapshotTransform
+Transforming kotlin-reflect-1.9.10.jar with ClasspathEntrySnapshotTransform
+Transforming kotlin-stdlib-1.9.10.jar with ClasspathEntrySnapshotTransform
+Transforming builder-8.7.3.jar with ClasspathEntrySnapshotTransform
+Transforming builder-model-8.7.3.jar with ClasspathEntrySnapshotTransform
+Transforming gradle-api-8.7.3.jar with ClasspathEntrySnapshotTransform
+Transforming kotlin-stdlib-common-1.9.10.jar with ClasspathEntrySnapshotTransform
+Transforming annotations-13.0.jar with ClasspathEntrySnapshotTransform
+Transforming manifest-merger-31.7.3.jar with ClasspathEntrySnapshotTransform
+Transforming zipflinger-8.7.3.jar with ClasspathEntrySnapshotTransform
+Transforming apksig-8.7.3.jar with ClasspathEntrySnapshotTransform
+Transforming apkzlib-8.7.3.jar with ClasspathEntrySnapshotTransform
+Transforming javawriter-2.5.0.jar with ClasspathEntrySnapshotTransform
+Transforming asm-9.6.jar with ClasspathEntrySnapshotTransform
+Caching disabled for task ':gradle:compileKotlin' because:
+  Build cache is disabled
+Skipping task ':gradle:compileKotlin' as it is up-to-date.
+Resolve mutations for :gradle:compileJava (Thread[#249,Execution worker,5,main]) started.
+:gradle:compileJava (Thread[#249,Execution worker,5,main]) started.
+
+> Task :gradle:compileJava NO-SOURCE
+Skipping task ':gradle:compileJava' as it has no source files and no previous output files.
+Resolve mutations for :gradle:compileGroovy (Thread[#249,Execution worker,5,main]) started.
+:gradle:compileGroovy (Thread[#249,Execution worker,5,main]) started.
+
+> Task :gradle:compileGroovy UP-TO-DATE
+Caching disabled for task ':gradle:compileGroovy' because:
+  Build cache is disabled
+Skipping task ':gradle:compileGroovy' as it is up-to-date.
+Resolve mutations for :gradle:pluginDescriptors (Thread[#249,Execution worker,5,main]) started.
+:gradle:pluginDescriptors (Thread[#249,Execution worker,5,main]) started.
+
+> Task :gradle:pluginDescriptors UP-TO-DATE
+Caching disabled for task ':gradle:pluginDescriptors' because:
+  Build cache is disabled
+Skipping task ':gradle:pluginDescriptors' as it is up-to-date.
+Resolve mutations for :gradle:processResources (Thread[#249,Execution worker,5,main]) started.
+:gradle:processResources (Thread[#249,Execution worker,5,main]) started.
+
+> Task :gradle:processResources UP-TO-DATE
+Caching disabled for task ':gradle:processResources' because:
+  Build cache is disabled
+Skipping task ':gradle:processResources' as it is up-to-date.
+Resolve mutations for :gradle:classes (Thread[#249,Execution worker,5,main]) started.
+:gradle:classes (Thread[#249,Execution worker,5,main]) started.
+
+> Task :gradle:classes UP-TO-DATE
+Skipping task ':gradle:classes' as it has no actions.
+Resolve mutations for :gradle:jar (Thread[#249,Execution worker,5,main]) started.
+:gradle:jar (Thread[#249,Execution worker,5,main]) started.
+
+> Task :gradle:jar UP-TO-DATE
+Caching disabled for task ':gradle:jar' because:
+  Build cache is disabled
+Skipping task ':gradle:jar' as it is up-to-date.
+Settings evaluated using settings file 'C:\Users\JCORDOBA-NTBK\Documents\Javi\petty_cash_app\android\settings.gradle.kts'.
+Projects loaded. Root project using build file 'C:\Users\JCORDOBA-NTBK\Documents\Javi\petty_cash_app\android\build.gradle.kts'.
+Included projects: [root project 'android', project ':app', project ':cloud_firestore', project ':file_picker', project ':firebase_core', project ':firebase_storage', project ':flutter_plugin_android_lifecycle', project ':google_mlkit_commons', project ':google_mlkit_text_recognition', project ':image_picker_android', project ':path_provider_android', project ':pdfx', project ':printing', project ':url_launcher_android']
+
+> Configure project :app
+Evaluating project ':app' using build file 'C:\Users\JCORDOBA-NTBK\Documents\Javi\petty_cash_app\android\app\build.gradle.kts'.
+
+> Configure project :
+Evaluating root project 'android' using build file 'C:\Users\JCORDOBA-NTBK\Documents\Javi\petty_cash_app\android\build.gradle.kts'.
+Caching disabled for Kotlin DSL accessors for root project 'android' because:
+  Build cache is disabled
+Skipping Kotlin DSL accessors for root project 'android' as it is up-to-date.
+
+FAILURE: Build failed with an exception.
+
+* Where:
+Build file 'C:\Users\JCORDOBA-NTBK\Documents\Javi\petty_cash_app\android\app\build.gradle.kts' line: 1
+
+* What went wrong:
+Plugin with id 'com.google.gms.google-services' was already requested at line 1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 23s
+6 actionable tasks: 1 executed, 5 up-to-date
+Watched directory hierarchies: [C:\src\flutter\packages\flutter_tools\gradle]

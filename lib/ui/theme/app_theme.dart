@@ -2,36 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Brand Colors (Surgical V17/V10 Specs)
-  static const Color primaryDark = Color(0xFF7A2C0A);   // V10 Gradient Top
-  static const Color primaryOrange = Color(0xFFBA4817); // V10 Gradient Bottom
-  static const Color secondaryOrange = Color(0xFFE58D07); // For button gradients
-  static const Color primaryYellow = Color(0xFFE5A102); // Institutional Yellow
+  // Brand Colors (Agropecuaria Las Marías)
+  static const Color primaryOrange = Color(0xFFBA4817); // Naranja Corporativo
+  static const Color primaryYellow = Color(0xFFE5A102); // Amarillo Institucional
+  static const Color pureBlack = Color(0xFF000000);
+  static const Color pureWhite = Color(0xFFFFFFFF);
   
   static const Color backgroundWhite = Color(0xFFF8F9FA); 
   static const Color cardWhite = Colors.white;
-  static const Color textDark = Color(0xFF222222);
-  static const Color textGrey = Color(0xFFA0A5B1);
-  static const Color sidebarDark = Color(0xFF1E1611); 
-  static const Color cardShadow = Color(0x0F000000);
+  static const Color textDark = Color(0xFF1A1A1A);
+  static const Color textGrey = Color(0xFF757575);
+  static const Color cardShadow = Color(0x0A000000);
   
-  static const Color expenseRed = Color(0xFFE53935);
-  static const Color incomeGreen = Color(0xFF43A047);
+  static const Color expenseRed = Color(0xFFD32F2F);
+  static const Color incomeGreen = Color(0xFF388E3C);
 
   static LinearGradient get headerGradient => const LinearGradient(
     colors: [
-      primaryDark, 
-      Color(0xFF8B3612), // Subtle mid-tone for depth
-      primaryOrange
+      pureBlack,
+      Color(0xFF1A1A1A),
+      Color(0xFF2C2C2C),
     ],
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
   );
 
   static LinearGradient get buttonGradient => const LinearGradient(
     colors: [
-      Color(0xFFE65100), // Lighter, more vibrant orange start
-      primaryYellow,     // Ends in #E5A102
+      primaryOrange,
+      primaryYellow,
     ],
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
@@ -39,20 +38,23 @@ class AppTheme {
 
   static ThemeData get lightTheme {
     return ThemeData(
+      useMaterial3: true,
       scaffoldBackgroundColor: backgroundWhite,
       primaryColor: primaryOrange,
       textTheme: GoogleFonts.montserratTextTheme(),
       appBarTheme: AppBarTheme(
-        backgroundColor: Colors.transparent,
+        backgroundColor: pureWhite,
         elevation: 0,
-        iconTheme: const IconThemeData(color: textDark),
+        centerTitle: false,
+        iconTheme: const IconThemeData(color: pureBlack),
         titleTextStyle: GoogleFonts.montserrat(
-          color: textDark,
+          color: pureBlack,
           fontSize: 20,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w700,
         ),
       ),
-      colorScheme: const ColorScheme.light(
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: primaryOrange,
         primary: primaryOrange,
         secondary: primaryYellow,
         surface: cardWhite,
@@ -60,46 +62,31 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: 0,
+          backgroundColor: primaryOrange,
+          foregroundColor: pureWhite,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          textStyle: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
+          textStyle: GoogleFonts.montserrat(fontWeight: FontWeight.w700),
         ),
-      ),
-      cardTheme: CardTheme(
-        elevation: 2,
-        shadowColor: cardShadow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: const Color(0xFFF4F5F7),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        hintStyle: const TextStyle(color: textGrey, fontSize: 14),
       ),
     );
   }
 
   static BoxDecoration orangeCardDecoration = BoxDecoration(
-    gradient: LinearGradient(
-      colors: [primaryOrange, primaryOrange.withOpacity(0.8)],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    ),
-    borderRadius: BorderRadius.circular(24),
+    gradient: buttonGradient,
+    borderRadius: BorderRadius.circular(20),
     boxShadow: [
       BoxShadow(
-        color: primaryOrange.withOpacity(0.3),
-        blurRadius: 15,
-        offset: const Offset(0, 8),
+        color: primaryOrange.withOpacity(0.2),
+        blurRadius: 12,
+        offset: const Offset(0, 6),
       )
     ],
   );
 
   static BoxDecoration whiteCardDecoration = BoxDecoration(
     color: cardWhite,
-    borderRadius: BorderRadius.circular(16),
+    borderRadius: BorderRadius.circular(20),
+    border: Border.all(color: Colors.black.withOpacity(0.05)),
     boxShadow: const [
       BoxShadow(
         color: cardShadow,

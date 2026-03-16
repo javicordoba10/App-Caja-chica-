@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/user_model.dart';
+import '../../models/movement_model.dart';
 import '../../providers/app_providers.dart';
 import '../theme/app_theme.dart';
 import 'login_screen.dart';
@@ -35,57 +37,83 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       );
       return;
     }
+
+    if (_passCtrl.text.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La contraseña debe tener al menos 6 caracteres.')),
+      );
+      return;
+    }
     
     setState(() => _isLoading = true);
     
     try {
+      // Step 1: Create the Firebase Auth user
+      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailCtrl.text.trim(),
+        password: _passCtrl.text.trim(),
+      );
+
+      final firebaseUser = credential.user;
+      if (firebaseUser == null) throw Exception('No se pudo crear el usuario.');
+
+      // Step 2: Save user profile in Firestore using the UID from Auth
       final userRepo = ref.read(userRepositoryProvider);
-      final String userId = _emailCtrl.text.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
-      
-      final existingUser = await userRepo.getUser(userId);
-      if (existingUser != null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ya existe una cuenta con ese correo electrónico.'),
-              backgroundColor: AppTheme.expenseRed,
-            ),
-          );
-        }
-        return;
-      }
-      
       final newUser = UserModel(
-        id: userId,
+        id: firebaseUser.uid,
         name: _nameCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),
         cashBalance: 0.0,
         debitBalance: 0.0,
-        area: 'Administracion', // Default as the area selector was surgically removed
+        establishment: CostCenter.Administracion,
         role: 'user',
       );
       
       await userRepo.createUser(newUser);
+
+      // Step 3: Sign out so user goes to login screen
+      await FirebaseAuth.instance.signOut();
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
            const SnackBar(
-             content: Text('Registro exitoso. Ya puedes ingresar.'),
+             content: Text('¡Registro exitoso! Ya puedes ingresar con tus datos.'),
              backgroundColor: AppTheme.incomeGreen,
            ),
         );
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
       }
-    } catch (e) {
-      String errorMessage = e.toString();
-      if (errorMessage.contains('unavailable')) {
-        errorMessage = "Error de conexión: El servidor no responde. Por favor:\n1. Revisa que tus datos/WiFi funcionen.\n2. Asegúrate de haber agregado la Huella Digital (SHA-1 y SHA-256) en Firebase.";
+    } on FirebaseAuthException catch (e) {
+      String message;
+      switch (e.code) {
+        case 'email-already-in-use':
+          message = 'Ya existe una cuenta con ese correo electrónico.';
+          break;
+        case 'invalid-email':
+          message = 'El correo electrónico no es válido.';
+          break;
+        case 'weak-password':
+          message = 'La contraseña es demasiado débil.';
+          break;
+        default:
+          message = 'Error [${e.code}]: ${e.message ?? "Sin detalles"}';
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage),
+            content: Text(message),
             backgroundColor: AppTheme.expenseRed,
-            duration: const Duration(seconds: 8),
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error inesperado: ${e.toString()}'),
+            backgroundColor: AppTheme.expenseRed,
+            duration: const Duration(seconds: 6),
           ),
         );
       }
@@ -127,6 +155,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           height: 1.1,
                         ),
                       ),
+                      const SizedBox(height: 10),
                     ],
                   ),
                 ),
@@ -242,6 +271,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               letterSpacing: 1.5,
                             ),
                           ),
+                          const SizedBox(height: 10),
                         ],
                       ),
                     ],

@@ -1,0 +1,13 @@
+
+Running Gradle task 'assembleRelease'...                        
+Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+Font asset "MaterialIcons-Regular.otf" was tree-shaken, reducing it from 1645184 to 4860 bytes (99.7% reduction). Tree-shaking can be disabled by providing the --no-tree-shake-icons flag when building your app.
+Note: C:\Users\JCORDOBA-NTBK\AppData\Local\Pub\Cache\hosted\pub.dev\google_mlkit_commons-0.11.0\android\src\main\java\com\google_mlkit_commons\InputImageConverter.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+Generating lint files for backported methods only (compile API B)
+Running Gradle task 'assembleRelease'...                          383,8s
+ÔêÜ Built build\app\outputs\flutter-apk\app-release.apk (95.4MB)

@@ -1,0 +1,57 @@
+
+  Welcome to Gradle 8.2!
+  
+  Here are the highlights of this release:
+   - Kotlin DSL: new reference documentation, assignment syntax by default
+   - Kotlin DSL is now the default with Gradle init
+>  - Improved suggestions to resolve errors in console output
+  
+  For more details see https://docs.gradle.org/8.2/release-notes.html
+  
+  Received JVM installation metadata from 'C:\Program Files\Android\Android Studio\jbr': {JAVA_HOME=C:\Program Files\Android\Android Studio\jbr, JAVA_VERSION=21.0.9, JAVA_VENDOR=JetBrains s.r.o., RUNTIME_NAME=OpenJDK Runtime Environment, RUNTIME_VERSION=21.0.9+-14787801-b1163.94, VM_NAME=OpenJDK 64-Bit Server VM, VM_VERSION=21.0.9+-14787801-b1163.94, VM_VENDOR=JetBrains s.r.o., OS_ARCH=amd64}
+  The client will now receive all logging from the daemon (pid: 25900). The daemon log file: C:\Users\JCORDOBA-NTBK\.gradle\daemon\8.2\daemon-25900.out.log
+  The configuration detachedConfiguration3 is both resolvable and consumable. This is considered a legacy configuration and it will eventually only be possible to be one of these.
+  The configuration detachedConfiguration3 is both consumable and declarable. This combination is incorrect, only one of these flags should be set.
+  The configuration classpath is both resolvable and consumable. This is considered a legacy configuration and it will eventually only be possible to be one of these.
+  The configuration classpath is both consumable and declarable. This combination is incorrect, only one of these flags should be set.
+  The configuration :gradle:mainSourceElements is both consumable and declarable. This combination is incorrect, only one of these flags should be set.
+> Resolve mutations for :gradle:checkKotlinGradlePluginConfigurationErrors (Thread[#269,Execution worker,5,main]) started.
+> :gradle:checkKotlinGradlePluginConfigurationErrors (Thread[#280,Execution worker Thread 12,5,main]) started.
+  
+> > Task :gradle:checkKotlinGradlePluginConfigurationErrors
+> Caching disabled for task ':gradle:checkKotlinGradlePluginConfigurationErrors' because:
+    Build cache is disabled
+> Task ':gradle:checkKotlinGradlePluginConfigurationErrors' is not up-to-date because:
+    Task has not declared any outputs despite executing actions.
+  Resolve mutations for :gradle:compileKotlin (Thread[#280,Execution worker Thread 12,5,main]) started.
+  :gradle:compileKotlin (Thread[#280,Execution worker Thread 12,5,main]) started.
+  
+  > Task :gradle:compileKotlin UP-TO-DATE
+  Evaluating project ':flutter_plugin_android_lifecycle' using build file 'C:\Users\JCORDOBA-NTBK\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_plugin_android_lifecycle-2.0.31\android\build.gradle'.
+  The configuration :flutter_plugin_android_lifecycle:classpath is both resolvable and consumable. This is considered a legacy configuration and it will eventually only be possible to be one of these.
+  The configuration :flutter_plugin_android_lifecycle:classpath is both consumable and declarable. This combination is incorrect, only one of these flags should be set.
+  The configuration :flutter_plugin_android_lifecycle:classpath is both resolvable and consumable. This is considered a legacy configuration and it will eventually only be possible to be one of these.
+  The configuration :flutter_plugin_android_lifecycle:classpath is both consumable and declarable. This combination is incorrect, only one of these flags should be set.
+> Could not execute [report metric STATISTICS_COLLECT_METRICS_OVERHEAD]
+> Could not execute [report metric STATISTICS_COLLECT_METRICS_OVERHEAD]
+> Could not execute [report metric STATISTICS_COLLECT_METRICS_OVERHEAD]
+> System.Management.Automation.RemoteException
+> FAILURE: Build failed with an exception.
+> System.Management.Automation.RemoteException
+  * What went wrong:
+  A problem occurred configuring project ':flutter_plugin_android_lifecycle'.
+> > java.util.concurrent.ExecutionException: org.gradle.api.GradleException: Failed to create Jar file C:\Users\JCORDOBA-NTBK\.gradle\caches\jars-9\18366b31678c0171857be093a3b8ec22\bcprov-jdk18on-1.79.jar.
+  > Failed to notify project evaluation listener.
+>    > Could not get unknown property 'android' for project ':flutter_plugin_android_lifecycle' of type org.gradle.api.Project.
+>    > Could not get unknown property 'android' for project ':flutter_plugin_android_lifecycle' of type org.gradle.api.Project.
+> System.Management.Automation.RemoteException
+  * Try:
+  > Run with --stacktrace option to get the stack trace.
+  > Run with --debug option to get more log output.
+  > Run with --scan to get full insights.
+  > Get more help at https://help.gradle.org.
+> System.Management.Automation.RemoteException
+  7 actionable tasks: 1 executed, 6 up-to-date
+  BUILD FAILED in 24s
+  Watched directory hierarchies: [C:\src\flutter\packages\flutter_tools\gradle]
+

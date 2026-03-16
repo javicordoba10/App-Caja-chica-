@@ -1,33 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:petty_cash_app/models/enums.dart';
 
-enum CostCenter {
-  Administracion,
-  PuestoDeLuna,
-  SanIsidro,
-  FeedLot,
-  LaCarlota,
-  ElSiete,
-  ElMoro,
-  LaHuella
-}
-
-enum MovementType { income, expense }
-enum PaymentMethod { cash, debit }
+export 'package:petty_cash_app/models/enums.dart';
 
 class MovementModel {
   final String id;
   final String userId;
-  final MovementType type; // Ingreso/Egreso
-  final double netAmount; // Monto_Neto
-  final double grossAmount; // Monto_Bruto
-  final double vat; // IVA
-  final String invoiceType; // Tipo_Factura
-  final String? invoiceNumber; // Número de factura
-  final String description; // Descripción
-  final CostCenter costCenter; // Centro_Costo
-  final PaymentMethod paymentMethod; // Método_Pago
-  final DateTime date; // Fecha_Carga
-  final String? imageUrl; // URL_Imagen
+  final MovementType type;
+  final double netAmount;
+  final double grossAmount;
+  final double vat;
+  final String invoiceType;
+  final String? invoiceNumber;
+  final String description;
+  final CostCenter costCenter;
+  final PaymentMethod paymentMethod;
+  final DateTime date;
+  final String? imageUrl;
 
   MovementModel({
     required this.id,
@@ -66,24 +55,15 @@ class MovementModel {
     return MovementModel(
       id: documentId,
       userId: map['userId'] ?? '',
-      type: MovementType.values.firstWhere(
-        (e) => e.name == map['type'],
-        orElse: () => MovementType.expense,
-      ),
+      type: MovementType.values.firstWhere((e) => e.name == map['type'], orElse: () => MovementType.expense),
       netAmount: (map['netAmount'] ?? 0.0).toDouble(),
       grossAmount: (map['grossAmount'] ?? 0.0).toDouble(),
       vat: (map['vat'] ?? 0.0).toDouble(),
       invoiceType: map['invoiceType'] ?? '',
       invoiceNumber: map['invoiceNumber'],
       description: map['description'] ?? '',
-      costCenter: CostCenter.values.firstWhere(
-        (e) => e.name == map['costCenter'],
-        orElse: () => CostCenter.Administracion,
-      ),
-      paymentMethod: PaymentMethod.values.firstWhere(
-        (e) => e.name == map['paymentMethod'],
-        orElse: () => PaymentMethod.cash,
-      ),
+      costCenter: CostCenter.values.firstWhere((e) => e.name == map['costCenter'], orElse: () => CostCenter.Administracion),
+      paymentMethod: PaymentMethod.values.firstWhere((e) => e.name == map['paymentMethod'], orElse: () => PaymentMethod.cash),
       date: (map['date'] as Timestamp).toDate(),
       imageUrl: map['imageUrl'],
     );

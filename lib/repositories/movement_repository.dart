@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/movement_model.dart';
+import 'package:petty_cash_app/models/movement_model.dart';
 
 
 class MovementRepository {
@@ -19,6 +19,12 @@ class MovementRepository {
       print('>>> MovementRepository ERROR: $e');
       rethrow;
     }
+  }
+
+  Future<void> saveMovement(MovementModel movement) => addMovement(movement);
+
+  Future<void> updateImageUrl(String id, String url) async {
+    await _movements.doc(id).update({'imageUrl': url});
   }
 
   Stream<List<MovementModel>> getMovements(String userId, String role) {
@@ -40,9 +46,29 @@ class MovementRepository {
     await _movements.doc(id).delete();
   }
 
-  /// Patches only the imageUrl field without overwriting the full document
-  Future<void> updateImageUrl(String movementId, String url) async {
-    print('>>> MovementRepository: Updating imageUrl for $movementId');
-    await _movements.doc(movementId).update({'imageUrl': url});
+  /// Removes attachments older than 60 days
+  Future<int> cleanupOldAttachments(FirebaseFirestore firestore) async {
+    final sixtyDaysAgo = DateTime.now().subtract(const Duration(days: 60));
+    final snapshot = await _movements
+        .where('date', isLessThan: Timestamp.fromDate(sixtyDaysAgo))
+        .where('imageUrl', isNotEqualTo: null)
+        .get();
+
+    int deletedCount = 0;
+    for (var doc in snapshot.docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final url = data['imageUrl'] as String?;
+      if (url != null && url.isNotEmpty) {
+        try {
+          // Note: In a real app, you'd call FirebaseStorage delete here.
+          // For now, we clear the reference in Firestore.
+          await doc.reference.update({'imageUrl': FieldValue.delete()});
+          deletedCount++;
+        } catch (e) {
+          print('Error deleting attachment for doc \${doc.id}: $e');
+        }
+      }
+    }
+    return deletedCount;
   }
 }

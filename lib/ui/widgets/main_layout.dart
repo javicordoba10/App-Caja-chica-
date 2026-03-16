@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'sidebar.dart';
-import '../screens/dashboard_screen.dart';
-import '../screens/history_screen.dart';
-import '../screens/validation_form_screen.dart';
-import '../../models/movement_model.dart';
-import '../../services/ocr_service.dart';
+import 'package:petty_cash_app/ui/widgets/app_drawer.dart';
+import 'package:petty_cash_app/ui/screens/dashboard_screen.dart';
+import 'package:petty_cash_app/ui/screens/history_screen.dart';
+import 'package:petty_cash_app/ui/screens/new_movement_screen.dart';
+import 'package:petty_cash_app/ui/screens/profile_screen.dart';
+import 'package:petty_cash_app/ui/screens/validation_form_screen.dart';
+import 'package:petty_cash_app/models/movement_model.dart';
+import 'package:petty_cash_app/services/ocr_service.dart';
+import 'package:petty_cash_app/ui/theme/app_theme.dart';
 
 // State for navigation
 final navigationProvider = StateProvider<String>((ref) => 'dashboard');
@@ -16,83 +19,64 @@ class MainLayout extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentRoute = ref.watch(navigationProvider);
+    final scaffoldKey = GlobalKey<ScaffoldState>();
 
     return Scaffold(
-      body: Row(
-        children: [
-          Sidebar(
-            currentRoute: currentRoute,
-            onItemSelected: (route) {
-              if (route == 'new') {
-                _showNewEntryOptions(context);
-              } else {
-                ref.read(navigationProvider.notifier).state = route;
-              }
-            },
-          ),
-          Expanded(
-            child: _buildBody(currentRoute),
-          ),
+      key: scaffoldKey,
+      appBar: AppBar(
+        title: Text(_getTitle(currentRoute)),
+        backgroundColor: AppTheme.pureWhite,
+        surfaceTintColor: AppTheme.pureWhite,
+        leading: IconButton(
+          icon: const Icon(Icons.menu, color: AppTheme.pureBlack),
+          onPressed: () => scaffoldKey.currentState?.openDrawer(),
+        ),
+        actions: [
+          if (currentRoute == 'history')
+             IconButton(
+               icon: const Icon(Icons.add, color: AppTheme.primaryOrange),
+               onPressed: () => ref.read(navigationProvider.notifier).state = 'new',
+             ),
         ],
       ),
+      drawer: AppDrawer(
+        currentRoute: currentRoute,
+        onItemSelected: (route) {
+          scaffoldKey.currentState?.closeDrawer();
+          ref.read(navigationProvider.notifier).state = route;
+        },
+      ),
+      body: _buildBody(currentRoute),
     );
+  }
+
+  String _getTitle(String route) {
+    switch (route) {
+      case 'dashboard':
+        return 'Panel de Control';
+      case 'history':
+        return 'Historial';
+      case 'new':
+        return 'Nuevo Registro';
+      case 'profile':
+        return 'Mi Perfil';
+      default:
+        return 'Petty Cash';
+    }
   }
 
   Widget _buildBody(String route) {
     switch (route) {
       case 'dashboard':
-        return const DashboardScreen();
+        return DashboardScreen();
       case 'history':
-        return const HistoryScreen();
+        return HistoryScreen();
+      case 'new':
+        return NewMovementScreen();
+      case 'profile':
+        return ProfileScreen();
       default:
-        return const DashboardScreen();
+        return DashboardScreen();
     }
-  }
-
-  void _showNewEntryOptions(BuildContext context) {
-    // We reuse the existing logic from Dashboard but trigger it from sidebar
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('Nuevo Registro', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                ListTile(
-                  leading: const Icon(Icons.edit, color: Colors.orange),
-                  title: const Text('Carga Manual'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => ValidationFormScreen(
-                        data: ExtractedReceiptData(imagePath: ''),
-                        initialType: MovementType.expense,
-                      ),
-                    ));
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.camera_alt, color: Colors.orange),
-                  title: const Text('Escanear / Foto'),
-                  onTap: () {
-                    // Similar to dashboard logic...
-                    Navigator.pop(ctx);
-                    // This is handled in DashboardScreen normally, 
-                    // but for a true Sidebar experience we might want to consolidate state.
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 }

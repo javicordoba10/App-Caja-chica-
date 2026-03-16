@@ -1,10 +1,10 @@
 import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
-import 'package:pdfx/pdfx.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:petty_cash_app/models/movement_model.dart';
+import 'package:petty_cash_app/services/pdf_converter_stub.dart' if (dart.library.io) 'package:petty_cash_app/services/pdf_converter_mobile.dart';
 import 'dart:convert';
-import 'ocr_stub.dart' if (dart.library.html) 'ocr_web.dart';
+import 'package:petty_cash_app/services/ocr_stub.dart' if (dart.library.html) 'package:petty_cash_app/services/ocr_web.dart';
 
 class ExtractedReceiptData {
   final double netAmount;
@@ -37,7 +37,7 @@ class ExtractedReceiptData {
 class OCRService {
   final _textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
 
-  Future<ExtractedReceiptData> processImage(String filePath, {Uint8List? bytes}) async {
+  Future<ExtractedReceiptData> extractData(String filePath, {Uint8List? bytes, bool isPdf = false}) async {
     if (kIsWeb) {
       final isPdf = filePath.toLowerCase().endsWith('.pdf') ||
           (filePath.toLowerCase().contains('.pdf'));
@@ -69,22 +69,7 @@ class OCRService {
   }
 
   Future<String> _convertPdfToImage(String pdfPath) async {
-    final document = await PdfDocument.openFile(pdfPath);
-    final page = await document.getPage(1);
-    final pageImage = await page.render(
-      width: page.width * 2, // Higher resolution for better OCR
-      height: page.height * 2,
-      format: PdfPageImageFormat.png,
-    );
-    
-    final tempDir = await getTemporaryDirectory();
-    final imageFile = io.File("${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.png");
-    await imageFile.writeAsBytes(pageImage!.bytes);
-    
-    await page.close();
-    await document.close();
-    
-    return imageFile.path;
+    return PdfConverter.convertPdfToImage(pdfPath);
   }
 
   ExtractedReceiptData _parseText(String text, String filePath, {bool isPdf = false, Uint8List? bytes}) {
