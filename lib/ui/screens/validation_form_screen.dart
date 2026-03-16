@@ -4,19 +4,42 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:petty_cash_app/models/movement_model.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
 import 'package:petty_cash_app/repositories/movement_repository.dart';
 import 'package:petty_cash_app/repositories/user_repository.dart';
 import 'package:petty_cash_app/services/ocr_service.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
+
+// ─── Full-name labels for cost centers ──────────────────────────────
+const Map<CostCenter, String> _costCenterNames = {
+  CostCenter.Administracion: 'Administración',
+  CostCenter.PuestoDeLuna:   'Puesto de Luna',
+  CostCenter.FeedLot:        'Feed Lot',
+  CostCenter.SanIsidro:      'San Isidro',
+  CostCenter.LaCarlota:      'La Carlota',
+  CostCenter.LaHuella:       'La Huella',
+  CostCenter.ElSiete:        'El Siete',
+  CostCenter.ElMoro:         'El Moro',
+};
+
+// ─── VAT rate data ───────────────────────────────────────────────────
+class _VatSlot {
+  final TextEditingController amountCtrl;
+  double rate;
+  _VatSlot({required this.amountCtrl, this.rate = 0.21});
+}
 
 class ValidationFormScreen extends ConsumerStatefulWidget {
   final ExtractedReceiptData data;
   final MovementType initialType;
 
-  const ValidationFormScreen({super.key, required this.data, this.initialType = MovementType.expense});
+  const ValidationFormScreen({
+    super.key,
+    required this.data,
+    this.initialType = MovementType.expense,
+  });
 
   @override
   ConsumerState<ValidationFormScreen> createState() => _ValidationFormScreenState();
@@ -24,326 +47,534 @@ class ValidationFormScreen extends ConsumerStatefulWidget {
 
 class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   late TextEditingController _descCtrl;
   late TextEditingController _grossCtrl;
   late TextEditingController _netCtrl;
-  late TextEditingController _vatCtrl;
   late TextEditingController _invoiceNumberCtrl;
+  late TextEditingController _dateCtrl;
+
+  // Dual-IVA support
+  final List<_VatSlot> _vatSlots = [];
 
   late MovementType _selectedType;
   CostCenter _selectedCostCenter = CostCenter.Administracion;
   PaymentMethod _selectedPayment = PaymentMethod.cash;
   String _selectedInvoiceType = 'Ticket';
-  double _selectedVatRate = 0.21;
   bool _isLoading = false;
+  DateTime _selectedDate = DateTime.now();
 
+  static const List<double> _vatRates = [0.0, 0.105, 0.21, 0.27];
+
+  // ── init ────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
+    final d = widget.data;
     _selectedType = widget.initialType;
-    _selectedInvoiceType = widget.data.invoiceType;
-    _descCtrl = TextEditingController(); // Razón Social/Descripción stays manual
-    
-    // Auto-calculate the IVA rate Dropdown based on the OCR result
-    if (widget.data.netAmount > 0 && widget.data.vat > 0) {
-      double rate = widget.data.vat / widget.data.netAmount;
-      if (rate > 0.15) {
-        _selectedVatRate = 0.21;
-      } else if (rate > 0.05) {
-        _selectedVatRate = 0.105;
-      } else {
-        _selectedVatRate = 0.0;
-      }
+    _selectedInvoiceType = d.invoiceType;
+
+    // Pre-fill all OCR-extracted fields
+    _descCtrl          = TextEditingController(text: d.description);
+    _grossCtrl         = TextEditingController(text: d.grossAmount > 0 ? d.grossAmount.toStringAsFixed(2) : '');
+    _netCtrl           = TextEditingController(text: d.netAmount  > 0 ? d.netAmount.toStringAsFixed(2)  : '');
+    _invoiceNumberCtrl = TextEditingController(text: d.invoiceNumber ?? '');
+
+    // Date — parse from OCR or default to today
+    if (d.dateStr != null && d.dateStr!.isNotEmpty) {
+      try {
+        final parts = d.dateStr!.split('/');
+        if (parts.length == 3) {
+          _selectedDate = DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+        }
+      } catch (_) {}
     }
-    
-    _grossCtrl = TextEditingController(text: widget.data.grossAmount > 0 ? widget.data.grossAmount.toStringAsFixed(2) : '');
-    _netCtrl = TextEditingController(text: widget.data.netAmount > 0 ? widget.data.netAmount.toStringAsFixed(2) : '');
-    _vatCtrl = TextEditingController(text: widget.data.vat > 0 ? widget.data.vat.toStringAsFixed(2) : '');
-    _invoiceNumberCtrl = TextEditingController(text: widget.data.invoiceNumber ?? '');
-    
-    _grossCtrl.addListener(_onGrossOrVatChange);
+    _dateCtrl = TextEditingController(text: _formatDate(_selectedDate));
+
+    // Build first VAT slot from OCR data
+    final vatRate = _guessVatRate(d.netAmount, d.vat);
+    _vatSlots.add(_VatSlot(
+      amountCtrl: TextEditingController(text: d.vat > 0 ? d.vat.toStringAsFixed(2) : ''),
+      rate: vatRate,
+    ));
+
+    _grossCtrl.addListener(_recalcNet);
   }
 
-  void _onGrossOrVatChange() {
-    if (_selectedType == MovementType.expense && _selectedInvoiceType == 'Factura A') {
-      final gross = _parseAmount(_grossCtrl.text);
-      if (gross > 0) {
-        final net = gross / (1 + _selectedVatRate);
-        final vat = gross - net;
-        _netCtrl.text = net.toStringAsFixed(2);
-        _vatCtrl.text = vat.toStringAsFixed(2);
+  double _guessVatRate(double net, double vat) {
+    if (net <= 0 || vat <= 0) return 0.21;
+    final r = vat / net;
+    if      (r > 0.24) return 0.27;
+    else if (r > 0.15) return 0.21;
+    else if (r > 0.05) return 0.105;
+    else               return 0.0;
+  }
+
+  String _formatDate(DateTime d) => '${d.day.toString().padLeft(2,'0')}/${d.month.toString().padLeft(2,'0')}/${d.year}';
+
+  void _recalcNet() {
+    if (_selectedInvoiceType == 'Factura A') {
+      final g = _parse(_grossCtrl.text);
+      if (g > 0 && _vatSlots.isNotEmpty) {
+        double totalVat = 0;
+        for (var s in _vatSlots) {
+          final slotVat = g * s.rate / (1 + s.rate);
+          s.amountCtrl.text = slotVat.toStringAsFixed(2);
+          totalVat += slotVat;
+        }
+        _netCtrl.text = (g - totalVat).toStringAsFixed(2);
       }
     } else {
-      final gross = _parseAmount(_grossCtrl.text);
-      _netCtrl.text = gross.toStringAsFixed(2);
-      _vatCtrl.text = '0.00';
+      final g = _parse(_grossCtrl.text);
+      _netCtrl.text = g.toStringAsFixed(2);
+      for (var s in _vatSlots) { s.amountCtrl.text = '0.00'; }
     }
+    setState(() {});
   }
 
-  double _parseAmount(String val) {
-    if (val.isEmpty) return 0.0;
-    String cleaned = val.trim().replaceAll(r'$', '').replaceAll(' ', '');
-    // Simple parsing for standard float format. 
-    // If needed more complex AR format handling can be added here.
-    cleaned = cleaned.replaceAll(',', '.');
-    return double.tryParse(cleaned) ?? 0.0;
+  double _parse(String v) {
+    if (v.isEmpty) return 0.0;
+    return double.tryParse(v.trim().replaceAll('\$', '').replaceAll(' ', '').replaceAll(',', '.')) ?? 0.0;
   }
 
   @override
   void dispose() {
-    _grossCtrl.removeListener(_onGrossOrVatChange);
+    _grossCtrl.removeListener(_recalcNet);
     _descCtrl.dispose();
     _grossCtrl.dispose();
     _netCtrl.dispose();
-    _vatCtrl.dispose();
     _invoiceNumberCtrl.dispose();
+    _dateCtrl.dispose();
+    for (var s in _vatSlots) { s.amountCtrl.dispose(); }
     super.dispose();
   }
 
+  // ── save ─────────────────────────────────────────────────────────────
   void _save() {
     if (!_formKey.currentState!.validate()) return;
-    
-    setState(() => _isLoading = true); // Brief feedback
-    
-    final userId = ref.read(currentUserIdProvider);
-    final userRepo = ref.read(userRepositoryProvider);
-    final movementRepo = ref.read(movementRepositoryProvider);
+    setState(() => _isLoading = true);
 
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
-    
-    final description = _descCtrl.text;
-    final movementId = const Uuid().v4();
-    final gross = _parseAmount(_grossCtrl.text);
-    final net = _parseAmount(_netCtrl.text);
-    final vat = _parseAmount(_vatCtrl.text);
+    final userId        = ref.read(currentUserIdProvider);
+    final userRepo      = ref.read(userRepositoryProvider);
+    final movementRepo  = ref.read(movementRepositoryProvider);
+    final scaffoldMsg   = ScaffoldMessenger.of(context);
+    final navigator     = Navigator.of(context);
+
+    final gross   = _parse(_grossCtrl.text);
+    final net     = _parse(_netCtrl.text);
+    final totalVat = _vatSlots.fold(0.0, (s, slot) => s + _parse(slot.amountCtrl.text));
+    final movId   = const Uuid().v4();
 
     final movement = MovementModel(
-      id: movementId,
-      userId: userId ?? 'unknown',
-      type: _selectedType,
-      netAmount: net,
-      grossAmount: gross,
-      vat: vat,
-      invoiceType: _selectedInvoiceType,
+      id:            movId,
+      userId:        userId ?? 'unknown',
+      type:          _selectedType,
+      netAmount:     net,
+      grossAmount:   gross,
+      vat:           totalVat,
+      invoiceType:   _selectedInvoiceType,
       invoiceNumber: _invoiceNumberCtrl.text.isNotEmpty ? _invoiceNumberCtrl.text : null,
-      description: description,
-      costCenter: _selectedCostCenter,
+      description:   _descCtrl.text,
+      costCenter:    _selectedCostCenter,
       paymentMethod: _selectedPayment,
-      date: DateTime.now(),
-      imageUrl: null,
+      date:          _selectedDate,
+      imageUrl:      null,
     );
 
-    // 1. FIRE-AND-FORGET SAVE: We do not await Firestore writes. This entirely prevents
-    // the "infinite loop" on web where promises hang due to IndexedDb or network caching.
     userRepo.saveMovementWithBalanceUpdate(movement).then((_) {
-      scaffoldMessenger.showSnackBar(
-        const SnackBar(
-          content: Text('Registro guardado exitosamente ✓'),
-          backgroundColor: AppTheme.incomeGreen,
-          duration: Duration(seconds: 3),
-        ),
-      );
+      scaffoldMsg.showSnackBar(const SnackBar(
+        content: Text('Registro guardado ✓'),
+        backgroundColor: AppTheme.incomeGreen,
+        duration: Duration(seconds: 3),
+      ));
     }).catchError((e) {
-      scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text('Error guardando en la nube: $e'), backgroundColor: AppTheme.expenseRed),
-      );
+      scaffoldMsg.showSnackBar(SnackBar(
+        content: Text('Error al guardar: $e'),
+        backgroundColor: AppTheme.expenseRed,
+      ));
     });
-      
-    // 2. Upload async if image exists
+
     if (widget.data.bytes != null) {
-      _uploadInBackground(userId ?? 'unknown', movementId, widget.data.bytes!, widget.data.isPdf, movementRepo, movement, scaffoldMessenger);
+      _uploadInBackground(userId ?? 'unknown', movId, widget.data.bytes!, widget.data.isPdf, movementRepo, movement, scaffoldMsg);
     }
 
-    // 3. Immediately close the form screen and return to Dashboard
     navigator.pop();
   }
 
-  void _uploadInBackground(String userId, String id, Uint8List bytes, bool isPdf, MovementRepository repo, MovementModel original, ScaffoldMessengerState messenger) async {
+  void _uploadInBackground(String uid, String id, Uint8List bytes, bool isPdf,
+      MovementRepository repo, MovementModel original, ScaffoldMessengerState msg) async {
     try {
       final ext = isPdf ? 'pdf' : 'jpg';
-      final storageRef = FirebaseStorage.instance.ref().child('receipts/$userId/$id.$ext');
-      final metadata = SettableMetadata(contentType: isPdf ? 'application/pdf' : 'image/jpeg');
-      final uploadTask = await storageRef.putData(bytes, metadata);
-      final url = await uploadTask.ref.getDownloadURL();
-      
-      // Use a targeted .update() so only imageUrl changes, avoiding race conditions
+      final ref = FirebaseStorage.instance.ref().child('receipts/$uid/$id.$ext');
+      final meta = SettableMetadata(contentType: isPdf ? 'application/pdf' : 'image/jpeg');
+      final task = await ref.putData(bytes, meta);
+      final url  = await task.ref.getDownloadURL();
       await repo.updateImageUrl(id, url);
-      print('>>> Upload done, imageUrl set: $url');
     } catch (e) {
-      print('>>> Upload error: $e');
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Aviso: Tu servidor Firebase bloquea subidas (CORS). El egreso se guardó sin adjunto.'), backgroundColor: AppTheme.expenseRed),
-      );
+      msg.showSnackBar(const SnackBar(
+        content: Text('Aviso: No se pudo subir el adjunto (CORS).'),
+        backgroundColor: AppTheme.expenseRed,
+      ));
     }
   }
 
+  // ── date picker ──────────────────────────────────────────────────────
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+      builder: (ctx, child) => Theme(
+        data: ThemeData(
+          colorScheme: const ColorScheme.light(primary: AppTheme.primaryOrange),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+        _dateCtrl.text = _formatDate(picked);
+      });
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // BUILD
+  // ─────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundWhite,
-      appBar: AppBar(
-        title: Text(_selectedType == MovementType.income ? 'Nuevo Ingreso' : 'Validar Egreso'),
-        backgroundColor: AppTheme.pureWhite,
-      ),
       body: Stack(
         children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Receipt Preview (Only for Expense with Image)
-                  if (_selectedType == MovementType.expense && widget.data.imagePath.isNotEmpty)
-                    _buildReceiptPreview(),
+          CustomScrollView(
+            slivers: [
+              _buildSliverHeader(),
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                sliver: SliverToBoxAdapter(
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Receipt preview (expenses with image)
+                        if (_selectedType == MovementType.expense && widget.data.imagePath.isNotEmpty)
+                          _buildReceiptPreview(),
 
-                  // Description Field
-                  _buildSectionHeader('INFORMACIÓN BÁSICA'),
-                  _buildTextField(
-                    controller: _descCtrl,
-                    label: 'Descripción / Razón Social',
-                    icon: Icons.description_outlined,
-                    validator: (v) => v!.isEmpty ? 'Requerido' : null,
-                  ),
-                  const SizedBox(height: 20),
+                        _section('DATOS DEL COMPROBANTE', Icons.receipt_long_outlined),
+                        _field(_invoiceNumberCtrl, 'N° de Factura / Ticket', Icons.tag, keyboardType: TextInputType.text),
+                        const SizedBox(height: 16),
+                        // Date row
+                        _datePicker(),
+                        const SizedBox(height: 16),
+                        // Invoice type + gross amount in a row
+                        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Expanded(child: _field(_grossCtrl, 'Monto Total (ARS)', Icons.payments_outlined,
+                              keyboardType: TextInputType.number,
+                              validator: (v) => (v == null || v.isEmpty) ? 'Requerido' : null)),
+                          const SizedBox(width: 12),
+                          if (_selectedType == MovementType.expense)
+                            Expanded(child: _invoiceTypeDropdown()),
+                        ]),
+                        const SizedBox(height: 16),
 
-                  // Amount and Type Row
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: _buildTextField(
-                          controller: _grossCtrl,
-                          label: 'Monto Total',
-                          icon: Icons.payments_outlined,
-                          keyboardType: TextInputType.number,
-                          validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                        // Net amount (read-only for Factura A, editable otherwise)
+                        if (_selectedType == MovementType.expense && _selectedInvoiceType == 'Factura A') ...[
+                          _field(_netCtrl, 'Subtotal (sin IVA)', Icons.remove_circle_outline,
+                              keyboardType: TextInputType.number, readOnly: true),
+                          const SizedBox(height: 20),
+                          _section('IVA / ALÍCUOTAS', Icons.percent),
+                          ..._vatSlots.asMap().entries.map((e) => _vatRow(e.key, e.value)),
+                          if (_vatSlots.length < 2)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8, bottom: 4),
+                              child: TextButton.icon(
+                                onPressed: () => setState(() => _vatSlots.add(_VatSlot(
+                                  amountCtrl: TextEditingController(text: '0.00'),
+                                ))),
+                                icon: const Icon(Icons.add_circle_outline, color: AppTheme.primaryOrange),
+                                label: Text('Agregar 2° alícuota IVA',
+                                    style: GoogleFonts.montserrat(color: AppTheme.primaryOrange, fontWeight: FontWeight.w600)),
+                              ),
+                            ),
+                          const SizedBox(height: 12),
+                        ],
+
+                        _section('DESCRIPCIÓN', Icons.description_outlined),
+                        _field(_descCtrl, 'Razón Social / Descripción', Icons.store_outlined,
+                            validator: (v) => (v == null || v.isEmpty) ? 'Requerido' : null),
+                        const SizedBox(height: 20),
+
+                        _section('ASIGNACIÓN', Icons.business_outlined),
+                        _dropdown<CostCenter>(
+                          value: _selectedCostCenter,
+                          label: 'Establecimiento',
+                          icon: Icons.location_city_outlined,
+                          items: CostCenter.values.map((c) => DropdownMenuItem(
+                            value: c,
+                            child: Text(_costCenterNames[c] ?? c.name),
+                          )).toList(),
+                          onChanged: (v) => setState(() => _selectedCostCenter = v!),
                         ),
-                      ),
-                      if (_selectedType == MovementType.expense) ...[
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildDropdown<String>(
-                            value: _selectedInvoiceType,
-                            label: 'Tipo Comprobante',
-                            icon: Icons.receipt_outlined,
-                            items: ['Ticket', 'Factura A', 'Factura B', 'Factura C'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                            onChanged: (v) => setState(() {
-                                _selectedInvoiceType = v!;
-                                _onGrossOrVatChange();
-                            }),
-                          ),
+                        const SizedBox(height: 16),
+                        _dropdown<PaymentMethod>(
+                          value: _selectedPayment,
+                          label: 'Forma de Pago',
+                          icon: Icons.account_balance_wallet_outlined,
+                          items: const [
+                            DropdownMenuItem(value: PaymentMethod.cash,  child: Text('Efectivo')),
+                            DropdownMenuItem(value: PaymentMethod.debit, child: Text('Tarjeta / Débito')),
+                          ],
+                          onChanged: (v) => setState(() => _selectedPayment = v!),
                         ),
-                      ]
-                    ],
-                  ),
-                  const SizedBox(height: 20),
+                        const SizedBox(height: 40),
 
-                  // Specific Fields for Expense
-                  if (_selectedType == MovementType.expense) _buildExpenseFields(),
-
-                  // Assignment (Establishment)
-                  _buildSectionHeader('ASIGNACIÓN'),
-                  _buildDropdown<CostCenter>(
-                    value: _selectedCostCenter,
-                    label: 'Establecimiento',
-                    icon: Icons.business_outlined,
-                    items: CostCenter.values.map((c) => DropdownMenuItem(
-                      value: c, 
-                      child: Text(_getEstablishmentCode(c)),
-                    )).toList(),
-                    onChanged: (v) => setState(() => _selectedCostCenter = v!),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Payment Method
-                  _buildDropdown<PaymentMethod>(
-                    value: _selectedPayment,
-                    label: 'Método de Pago',
-                    icon: Icons.account_balance_wallet_outlined,
-                    items: PaymentMethod.values.map((p) => DropdownMenuItem(
-                      value: p, 
-                      child: Text(p == PaymentMethod.cash ? 'Efectivo' : 'Tarjeta / Débito'),
-                    )).toList(),
-                    onChanged: (v) => setState(() => _selectedPayment = v!),
-                  ),
-                  
-                  const SizedBox(height: 48),
-
-                  // Save Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _save,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        backgroundColor: AppTheme.pureBlack,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                      child: Text(
-                        _isLoading ? 'GUARDANDO...' : 'CONFIRMAR Y GUARDAR',
-                        style: GoogleFonts.montserrat(fontWeight: FontWeight.w800, letterSpacing: 1),
-                      ),
+                        // ── Gradient Save Button ──────────────────────────────
+                        _saveButton(),
+                        const SizedBox(height: 40),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 40),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
           if (_isLoading)
             Container(
               color: Colors.black26,
               child: const Center(child: CircularProgressIndicator(color: AppTheme.primaryOrange)),
-            )
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12, top: 12),
-      child: Text(
-        title,
-        style: GoogleFonts.montserrat(
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          color: AppTheme.textGrey,
-          letterSpacing: 1.5,
+  // ─────────────────────────────────────────────────────────────────────
+  // WIDGET BUILDERS
+  // ─────────────────────────────────────────────────────────────────────
+
+  Widget _buildSliverHeader() {
+    final isExpense = _selectedType == MovementType.expense;
+    final gradientColors = isExpense
+        ? [const Color(0xFF8B0000), AppTheme.expenseRed, const Color(0xFFFF6B35)]
+        : [const Color(0xFF1B5E20), AppTheme.incomeGreen, const Color(0xFF81C784)];
+
+    return SliverAppBar(
+      expandedHeight: 160,
+      pinned: true,
+      backgroundColor: AppTheme.pureBlack,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
+        onPressed: () => Navigator.pop(context),
+      ),
+      flexibleSpace: FlexibleSpaceBar(
+        background: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: gradientColors,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        _selectedInvoiceType.toUpperCase(),
+                        style: GoogleFonts.montserrat(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1),
+                      ),
+                    ),
+                    if (widget.data.imagePath.isNotEmpty && !widget.data.isPdf) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
+                        child: const Row(children: [
+                          Icon(Icons.auto_awesome, color: Colors.white, size: 10),
+                          SizedBox(width: 4),
+                          Text('OCR', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
+                        ]),
+                      ),
+                    ],
+                  ]),
+                  const SizedBox(height: 10),
+                  Text(
+                    isExpense ? 'Validar Egreso' : 'Nuevo Ingreso',
+                    style: GoogleFonts.montserrat(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
+                  ),
+                  if (_parse(_grossCtrl.text) > 0)
+                    Text(
+                      '\$ ${_parse(_grossCtrl.text).toStringAsFixed(2)}',
+                      style: GoogleFonts.montserrat(color: Colors.white.withOpacity(0.85), fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
+                ],
+              ),
+            ),
+          ),
         ),
+        title: Text(
+          isExpense ? 'Validar Egreso' : 'Nuevo Ingreso',
+          style: GoogleFonts.montserrat(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        titlePadding: const EdgeInsetsDirectional.only(start: 56, bottom: 16),
       ),
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
+  Widget _buildReceiptPreview() {
+    return Container(
+      height: 160,
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 24),
+      decoration: BoxDecoration(
+        color: AppTheme.pureWhite,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(children: [
+          widget.data.isPdf
+              ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.picture_as_pdf, size: 48, color: AppTheme.expenseRed),
+                  SizedBox(height: 8),
+                  Text('DOCUMENTO PDF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                ]))
+              : kIsWeb
+                  ? Image.network(widget.data.imagePath, width: double.infinity, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))
+                  : Image.file(io.File(widget.data.imagePath), width: double.infinity, fit: BoxFit.cover),
+          Positioned(
+            top: 10, right: 10,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(color: AppTheme.primaryOrange, borderRadius: BorderRadius.circular(16)),
+              child: const Text('VISTA PREVIA', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _section(String title, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14, top: 8),
+      child: Row(children: [
+        Container(width: 3, height: 18, decoration: BoxDecoration(color: AppTheme.primaryOrange, borderRadius: BorderRadius.circular(2))),
+        const SizedBox(width: 10),
+        Icon(icon, size: 15, color: AppTheme.primaryOrange),
+        const SizedBox(width: 6),
+        Text(title,
+            style: GoogleFonts.montserrat(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.textDark, letterSpacing: 1.2)),
+      ]),
+    );
+  }
+
+  Widget _field(TextEditingController ctrl, String label, IconData icon, {
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
+    bool readOnly = false,
   }) {
     return TextFormField(
-      controller: controller,
+      controller: ctrl,
       keyboardType: keyboardType,
       validator: validator,
-      style: GoogleFonts.montserrat(fontWeight: FontWeight.w600, fontSize: 15),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 20, color: AppTheme.primaryOrange),
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.black.withOpacity(0.1))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.black.withOpacity(0.05))),
-        labelStyle: GoogleFonts.montserrat(color: AppTheme.textGrey, fontWeight: FontWeight.w500, fontSize: 13),
+      readOnly: readOnly,
+      style: GoogleFonts.montserrat(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textDark),
+      decoration: _inputDeco(label, icon, readOnly: readOnly),
+    );
+  }
+
+  InputDecoration _inputDeco(String label, IconData icon, {bool readOnly = false}) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, size: 18, color: readOnly ? AppTheme.textGrey : AppTheme.primaryOrange),
+      filled: true,
+      fillColor: readOnly ? const Color(0xFFF0F0F0) : Colors.white,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.black.withOpacity(0.1))),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.black.withOpacity(0.08))),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryOrange, width: 1.5)),
+      labelStyle: GoogleFonts.montserrat(color: AppTheme.textGrey, fontWeight: FontWeight.w500, fontSize: 12),
+    );
+  }
+
+  Widget _datePicker() {
+    return TextFormField(
+      controller: _dateCtrl,
+      readOnly: true,
+      onTap: _pickDate,
+      style: GoogleFonts.montserrat(fontWeight: FontWeight.w600, fontSize: 14),
+      decoration: _inputDeco('Fecha del Comprobante', Icons.calendar_today_outlined).copyWith(
+        suffixIcon: const Icon(Icons.edit_calendar_outlined, color: AppTheme.primaryOrange, size: 18),
       ),
     );
   }
 
-  Widget _buildDropdown<T>({
+  Widget _invoiceTypeDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _selectedInvoiceType,
+      onChanged: (v) => setState(() {
+        _selectedInvoiceType = v!;
+        _recalcNet();
+      }),
+      icon: const Icon(Icons.expand_more, color: Colors.black26, size: 18),
+      style: GoogleFonts.montserrat(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textDark),
+      decoration: _inputDeco('Tipo Comprobante', Icons.receipt_outlined),
+      items: ['Ticket', 'Factura A', 'Factura B', 'Factura C'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+    );
+  }
+
+  Widget _vatRow(int index, _VatSlot slot) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
+          flex: 2,
+          child: TextFormField(
+            controller: slot.amountCtrl,
+            keyboardType: TextInputType.number,
+            style: GoogleFonts.montserrat(fontWeight: FontWeight.w600, fontSize: 14),
+            decoration: _inputDeco('IVA ${index + 1} (\$)', Icons.percent),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: DropdownButtonFormField<double>(
+            value: slot.rate,
+            onChanged: (v) => setState(() {
+              slot.rate = v!;
+              _recalcNet();
+            }),
+            icon: const Icon(Icons.expand_more, color: Colors.black26, size: 16),
+            style: GoogleFonts.montserrat(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textDark),
+            decoration: _inputDeco('Alícuota', Icons.percent),
+            items: _vatRates.map((r) => DropdownMenuItem(value: r, child: Text('${(r * 100).toStringAsFixed(1)}%'))).toList(),
+          ),
+        ),
+        if (_vatSlots.length > 1)
+          IconButton(
+            onPressed: () => setState(() { slot.amountCtrl.dispose(); _vatSlots.removeAt(index); _recalcNet(); }),
+            icon: const Icon(Icons.remove_circle, color: AppTheme.expenseRed, size: 20),
+          ),
+      ]),
+    );
+  }
+
+  Widget _dropdown<T>({
     required T value,
     required String label,
     required IconData icon,
@@ -354,122 +585,33 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
       value: value,
       items: items,
       onChanged: onChanged,
-      icon: const Icon(Icons.expand_more, color: Colors.black26),
-      style: GoogleFonts.montserrat(fontWeight: FontWeight.w600, fontSize: 15, color: AppTheme.textDark),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 20, color: AppTheme.primaryOrange),
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.black.withOpacity(0.1))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.black.withOpacity(0.05))),
-        labelStyle: GoogleFonts.montserrat(color: AppTheme.textGrey, fontWeight: FontWeight.w500, fontSize: 13),
-      ),
+      isExpanded: true,
+      icon: const Icon(Icons.expand_more, color: Colors.black26, size: 18),
+      style: GoogleFonts.montserrat(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textDark),
+      decoration: _inputDeco(label, icon),
     );
   }
 
-  Widget _buildReceiptPreview() {
-    return Container(
-      height: 180,
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 32),
-      decoration: BoxDecoration(
-        color: AppTheme.pureWhite,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
-        ],
-      ),
-      child: Stack(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: widget.data.isPdf 
-              ? const Center(child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.picture_as_pdf, size: 48, color: AppTheme.expenseRed),
-                    SizedBox(height: 8),
-                    Text('DOCUMENTO PDF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
-                  ],
-                ))
-              : kIsWeb 
-                  ? Image.network(widget.data.imagePath, width: double.infinity, fit: BoxFit.cover)
-                  : Image.file(io.File(widget.data.imagePath), width: double.infinity, fit: BoxFit.cover),
-          ),
-          Positioned(
-            top: 12, right: 12,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(color: AppTheme.primaryOrange, borderRadius: BorderRadius.circular(20)),
-              child: const Text('VISTA PREVIA', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExpenseFields() {
-    return Column(
-      children: [
-        _buildTextField(
-          controller: _invoiceNumberCtrl,
-          label: 'Número de Factura / Ticket',
-          icon: Icons.tag,
-          keyboardType: TextInputType.text,
+  Widget _saveButton() {
+    return GestureDetector(
+      onTap: _isLoading ? null : _save,
+      child: Container(
+        height: 56,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: AppTheme.buttonGradient,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: AppTheme.primaryOrange.withOpacity(0.35), blurRadius: 12, offset: const Offset(0, 6))],
         ),
-        const SizedBox(height: 20),
-        if (_selectedInvoiceType == 'Factura A') ...[
-          Row(
-            children: [
-              Expanded(
-                child: _buildTextField(
-                  controller: _netCtrl,
-                  label: 'Sub-Total',
-                  icon: Icons.remove_circle_outline,
-                  keyboardType: TextInputType.number,
+        child: Center(
+          child: _isLoading
+              ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+              : Text(
+                  'CONFIRMAR Y GUARDAR',
+                  style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.w800, letterSpacing: 1.2, fontSize: 14),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildTextField(
-                  controller: _vatCtrl,
-                  label: 'IVA Total',
-                  icon: Icons.add_circle_outline,
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _buildDropdown<double>(
-            value: _selectedVatRate,
-            label: 'Alícuota IVA',
-            icon: Icons.percent,
-            items: [0.0, 0.105, 0.21, 0.27].map((r) => DropdownMenuItem(value: r, child: Text('${(r*100).toStringAsFixed(1)}%'))).toList(),
-            onChanged: (v) => setState(() {
-              _selectedVatRate = v!;
-              _onGrossOrVatChange();
-            }),
-          ),
-          const SizedBox(height: 20),
-        ],
-      ],
+        ),
+      ),
     );
-  }
-
-  String _getEstablishmentCode(CostCenter c) {
-    switch (c) {
-      case CostCenter.Administracion: return 'ADM';
-      case CostCenter.PuestoDeLuna: return 'PL';
-      case CostCenter.FeedLot: return 'FL';
-      case CostCenter.SanIsidro: return 'SI';
-      case CostCenter.LaCarlota: return 'LC';
-      case CostCenter.LaHuella: return 'LH';
-      case CostCenter.ElSiete: return 'E7';
-      case CostCenter.ElMoro: return 'EM';
-      default: return 'OTR';
-    }
   }
 }
