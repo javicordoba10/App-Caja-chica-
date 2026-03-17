@@ -39,24 +39,26 @@ class OCRService {
 
   Future<ExtractedReceiptData> extractData(String filePath, {Uint8List? bytes, bool isPdf = false}) async {
     if (kIsWeb) {
-      final isPdf = filePath.toLowerCase().endsWith('.pdf') ||
-          (filePath.toLowerCase().contains('.pdf'));
+      final effectivelyPdf = isPdf || filePath.toLowerCase().contains('.pdf');
       String text = '';
       if (bytes != null) {
         try {
           final base64Image = base64Encode(bytes);
-          text = await performWebOCRMethod(base64Image, isPdf);
+          text = await performWebOCRMethod(base64Image, effectivelyPdf);
         } catch (e) {
-          print('Web OCR error: $e');
+          if (kDebugMode) print('Web OCR error: $e');
+          text = 'ERROR: $e';
         }
+      } else {
+        if (kDebugMode) print('Web OCR error: No bytes provided for $filePath');
       }
-      return _parseText(text, filePath, isPdf: isPdf, bytes: bytes);
+      return _parseText(text, filePath, isPdf: effectivelyPdf, bytes: bytes);
     }
 
     String processingPath = filePath;
-    bool isPdf = filePath.toLowerCase().endsWith('.pdf');
+    bool isPdfFile = isPdf || filePath.toLowerCase().endsWith('.pdf');
 
-    if (isPdf) {
+    if (isPdfFile) {
       processingPath = await _convertPdfToImage(filePath);
     }
 
@@ -65,7 +67,7 @@ class OCRService {
     
     final text = recognizedText.text;
     
-    return _parseText(text, filePath, isPdf: isPdf);
+    return _parseText(text, filePath, isPdf: isPdfFile);
   }
 
   Future<String> _convertPdfToImage(String pdfPath) async {
@@ -73,160 +75,129 @@ class OCRService {
   }
 
   ExtractedReceiptData _parseText(String text, String filePath, {bool isPdf = false, Uint8List? bytes}) {
-    // Basic heuristics to find totals and VAT in Argentine receipts
     double maxAmount = 0.0;
     double netAmt = 0.0;
     double ivaAmt = 0.0;
-    // Extraer tipo de comprobante (mejorado para tolerar espacios extra o guiones)
     String type = 'Ticket';
-    final upperText = text.toUpperCase();
-    if (RegExp(r'(?:FACTURA|TIQUE\s+FACTURA)\s*[-:"·]*\s*A\b').hasMatch(upperText) || RegExp(r'C[OÓ]D(?:IGO)?\.?\s*01').hasMatch(upperText) || RegExp(r'\bFACTURA\s+A\b').hasMatch(upperText)) {
-      type = 'Factura A';
-    } else if (RegExp(r'(?:FACTURA|TIQUE\s+FACTURA)\s*[-:"·]*\s*B\b').hasMatch(upperText) || RegExp(r'C[OÓ]D(?:IGO)?\.?\s*06').hasMatch(upperText)) {
-      type = 'Factura B';
-    } else if (RegExp(r'(?:FACTURA|TIQUE\s+FACTURA)\s*[-:"·]*\s*C\b').hasMatch(upperText) || RegExp(r'C[OÓ]D(?:IGO)?\.?\s*11').hasMatch(upperText)) {
-      type = 'Factura C';
-    }
-
-    // Regex to find currency amounts: numbers optionally separated by dot/comma/space, ending with 2 decimals
-    final amountRegex = RegExp(r'\$?\s*(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{2}))');
-    final matches = amountRegex.allMatches(text);
+    final upperText = text.toUpperCase().replaceAll(' ', '');
     
-    List<double> amounts = [];
-    for (var match in matches) {
-      String? matchedStr = match.group(1);
-      if (matchedStr != null) {
-        String cleanNum = matchedStr.replaceAll(' ', '').replaceAll('.', '').replaceAll(',', '.');
-        if (matchedStr.contains(',') && matchedStr.contains('.')) {
-          if (matchedStr.lastIndexOf(',') < matchedStr.lastIndexOf('.')) {
-            cleanNum = matchedStr.replaceAll(' ', '').replaceAll(',', '');
-          } else {
-            cleanNum = matchedStr.replaceAll(' ', '').replaceAll('.', '').replaceAll(',', '.');
-          }
-        }
-        double? val = double.tryParse(cleanNum);
-        if (val != null) amounts.add(val);
-      }
+    // 1. Detección de Tipo de Comprobante (Más robusta)
+    if (upperText.contains('FACTURAA') || upperText.contains('ORIGINALA') || (upperText.contains('FACTURA') && text.contains(RegExp(r'\bA\b')))) {
+      type = 'Factura A';
+    } else if (upperText.contains('FACTURAB') || (upperText.contains('FACTURA') && text.contains(RegExp(r'\bB\b')))) {
+      type = 'Factura B';
+    } else if (upperText.contains('FACTURAC') || (upperText.contains('FACTURA') && text.contains(RegExp(r'\bC\b')))) {
+      type = 'Factura C';
+    } else if (upperText.contains('TIQUE') || upperText.contains('TICKET')) {
+       type = 'Ticket';
     }
 
-    // Búsqueda de la Fecha
+    // 2. Regex para Montos (Permitir espacios opcionales ej: 857 . 502 , 80)
+    final amountRegex = RegExp(r'(\d{1,3}(?:\s*[.,\s]\s*\d{3})*(?:\s*[.,\s]\s*\d{1,2})?)');
+    final allMatches = amountRegex.allMatches(text);
+    List<double> foundAmounts = [];
+    for (var m in allMatches) {
+      double val = _parseAmount(m.group(1)!);
+      // Evitar CUITs o fechas (números muy largos o con muchos puntos)
+      if (val > 0 && val < 50000000000) foundAmounts.add(val);
+    }
+
+    // 3. Búsqueda de la Fecha (Mejorada para priorizar Emisión sobre Inicio Actividad)
     String? foundDate;
-    final dateRegex = RegExp(r'(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})');
-    final dateMatch = dateRegex.firstMatch(text);
-    if (dateMatch != null) {
-      String day = dateMatch.group(1)!.padLeft(2, '0');
-      String month = dateMatch.group(2)!.padLeft(2, '0');
-      foundDate = "$day/$month/${dateMatch.group(3)}";
+    final dateRegex = RegExp(r'(\d{1,2})[\s/.-]+(\d{1,2})[\s/.-]+(\d{2,4})');
+    final matches = dateRegex.allMatches(text);
+    
+    // Buscar la fecha más probable de emisión
+    for (var m in matches) {
+      final day = m.group(1)!.padLeft(2, '0');
+      final month = m.group(2)!.padLeft(2, '0');
+      String year = m.group(3)!;
+      if (year.length == 2) year = "20$year";
+      final possibleDate = "$day/$month/$year";
+      
+      // Si la fecha está cerca de la palabra "inicio" o "actividad", la saltamos
+      final startIndex = m.start;
+      final contextBefore = text.substring((startIndex - 80).clamp(0, text.length), startIndex).toUpperCase();
+      final contextAfter = text.substring(startIndex, (startIndex + 40).clamp(0, text.length)).toUpperCase();
+      
+      if (contextBefore.contains('INICIO') || contextBefore.contains('ACTIV') || contextAfter.contains('INICIO') || contextAfter.contains('ACTIV')) {
+        continue;
+      }
+      
+      foundDate = possibleDate;
+      break;
+    }
+    // Fallback si no encontramos una que no sea de inicio
+    if (foundDate == null && matches.isNotEmpty) {
+      final m = matches.first;
+      String year = m.group(3)!;
+      if (year.length == 2) year = "20$year";
+      foundDate = "${m.group(1)!.padLeft(2,'0')}/${m.group(2)!.padLeft(2,'0')}/$year";
     }
 
-    // Búsqueda del Número de Factura
+    // 4. Búsqueda del Número de Factura
     String? foundNumber;
-    // Format: 0000-00000000 or similar
-    final numRegexLong = RegExp(r'\b(\d{4,5}[-\s]\d{7,8})\b');
+    final numRegexLong = RegExp(r'(\d{3,5})\s*[-]\s*(\d{5,8})');
     final numMatchLong = numRegexLong.firstMatch(text);
     if (numMatchLong != null) {
-      foundNumber = numMatchLong.group(1);
+      final g1 = numMatchLong.group(1) ?? '';
+      final g2 = numMatchLong.group(2) ?? '';
+      foundNumber = "${g1.padLeft(4,'0')}-${g2.padLeft(8,'0')}";
     } else {
-      final numRegex = RegExp(r'(?:N[uú]mero|Nro\.?|Factura|Comprobante)\s*(?:Nro\.?|N\s*[º°]|#)?\s*(\d+)', caseSensitive: false);
+      final numRegex = RegExp(r'(?:Nro|Num|Factura|Comp|Tique)[:\s]*([0-9-]+)', caseSensitive: false);
       final numMatch = numRegex.firstMatch(text);
-      if (numMatch != null) {
-        foundNumber = numMatch.group(1);
-      }
+      if (numMatch != null) foundNumber = numMatch.group(1);
     }
 
-    // Mejora OCR: Buscar palabras clave como TOTAL o IMPORTE que estén cerca de un número
+    // 5. Búsqueda de Montos Totales e IVA
     final lines = text.split('\n');
-    double possibleTotal = 0.0;
-    
-    // Extracción Razón Social (asumimos la 1ra línea válida)
-    String foundDescription = '';
-    final validLines = lines.map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
-    if (validLines.isNotEmpty) {
-      final firstLine = validLines.first;
-      if (!firstLine.contains('[OCR') && !firstLine.contains('ERROR')) {
-        foundDescription = firstLine;
-      }
-      if (foundDescription.length > 50) {
-         foundDescription = foundDescription.substring(0, 50);
-      }
-    }
+    double detectedTotal = 0.0;
     
     for (int i = 0; i < lines.length; i++) {
-      final line = lines[i];
-      final upperLine = line.toUpperCase();
-      if (upperLine.contains('TOTAL') || upperLine.contains('IMPORTE') || upperLine.contains('TOTAL FINAL')) {
-        // Buscar un número en esta línea o en las 3 siguientes
-        for (int j = i; j <= i + 3 && j < lines.length; j++) {
-           final searchLine = lines[j];
-           final matches = amountRegex.allMatches(searchLine);
-           if (matches.isNotEmpty) {
-              String rawMatch = matches.last.group(1)!;
-              String cleanNum = rawMatch.replaceAll(' ', '').replaceAll('.', '').replaceAll(',', '.');
-              if (rawMatch.contains(',') && rawMatch.contains('.')) {
-                 if (rawMatch.lastIndexOf(',') < rawMatch.lastIndexOf('.')) {
-                   cleanNum = rawMatch.replaceAll(' ', '').replaceAll(',', '');
-                 } else {
-                   cleanNum = rawMatch.replaceAll(' ', '').replaceAll('.', '').replaceAll(',', '.');
-                 }
-              }
-              double? val = double.tryParse(cleanNum);
-              if (val != null && val > possibleTotal) {
-                 possibleTotal = val;
-                 if (j == i) break; 
-              }
+      final line = lines[i].toUpperCase();
+      if (line.contains('TOTAL') || line.contains('FINAL') || line.contains('PAGAR') || line.contains('IMPORTE') || line.contains('VENCIMIENTO') || line.contains('NETOGRAVADO')) {
+        final matches = amountRegex.allMatches(lines[i]);
+        if (matches.isNotEmpty) {
+           double val = _parseAmount(matches.last.group(1)!);
+           if (val > detectedTotal && val < 500000000) detectedTotal = val;
+        } else if (i + 1 < lines.length) {
+           final nextMatches = amountRegex.allMatches(lines[i + 1]);
+           if (nextMatches.isNotEmpty) {
+              double val = _parseAmount(nextMatches.last.group(1)!);
+              if (val > detectedTotal && val < 500000000) detectedTotal = val;
            }
         }
       }
     }
 
-    if (possibleTotal > 0.0) {
-      maxAmount = possibleTotal;
-    } else if (amounts.isNotEmpty) {
-      maxAmount = amounts.reduce((curr, next) => curr > next ? curr : next);
-    }
-    
-    // Attempt to perfectly extract Net and VAT using an algebraic heuristic: 
-    // In any receipt, the 3 highest amounts are usually [Total, Net, VAT]. 
-    // If Net + VAT == Total, we have found them exactly.
-    if (amounts.length >= 3 && maxAmount > 0) {
-      amounts.sort((a, b) => b.compareTo(a)); // sort descending
-      // maxAmount is amounts[0]
-      if ((amounts[1] + amounts[2] - maxAmount).abs() < 2.0) {
-        netAmt = amounts[1];
-        ivaAmt = amounts[2];
-      }
-    }
-    
-    // Fallback guess if algebraic extraction failed
-    if (netAmt == 0.0 && type == 'Factura A' && maxAmount > 0) {
-      double detectedRate = 0.21;
-      for(var amt in amounts) {
-        double ratio = amt / maxAmount;
-        if(ratio > 0.17 && ratio < 0.22) { // rough 21%
-          ivaAmt = amt;
-          detectedRate = 0.21;
-          break;
-        } else if (ratio > 0.08 && ratio < 0.12) { // rough 10.5%
-          ivaAmt = amt;
-          detectedRate = 0.105;
-          break;
-        } else if (ratio > 0.24 && ratio < 0.29) { // rough 27%
-          ivaAmt = amt;
-          detectedRate = 0.27;
-          break;
+    maxAmount = detectedTotal > 0 ? detectedTotal : (foundAmounts.isNotEmpty ? foundAmounts.reduce((a, b) => a > b ? a : b) : 0.0);
+
+    // 6. Lógica específica para FACTURA A
+    if (type == 'Factura A' && maxAmount > 0) {
+      for (var line in lines) {
+        final upperLine = line.toUpperCase();
+        if (upperLine.contains('SUB') || upperLine.contains('NETO') || upperLine.contains('GRAVADO') || upperLine.contains('BI')) {
+           final matches = amountRegex.allMatches(line);
+           if (matches.isNotEmpty) {
+             double val = _parseAmount(matches.last.group(1)!);
+             if (val < maxAmount) netAmt = val;
+           }
+        }
+        if (upperLine.contains('IVA') || upperLine.contains('21%') || upperLine.contains('10.5%')) {
+           final matches = amountRegex.allMatches(line);
+           if (matches.isNotEmpty) {
+             double possibleIva = _parseAmount(matches.last.group(1)!);
+             if (possibleIva < maxAmount) ivaAmt = possibleIva;
+           }
         }
       }
-      
-      if(ivaAmt == 0.0) {
-        // Assume standard 21% if no exact mathematical match was found in amounts
-        detectedRate = 0.21;
-        netAmt = maxAmount / (1 + detectedRate);
-        ivaAmt = maxAmount - netAmt;
-      } else {
-        netAmt = maxAmount - ivaAmt;
+      // Fallback matemático estricto si el neto es incongruente
+      if (netAmt == 0 || (netAmt + ivaAmt - maxAmount).abs() > 10.0) {
+         netAmt = maxAmount / 1.21;
+         ivaAmt = maxAmount - netAmt;
       }
-    } else if (netAmt == 0.0) {
-      netAmt = maxAmount; // No discriminatory VAT in B/C
+    } else {
+      netAmt = maxAmount;
     }
 
     return ExtractedReceiptData(
@@ -240,8 +211,42 @@ class OCRService {
       invoiceNumber: foundNumber,
       isPdf: isPdf,
       bytes: bytes,
-      description: foundDescription,
+      description: '', // REGLA DE ORO: SIEMPRE VACÍO
     );
+  }
+
+  double _parseAmount(String raw) {
+    // 1. Limpieza inicial
+    String clean = raw.replaceAll(' ', '').replaceAll('\$', '');
+    
+    // 2. Lógica Argentina: Punto miles, Coma decimal
+    if (clean.contains(',') && clean.contains('.')) {
+      if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
+        // Formato Estándar AR: 1.234,56 -> 1234.56
+        clean = clean.replaceAll('.', '').replaceAll(',', '.');
+      } else {
+        // Formato Inverso: 1,234.56 -> 1234.56
+        clean = clean.replaceAll(',', '');
+      }
+    } else if (clean.contains(',')) {
+      // Solo coma: asumimos decimal ej 1234,56
+      clean = clean.replaceAll(',', '.');
+    } else if (clean.contains('.')) {
+      // Solo punto: ¿Miles o Decimal? 
+      final parts = clean.split('.');
+      if (parts.length > 2) {
+        // Varios puntos (1.200.000) -> Miles
+        clean = clean.replaceAll('.', '');
+      } else if (parts.length == 2) {
+        // Un punto: Si hay 3 dígitos después (1.200) -> Miles
+        if (parts.last.length == 3) {
+          clean = clean.replaceAll('.', '');
+        }
+      }
+      // De lo contrario se asume decimal ej 12.34
+    }
+    
+    return double.tryParse(clean) ?? 0.0;
   }
 
   void dispose() {

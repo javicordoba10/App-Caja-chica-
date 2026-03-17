@@ -592,13 +592,32 @@ class DashboardScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     if (m.imageUrl != null && m.imageUrl!.isNotEmpty)
-                      const Icon(Icons.confirmation_number_outlined, size: 18, color: AppTheme.textGrey),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: const Icon(Icons.remove_red_eye_outlined, size: 22, color: AppTheme.primaryOrange),
+                        onPressed: () async {
+                          if (kIsWeb) {
+                            html.window.open(m.imageUrl!, '_blank');
+                          } else {
+                            final uri = Uri.parse(m.imageUrl!);
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            }
+                          }
+                        },
+                        tooltip: 'Ver Comprobante',
+                      ),
                     const SizedBox(width: 12),
                     IconButton(
                       visualDensity: VisualDensity.compact,
-                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(Icons.delete_outline, size: 22, color: Colors.redAccent),
                       onPressed: () => _confirmDelete(context, ref, m),
                     ),
                   ],

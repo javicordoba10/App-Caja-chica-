@@ -13,3 +13,9 @@ class AnchorElement {
   void setAttribute(String name, String value) {}
   void click() {}
 }
+
+class Window {
+  void open(String url, String target) {}
+}
+
+final Window window = Window();

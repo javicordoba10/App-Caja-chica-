@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -216,7 +217,14 @@ class _NewMovementScreenState extends ConsumerState<NewMovementScreen> {
   Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: source, imageQuality: 80);
-    if (image != null) _processOCR(image.path, false);
+    if (image != null) {
+      if (kIsWeb) {
+        final bytes = await image.readAsBytes();
+        _processOCR(image.path, false, bytes: bytes);
+      } else {
+        _processOCR(image.path, false);
+      }
+    }
   }
 
   Future<void> _pickFile({required bool isPdf}) async {

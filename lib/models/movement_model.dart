@@ -16,6 +16,7 @@ class MovementModel {
   final CostCenter costCenter;
   final PaymentMethod paymentMethod;
   final DateTime date;
+  final DateTime? invoiceDate; // v17: Fecha del comprobante (del OCR o manual)
   final String? imageUrl;
 
   MovementModel({
@@ -31,6 +32,7 @@ class MovementModel {
     required this.costCenter,
     required this.paymentMethod,
     required this.date,
+    this.invoiceDate,
     this.imageUrl,
   });
 
@@ -47,6 +49,7 @@ class MovementModel {
       'costCenter': costCenter.name,
       'paymentMethod': paymentMethod.name,
       'date': Timestamp.fromDate(date),
+      'invoiceDate': invoiceDate != null ? Timestamp.fromDate(invoiceDate!) : null,
       'imageUrl': imageUrl,
     };
   }
@@ -65,6 +68,7 @@ class MovementModel {
       costCenter: CostCenter.values.firstWhere((e) => e.name == map['costCenter'], orElse: () => CostCenter.Administracion),
       paymentMethod: PaymentMethod.values.firstWhere((e) => e.name == map['paymentMethod'], orElse: () => PaymentMethod.cash),
       date: (map['date'] as Timestamp).toDate(),
+      invoiceDate: map['invoiceDate'] != null ? (map['invoiceDate'] as Timestamp).toDate() : null,
       imageUrl: map['imageUrl'],
     );
   }
@@ -97,6 +101,7 @@ class MovementModel {
       costCenter: costCenter ?? this.costCenter,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       date: date ?? this.date,
+      invoiceDate: invoiceDate ?? this.invoiceDate,
       imageUrl: imageUrl ?? this.imageUrl,
     );
   }

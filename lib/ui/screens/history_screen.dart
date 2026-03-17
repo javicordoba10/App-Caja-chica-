@@ -199,7 +199,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   ),
                 ),
                 if (m.imageUrl != null && m.imageUrl!.isNotEmpty)
-                  const Icon(Icons.confirmation_number_outlined, size: 18, color: AppTheme.textGrey),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.remove_red_eye_outlined, size: 22, color: AppTheme.primaryOrange),
+                    onPressed: () => _openReceipt(m.imageUrl!),
+                    tooltip: 'Ver Comprobante',
+                  ),
               ],
             ),
           ],

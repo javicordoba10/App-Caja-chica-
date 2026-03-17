@@ -70,34 +70,52 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
 
   static const List<double> _vatRates = [0.0, 0.105, 0.21, 0.27];
 
+  bool _isInitializing = false;
+
   // ── init ────────────────────────────────────────────────────────────
   @override
   void initState() {
+    _isInitializing = true;
     super.initState();
     final d = widget.data;
     final em = widget.existingMovement;
     
+    // Debug OCR data
+    if (kDebugMode) {
+      print('OCR DATA RECEIVED: Gross=${d.grossAmount}, Net=${d.netAmount}, VAT=${d.vat}, Type=${d.invoiceType}, Num=${d.invoiceNumber}, Date=${d.dateStr}');
+    }
+
     _selectedType = em?.type ?? widget.initialType;
     _selectedInvoiceType = em?.invoiceType ?? d.invoiceType;
     _selectedCostCenter = em?.costCenter ?? CostCenter.Administracion;
     _selectedPayment = em?.paymentMethod ?? PaymentMethod.cash;
 
-    // Controllers
+    // Controllers - Asegurar que si hay datos OCR se muestren aunque sean 0.0 (excepto si es manual puro)
     _descCtrl          = TextEditingController(text: em?.description ?? '');
-    _grossCtrl         = TextEditingController(text: (em?.grossAmount ?? d.grossAmount) > 0 ? (em?.grossAmount ?? d.grossAmount).toStringAsFixed(2) : '');
-    _netCtrl           = TextEditingController(text: (em?.netAmount ?? d.netAmount) > 0 ? (em?.netAmount ?? d.netAmount).toStringAsFixed(2) : '');
+    _grossCtrl         = TextEditingController(text: (em != null) 
+        ? em.grossAmount.toStringAsFixed(2) 
+        : (d.grossAmount > 0 ? d.grossAmount.toStringAsFixed(2) : ''));
+    _netCtrl           = TextEditingController(text: (em != null) 
+        ? em.netAmount.toStringAsFixed(2) 
+        : (d.netAmount > 0 ? d.netAmount.toStringAsFixed(2) : ''));
     _invoiceNumberCtrl = TextEditingController(text: em?.invoiceNumber ?? d.invoiceNumber ?? '');
 
     // Date logic
     if (em != null) {
-      _selectedDate = em.date;
+      _selectedDate = em.invoiceDate ?? em.date;
     } else if (d.dateStr != null && d.dateStr!.isNotEmpty) {
       try {
         final parts = d.dateStr!.split('/');
         if (parts.length == 3) {
-          _selectedDate = DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+          final day = int.parse(parts[0]);
+          final month = int.parse(parts[1]);
+          int year = int.parse(parts[2]);
+          if (year < 100) year += 2000;
+          _selectedDate = DateTime(year, month, day);
         }
-      } catch (_) {}
+      } catch (e) {
+        if (kDebugMode) print('Error parsing OCR date: $e');
+      }
     }
     _dateCtrl = TextEditingController(text: _formatDate(_selectedDate));
 
@@ -110,9 +128,11 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
       rate: vatRate,
     ));
 
+    // Listener después de inicializar todo
     if (!widget.isReadOnly) {
       _grossCtrl.addListener(_recalcNet);
     }
+    _isInitializing = false;
   }
 
   double _guessVatRate(double net, double vat) {
@@ -127,6 +147,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
   String _formatDate(DateTime d) => '${d.day.toString().padLeft(2,'0')}/${d.month.toString().padLeft(2,'0')}/${d.year}';
 
   void _recalcNet() {
+    if (_isInitializing) return;
     if (_selectedInvoiceType == 'Factura A') {
       final g = _parse(_grossCtrl.text);
       if (g > 0 && _vatSlots.isNotEmpty) {
@@ -148,7 +169,30 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
 
   double _parse(String v) {
     if (v.isEmpty) return 0.0;
-    return double.tryParse(v.trim().replaceAll('\$', '').replaceAll(' ', '').replaceAll(',', '.')) ?? 0.0;
+    String clean = v.trim().replaceAll('\$', '').replaceAll(' ', '');
+    
+    // Si contiene puntos y comas (ej 1.234,56)
+    if (clean.contains('.') && clean.contains(',')) {
+      if (clean.lastIndexOf('.') < clean.lastIndexOf(',')) {
+        // Formato ES/AR: 1.234,56 -> 1234.56
+        clean = clean.replaceAll('.', '').replaceAll(',', '.');
+      } else {
+        // Formato US: 1,234.56 -> 1234.56
+        clean = clean.replaceAll(',', '');
+      }
+    } else if (clean.contains(',')) {
+      // Solo coma: 1234,56 -> 1234.56
+      clean = clean.replaceAll(',', '.');
+    } else if (clean.contains('.')) {
+      // Solo punto: puede ser 1.234 (mil) o 1234.56 (decimal)
+      // En Argentina, si hay 3 dígitos después del punto, suele ser mil.
+      final parts = clean.split('.');
+      if (parts.length > 1 && parts.last.length == 3) {
+        clean = clean.replaceAll('.', '');
+      }
+    }
+    
+    return double.tryParse(clean) ?? 0.0;
   }
 
   @override
@@ -191,7 +235,8 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
       description:   _descCtrl.text,
       costCenter:    _selectedCostCenter,
       paymentMethod: _selectedPayment,
-      date:          _selectedDate,
+      date:          DateTime.now(), // v17: Fecha de Carga (Listas)
+      invoiceDate:   _selectedDate,  // v17: Fecha del Ticket (Detalles)
       imageUrl:      null,
     );
 

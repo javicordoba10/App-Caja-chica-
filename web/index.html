@@ -68,12 +68,18 @@
         }
 
         try {
+          console.log('Starting Tesseract.js worker...');
           const worker = await Tesseract.createWorker('spa');
+          // No need for loadLanguage/initialize in newer v5 if created with 'spa', 
+          // but logging the progress is helpful.
+          
           const result = await worker.recognize(imageDataUrl);
+          console.log('Tesseract.js OCR complete.');
           await worker.terminate();
           
           if (!result || !result.data || !result.data.text) {
-             return '[OCR EMPTY ERROR] No se detectó texto en el documento.';
+             console.error('OCR returned no text.');
+             return '[OCR EMPTY ERROR] No se detectó texto en el documento (v12).';
           }
           return result.data.text;
         } catch (tessErr) {
