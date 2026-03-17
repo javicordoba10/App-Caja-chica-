@@ -1,0 +1,280 @@
+[2026-03-17T14:04:09.204Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[2026-03-17T14:04:09.205Z] > authorizing via signed-in user (jcordobaconci@gmail.com)
+[2026-03-17T14:04:09.205Z] [iam] checking project pettycashapp-80f5e for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[2026-03-17T14:04:09.208Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:09.208Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:09.209Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/pettycashapp-80f5e:testIamPermissions [none]
+[2026-03-17T14:04:09.210Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/pettycashapp-80f5e:testIamPermissions  x-goog-user-project=pettycashapp-80f5e
+[2026-03-17T14:04:09.210Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/pettycashapp-80f5e:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[2026-03-17T14:04:10.178Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/pettycashapp-80f5e:testIamPermissions 200
+[2026-03-17T14:04:10.178Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/pettycashapp-80f5e:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[2026-03-17T14:04:10.179Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:10.179Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:10.179Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/pettycashapp-80f5e [none]
+[2026-03-17T14:04:10.566Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/pettycashapp-80f5e 200
+[2026-03-17T14:04:10.567Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/pettycashapp-80f5e {"projectId":"pettycashapp-80f5e","projectNumber":"426337625591","displayName":"PettyCashApp","name":"projects/pettycashapp-80f5e","resources":{"hostingSite":"pettycashapp-80f5e"},"state":"ACTIVE","etag":"1_ded3bf4f-b985-4609-8e72-0cc5ad33b674"}
+
+=== Deploying to 'pettycashapp-80f5e'...
+
+i  deploying hosting 
+[2026-03-17T14:04:10.574Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:10.575Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:10.575Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/pettycashapp-80f5e/versions [none]
+[2026-03-17T14:04:10.575Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/pettycashapp-80f5e/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[2026-03-17T14:04:13.593Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/pettycashapp-80f5e/versions 200
+[2026-03-17T14:04:13.593Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/pettycashapp-80f5e/versions {"name":"projects/426337625591/sites/pettycashapp-80f5e/versions/0615eced328e72db","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+i  hosting[pettycashapp-80f5e]: beginning deploy... 
+i  hosting[pettycashapp-80f5e]: found 32 files in build/web 
+[2026-03-17T14:04:13.624Z] [hosting] uploading with 200 concurrency
+[2026-03-17T14:04:13.626Z] [hosting] hash cache [YnVpbGRcd2Vi] not populated
+[2026-03-17T14:04:14.204Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.204Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.206Z] [hosting] hash cache [YnVpbGRcd2Vi] stored for 32 files
+[2026-03-17T14:04:14.207Z] [hosting][hash queue][FINAL] {"max":568,"min":20,"avg":122.59375,"active":0,"complete":32,"success":32,"errored":0,"retried":0,"total":32,"elapsed":581}
+[2026-03-17T14:04:14.208Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/426337625591/sites/pettycashapp-80f5e/versions/0615eced328e72db:populateFiles [none]
+[2026-03-17T14:04:14.208Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/426337625591/sites/pettycashapp-80f5e/versions/0615eced328e72db:populateFiles {"files":{"/version.json":"93a67b0fca4dec76c0b96a6122085edaf332565345f9a45aa338815bd34c1400","/manifest.json":"bcf24bc44d17176968bee4d7832a211e0df611e41eb4d65bc55d2b6883dc4ecf","/index.html":"17c7521df19cc51d9f5b5ab0d7d7796b09a522c4fa3cdb23e574b273c17dafd8","/flutter_service_worker.js":"f8231bacb79bb907889d10c25afa17a43982dd6d50eeb8e484689111a499b192","/flutter_bootstrap.js":"704bfbf3c4aebb249b52f9503cbc581f42e3a3f66c0f1f2bc69fbed2d492686c","/flutter.js":"843b4175654fd94708022d55eaaed1c524df379e733a4c27c8168450143016e9","/favicon.png":"19880e004e8357a51f6a64f5d1fdc8828a6432fe9c781f8acb6b730eced2cd13","/icons/Icon-192.png":"5fd961c51d8eb53baacac01f8e53743a76f66a43390a11f5df042e8c618ad64a","/icons/Icon-maskable-192.png":"f7ac56197638aec92f195c5344d15395c2cbf8a5ae74e846c5b4156b64f05e38","/icons/Icon-512.png":"1de493563deb283e6ad70f0d5a89cfd61e37343df3b919c9862c5a41699ac5bc","/canvaskit/skwasm_st.js":"7f097811fb848295340c14deb0cf491d63923436f77c4fc9fd06f66f62c5b901","/assets/FontManifest.json":"e38b95988f5d060cf9b7ce97cb5ac9236d6f4cc04a11d69567df97b2b4cbc5e5","/assets/AssetManifest.json":"4dc0ac6e0cd8a5aca4a340ed626f7a9410f9abf8c874ee5e6ace847171e71c7a","/assets/AssetManifest.bin.json":"6763aaa55146ec9534c671aaf5a6db93265eaaa8082767ea02eb2ac9b09cbdaa","/assets/AssetManifest.bin":"93e425eb6f3c87a588cd708f748fc5bb80fa28bf34c6d814b2bd76daa6a6ed27","/assets/shaders/ink_sparkle.frag":"591c7517d5cb43eb91ea451e0d3f9f585cbf8298cf6c46a9144b77cb0775a406","/icons/Icon-maskable-512.png":"ea58e5c49bc4dcdc5db0a9fe2f25b2a3152f85ef9094f0d020de0aa318451a1d","/canvaskit/skwasm.js":"e8556ec6ef77a92c1c650103ebf9a7df3642bf24f5ba95820df96994586b482c","/canvaskit/canvaskit.js":"1c6bf82f4c2ff9fcfa96014e1323acc90228d1bc83be82087fc074bb91f5e145","/canvaskit/chromium/canvaskit.js":"8e4ef59e2758159c06a6ba7fcb7dddc9b953d9ac2f46b2cb6b3bed6750f9e3a1","/assets/packages/cupertino_icons/assets/CupertinoIcons.ttf":"b074450dadface9752fdee576c4773f5f816b25cfc2cb56eac78373f7962ec70","/assets/NOTICES":"cc700c4882ba53c4b3565b1f5d267e2a57b4f49fb22f47cd90c69af692101ac7","/canvaskit/chromium/canvaskit.js.symbols":"e3c8502ed70baa180726b7b0c9344c4a5409bf2722e0710bd55f2afd464246b5","/canvaskit/canvaskit.js.symbols":"dc06d86b568865a5ea79334b1fe84c435154802e8d6832818970eacf16d4c9f2","/canvaskit/skwasm_st.js.symbols":"67ce1c9ce2d7a402294908f738ca10d97167475bc71e94aef6fcb3f7b4aca9b5","/canvaskit/skwasm.js.symbols":"bb8d3ba82c4539d4bfebbe8af9398cc5890bcca21f6acae3c00f8a6a1cacc814","/assets/fonts/MaterialIcons-Regular.otf":"e6fe489d50a1844caab286655353fe5574ddef2d8013fb4bb9e2745776b6131c","/canvaskit/skwasm.wasm":"f9dbb3615666b35096b3b3e5bb1f93a53e0742e8808e906cccb548a04ab53e2f","/canvaskit/skwasm_st.wasm":"b518709db54052c5efd05d0c64676d2159aaf35c69a4779f93727cfa63ee017e","/main.dart.js":"3b42324fa1f7adbafc80c3bcc4a944bc98cd8ce22ea6ebea2f32ea70119456e5","/canvaskit/chromium/canvaskit.wasm":"829d9e6faa4899020801a7821358ee3e610630fc6f5a4fec0d2b5e9d8217a99c","/canvaskit/canvaskit.wasm":"dd73869f7a4737b9fbeb6c6acc8908dce896a285dcb111f7b55d753e07ae6be4"}}
+[2026-03-17T14:04:14.772Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/426337625591/sites/pettycashapp-80f5e/versions/0615eced328e72db:populateFiles 200
+[2026-03-17T14:04:14.772Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/426337625591/sites/pettycashapp-80f5e/versions/0615eced328e72db:populateFiles {"uploadRequiredHashes":["591c7517d5cb43eb91ea451e0d3f9f585cbf8298cf6c46a9144b77cb0775a406","f8231bacb79bb907889d10c25afa17a43982dd6d50eeb8e484689111a499b192","843b4175654fd94708022d55eaaed1c524df379e733a4c27c8168450143016e9","93e425eb6f3c87a588cd708f748fc5bb80fa28bf34c6d814b2bd76daa6a6ed27","93a67b0fca4dec76c0b96a6122085edaf332565345f9a45aa338815bd34c1400","dc06d86b568865a5ea79334b1fe84c435154802e8d6832818970eacf16d4c9f2","4dc0ac6e0cd8a5aca4a340ed626f7a9410f9abf8c874ee5e6ace847171e71c7a","dd73869f7a4737b9fbeb6c6acc8908dce896a285dcb111f7b55d753e07ae6be4","ea58e5c49bc4dcdc5db0a9fe2f25b2a3152f85ef9094f0d020de0aa318451a1d","e8556ec6ef77a92c1c650103ebf9a7df3642bf24f5ba95820df96994586b482c","f9dbb3615666b35096b3b3e5bb1f93a53e0742e8808e906cccb548a04ab53e2f","6763aaa55146ec9534c671aaf5a6db93265eaaa8082767ea02eb2ac9b09cbdaa","1c6bf82f4c2ff9fcfa96014e1323acc90228d1bc83be82087fc074bb91f5e145","704bfbf3c4aebb249b52f9503cbc581f42e3a3f66c0f1f2bc69fbed2d492686c","e3c8502ed70baa180726b7b0c9344c4a5409bf2722e0710bd55f2afd464246b5","b074450dadface9752fdee576c4773f5f816b25cfc2cb56eac78373f7962ec70","3b42324fa1f7adbafc80c3bcc4a944bc98cd8ce22ea6ebea2f32ea70119456e5","e6fe489d50a1844caab286655353fe5574ddef2d8013fb4bb9e2745776b6131c","67ce1c9ce2d7a402294908f738ca10d97167475bc71e94aef6fcb3f7b4aca9b5","b518709db54052c5efd05d0c64676d2159aaf35c69a4779f93727cfa63ee017e","829d9e6faa4899020801a7821358ee3e610630fc6f5a4fec0d2b5e9d8217a99c","8e4ef59e2758159c06a6ba7fcb7dddc9b953d9ac2f46b2cb6b3bed6750f9e3a1","5fd961c51d8eb53baacac01f8e53743a76f66a43390a11f5df042e8c618ad64a","7f097811fb848295340c14deb0cf491d63923436f77c4fc9fd06f66f62c5b901","f7ac56197638aec92f195c5344d15395c2cbf8a5ae74e846c5b4156b64f05e38","17c7521df19cc51d9f5b5ab0d7d7796b09a522c4fa3cdb23e574b273c17dafd8","cc700c4882ba53c4b3565b1f5d267e2a57b4f49fb22f47cd90c69af692101ac7","bcf24bc44d17176968bee4d7832a211e0df611e41eb4d65bc55d2b6883dc4ecf","e38b95988f5d060cf9b7ce97cb5ac9236d6f4cc04a11d69567df97b2b4cbc5e5","1de493563deb283e6ad70f0d5a89cfd61e37343df3b919c9862c5a41699ac5bc","bb8d3ba82c4539d4bfebbe8af9398cc5890bcca21f6acae3c00f8a6a1cacc814","19880e004e8357a51f6a64f5d1fdc8828a6432fe9c781f8acb6b730eced2cd13"],"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files"}
+[2026-03-17T14:04:14.773Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.773Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.774Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.774Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.774Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.774Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.774Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.774Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.775Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.775Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.775Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.775Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.775Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.775Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.776Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.776Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.776Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.776Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.776Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.777Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.777Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.777Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.777Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.777Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.777Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.777Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.778Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.778Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.778Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.778Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.778Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.779Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.779Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.779Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.779Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.779Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.780Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.780Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.780Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.780Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.780Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.780Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.781Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.781Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.781Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.781Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.781Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.781Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.782Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.782Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.782Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.782Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.782Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.782Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.783Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.783Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.783Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.783Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.783Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.784Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.784Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.784Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.784Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.784Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:14.785Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/591c7517d5cb43eb91ea451e0d3f9f585cbf8298cf6c46a9144b77cb0775a406 [none]
+[2026-03-17T14:04:14.785Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/591c7517d5cb43eb91ea451e0d3f9f585cbf8298cf6c46a9144b77cb0775a406 [stream]
+[2026-03-17T14:04:14.787Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/f8231bacb79bb907889d10c25afa17a43982dd6d50eeb8e484689111a499b192 [none]
+[2026-03-17T14:04:14.787Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/f8231bacb79bb907889d10c25afa17a43982dd6d50eeb8e484689111a499b192 [stream]
+[2026-03-17T14:04:14.788Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/843b4175654fd94708022d55eaaed1c524df379e733a4c27c8168450143016e9 [none]
+[2026-03-17T14:04:14.788Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/843b4175654fd94708022d55eaaed1c524df379e733a4c27c8168450143016e9 [stream]
+[2026-03-17T14:04:14.790Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/93e425eb6f3c87a588cd708f748fc5bb80fa28bf34c6d814b2bd76daa6a6ed27 [none]
+[2026-03-17T14:04:14.790Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/93e425eb6f3c87a588cd708f748fc5bb80fa28bf34c6d814b2bd76daa6a6ed27 [stream]
+[2026-03-17T14:04:14.791Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/93a67b0fca4dec76c0b96a6122085edaf332565345f9a45aa338815bd34c1400 [none]
+[2026-03-17T14:04:14.792Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/93a67b0fca4dec76c0b96a6122085edaf332565345f9a45aa338815bd34c1400 [stream]
+[2026-03-17T14:04:14.793Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/dc06d86b568865a5ea79334b1fe84c435154802e8d6832818970eacf16d4c9f2 [none]
+[2026-03-17T14:04:14.793Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/dc06d86b568865a5ea79334b1fe84c435154802e8d6832818970eacf16d4c9f2 [stream]
+[2026-03-17T14:04:14.795Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/4dc0ac6e0cd8a5aca4a340ed626f7a9410f9abf8c874ee5e6ace847171e71c7a [none]
+[2026-03-17T14:04:14.795Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/4dc0ac6e0cd8a5aca4a340ed626f7a9410f9abf8c874ee5e6ace847171e71c7a [stream]
+[2026-03-17T14:04:14.796Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/dd73869f7a4737b9fbeb6c6acc8908dce896a285dcb111f7b55d753e07ae6be4 [none]
+[2026-03-17T14:04:14.796Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/dd73869f7a4737b9fbeb6c6acc8908dce896a285dcb111f7b55d753e07ae6be4 [stream]
+[2026-03-17T14:04:14.797Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/ea58e5c49bc4dcdc5db0a9fe2f25b2a3152f85ef9094f0d020de0aa318451a1d [none]
+[2026-03-17T14:04:14.797Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/ea58e5c49bc4dcdc5db0a9fe2f25b2a3152f85ef9094f0d020de0aa318451a1d [stream]
+[2026-03-17T14:04:14.798Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/e8556ec6ef77a92c1c650103ebf9a7df3642bf24f5ba95820df96994586b482c [none]
+[2026-03-17T14:04:14.798Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/e8556ec6ef77a92c1c650103ebf9a7df3642bf24f5ba95820df96994586b482c [stream]
+[2026-03-17T14:04:14.799Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/f9dbb3615666b35096b3b3e5bb1f93a53e0742e8808e906cccb548a04ab53e2f [none]
+[2026-03-17T14:04:14.799Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/f9dbb3615666b35096b3b3e5bb1f93a53e0742e8808e906cccb548a04ab53e2f [stream]
+[2026-03-17T14:04:14.801Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/6763aaa55146ec9534c671aaf5a6db93265eaaa8082767ea02eb2ac9b09cbdaa [none]
+[2026-03-17T14:04:14.801Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/6763aaa55146ec9534c671aaf5a6db93265eaaa8082767ea02eb2ac9b09cbdaa [stream]
+[2026-03-17T14:04:14.802Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/1c6bf82f4c2ff9fcfa96014e1323acc90228d1bc83be82087fc074bb91f5e145 [none]
+[2026-03-17T14:04:14.802Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/1c6bf82f4c2ff9fcfa96014e1323acc90228d1bc83be82087fc074bb91f5e145 [stream]
+[2026-03-17T14:04:14.803Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/704bfbf3c4aebb249b52f9503cbc581f42e3a3f66c0f1f2bc69fbed2d492686c [none]
+[2026-03-17T14:04:14.803Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/704bfbf3c4aebb249b52f9503cbc581f42e3a3f66c0f1f2bc69fbed2d492686c [stream]
+[2026-03-17T14:04:14.804Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/e3c8502ed70baa180726b7b0c9344c4a5409bf2722e0710bd55f2afd464246b5 [none]
+[2026-03-17T14:04:14.804Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/e3c8502ed70baa180726b7b0c9344c4a5409bf2722e0710bd55f2afd464246b5 [stream]
+[2026-03-17T14:04:14.805Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/b074450dadface9752fdee576c4773f5f816b25cfc2cb56eac78373f7962ec70 [none]
+[2026-03-17T14:04:14.806Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/b074450dadface9752fdee576c4773f5f816b25cfc2cb56eac78373f7962ec70 [stream]
+[2026-03-17T14:04:14.807Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/3b42324fa1f7adbafc80c3bcc4a944bc98cd8ce22ea6ebea2f32ea70119456e5 [none]
+[2026-03-17T14:04:14.807Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/3b42324fa1f7adbafc80c3bcc4a944bc98cd8ce22ea6ebea2f32ea70119456e5 [stream]
+[2026-03-17T14:04:14.808Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/e6fe489d50a1844caab286655353fe5574ddef2d8013fb4bb9e2745776b6131c [none]
+[2026-03-17T14:04:14.808Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/e6fe489d50a1844caab286655353fe5574ddef2d8013fb4bb9e2745776b6131c [stream]
+[2026-03-17T14:04:14.809Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/67ce1c9ce2d7a402294908f738ca10d97167475bc71e94aef6fcb3f7b4aca9b5 [none]
+[2026-03-17T14:04:14.809Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/67ce1c9ce2d7a402294908f738ca10d97167475bc71e94aef6fcb3f7b4aca9b5 [stream]
+[2026-03-17T14:04:14.810Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/b518709db54052c5efd05d0c64676d2159aaf35c69a4779f93727cfa63ee017e [none]
+[2026-03-17T14:04:14.810Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/b518709db54052c5efd05d0c64676d2159aaf35c69a4779f93727cfa63ee017e [stream]
+[2026-03-17T14:04:14.811Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/829d9e6faa4899020801a7821358ee3e610630fc6f5a4fec0d2b5e9d8217a99c [none]
+[2026-03-17T14:04:14.812Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/829d9e6faa4899020801a7821358ee3e610630fc6f5a4fec0d2b5e9d8217a99c [stream]
+[2026-03-17T14:04:14.813Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/8e4ef59e2758159c06a6ba7fcb7dddc9b953d9ac2f46b2cb6b3bed6750f9e3a1 [none]
+[2026-03-17T14:04:14.813Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/8e4ef59e2758159c06a6ba7fcb7dddc9b953d9ac2f46b2cb6b3bed6750f9e3a1 [stream]
+[2026-03-17T14:04:14.814Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/5fd961c51d8eb53baacac01f8e53743a76f66a43390a11f5df042e8c618ad64a [none]
+[2026-03-17T14:04:14.814Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/5fd961c51d8eb53baacac01f8e53743a76f66a43390a11f5df042e8c618ad64a [stream]
+[2026-03-17T14:04:14.815Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/7f097811fb848295340c14deb0cf491d63923436f77c4fc9fd06f66f62c5b901 [none]
+[2026-03-17T14:04:14.815Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/7f097811fb848295340c14deb0cf491d63923436f77c4fc9fd06f66f62c5b901 [stream]
+[2026-03-17T14:04:14.816Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/f7ac56197638aec92f195c5344d15395c2cbf8a5ae74e846c5b4156b64f05e38 [none]
+[2026-03-17T14:04:14.816Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/f7ac56197638aec92f195c5344d15395c2cbf8a5ae74e846c5b4156b64f05e38 [stream]
+[2026-03-17T14:04:14.817Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/17c7521df19cc51d9f5b5ab0d7d7796b09a522c4fa3cdb23e574b273c17dafd8 [none]
+[2026-03-17T14:04:14.817Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/17c7521df19cc51d9f5b5ab0d7d7796b09a522c4fa3cdb23e574b273c17dafd8 [stream]
+[2026-03-17T14:04:14.818Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/cc700c4882ba53c4b3565b1f5d267e2a57b4f49fb22f47cd90c69af692101ac7 [none]
+[2026-03-17T14:04:14.818Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/cc700c4882ba53c4b3565b1f5d267e2a57b4f49fb22f47cd90c69af692101ac7 [stream]
+[2026-03-17T14:04:14.819Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/bcf24bc44d17176968bee4d7832a211e0df611e41eb4d65bc55d2b6883dc4ecf [none]
+[2026-03-17T14:04:14.819Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/bcf24bc44d17176968bee4d7832a211e0df611e41eb4d65bc55d2b6883dc4ecf [stream]
+[2026-03-17T14:04:14.820Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/e38b95988f5d060cf9b7ce97cb5ac9236d6f4cc04a11d69567df97b2b4cbc5e5 [none]
+[2026-03-17T14:04:14.820Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/e38b95988f5d060cf9b7ce97cb5ac9236d6f4cc04a11d69567df97b2b4cbc5e5 [stream]
+[2026-03-17T14:04:14.821Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/1de493563deb283e6ad70f0d5a89cfd61e37343df3b919c9862c5a41699ac5bc [none]
+[2026-03-17T14:04:14.822Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/1de493563deb283e6ad70f0d5a89cfd61e37343df3b919c9862c5a41699ac5bc [stream]
+[2026-03-17T14:04:14.823Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/bb8d3ba82c4539d4bfebbe8af9398cc5890bcca21f6acae3c00f8a6a1cacc814 [none]
+[2026-03-17T14:04:14.823Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/bb8d3ba82c4539d4bfebbe8af9398cc5890bcca21f6acae3c00f8a6a1cacc814 [stream]
+[2026-03-17T14:04:14.824Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/19880e004e8357a51f6a64f5d1fdc8828a6432fe9c781f8acb6b730eced2cd13 [none]
+[2026-03-17T14:04:14.824Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/19880e004e8357a51f6a64f5d1fdc8828a6432fe9c781f8acb6b730eced2cd13 [stream]
+[2026-03-17T14:04:14.825Z] [hosting][populate queue][FINAL] {"max":581,"min":581,"avg":581,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":622}
+[2026-03-17T14:04:14.825Z] [hosting] uploads queued: 32
+i  hosting: uploading new files [0/32] (0%) 
+[2026-03-17T14:04:15.952Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/591c7517d5cb43eb91ea451e0d3f9f585cbf8298cf6c46a9144b77cb0775a406 200
+[2026-03-17T14:04:15.952Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/591c7517d5cb43eb91ea451e0d3f9f585cbf8298cf6c46a9144b77cb0775a406 [stream]
+[2026-03-17T14:04:15.989Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/4dc0ac6e0cd8a5aca4a340ed626f7a9410f9abf8c874ee5e6ace847171e71c7a 200
+[2026-03-17T14:04:15.990Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/4dc0ac6e0cd8a5aca4a340ed626f7a9410f9abf8c874ee5e6ace847171e71c7a [stream]
+[2026-03-17T14:04:16.061Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/843b4175654fd94708022d55eaaed1c524df379e733a4c27c8168450143016e9 200
+[2026-03-17T14:04:16.062Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/843b4175654fd94708022d55eaaed1c524df379e733a4c27c8168450143016e9 [stream]
+[2026-03-17T14:04:16.063Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/93e425eb6f3c87a588cd708f748fc5bb80fa28bf34c6d814b2bd76daa6a6ed27 200
+[2026-03-17T14:04:16.064Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/93e425eb6f3c87a588cd708f748fc5bb80fa28bf34c6d814b2bd76daa6a6ed27 [stream]
+[2026-03-17T14:04:16.079Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/7f097811fb848295340c14deb0cf491d63923436f77c4fc9fd06f66f62c5b901 200
+[2026-03-17T14:04:16.079Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/7f097811fb848295340c14deb0cf491d63923436f77c4fc9fd06f66f62c5b901 [stream]
+[2026-03-17T14:04:16.090Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/6763aaa55146ec9534c671aaf5a6db93265eaaa8082767ea02eb2ac9b09cbdaa 200
+[2026-03-17T14:04:16.090Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/6763aaa55146ec9534c671aaf5a6db93265eaaa8082767ea02eb2ac9b09cbdaa [stream]
+[2026-03-17T14:04:16.091Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/1de493563deb283e6ad70f0d5a89cfd61e37343df3b919c9862c5a41699ac5bc 200
+[2026-03-17T14:04:16.091Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/1de493563deb283e6ad70f0d5a89cfd61e37343df3b919c9862c5a41699ac5bc [stream]
+[2026-03-17T14:04:16.095Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/f7ac56197638aec92f195c5344d15395c2cbf8a5ae74e846c5b4156b64f05e38 200
+[2026-03-17T14:04:16.095Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/f7ac56197638aec92f195c5344d15395c2cbf8a5ae74e846c5b4156b64f05e38 [stream]
+[2026-03-17T14:04:16.098Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/5fd961c51d8eb53baacac01f8e53743a76f66a43390a11f5df042e8c618ad64a 200
+[2026-03-17T14:04:16.098Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/5fd961c51d8eb53baacac01f8e53743a76f66a43390a11f5df042e8c618ad64a [stream]
+[2026-03-17T14:04:16.119Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/8e4ef59e2758159c06a6ba7fcb7dddc9b953d9ac2f46b2cb6b3bed6750f9e3a1 200
+[2026-03-17T14:04:16.119Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/8e4ef59e2758159c06a6ba7fcb7dddc9b953d9ac2f46b2cb6b3bed6750f9e3a1 [stream]
+[2026-03-17T14:04:16.155Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/e38b95988f5d060cf9b7ce97cb5ac9236d6f4cc04a11d69567df97b2b4cbc5e5 200
+[2026-03-17T14:04:16.156Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/e38b95988f5d060cf9b7ce97cb5ac9236d6f4cc04a11d69567df97b2b4cbc5e5 [stream]
+[2026-03-17T14:04:16.175Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/ea58e5c49bc4dcdc5db0a9fe2f25b2a3152f85ef9094f0d020de0aa318451a1d 200
+[2026-03-17T14:04:16.175Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/ea58e5c49bc4dcdc5db0a9fe2f25b2a3152f85ef9094f0d020de0aa318451a1d [stream]
+[2026-03-17T14:04:16.244Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/1c6bf82f4c2ff9fcfa96014e1323acc90228d1bc83be82087fc074bb91f5e145 200
+[2026-03-17T14:04:16.245Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/1c6bf82f4c2ff9fcfa96014e1323acc90228d1bc83be82087fc074bb91f5e145 [stream]
+[2026-03-17T14:04:16.246Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/19880e004e8357a51f6a64f5d1fdc8828a6432fe9c781f8acb6b730eced2cd13 200
+[2026-03-17T14:04:16.246Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/19880e004e8357a51f6a64f5d1fdc8828a6432fe9c781f8acb6b730eced2cd13 [stream]
+[2026-03-17T14:04:16.267Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/f8231bacb79bb907889d10c25afa17a43982dd6d50eeb8e484689111a499b192 200
+[2026-03-17T14:04:16.267Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/f8231bacb79bb907889d10c25afa17a43982dd6d50eeb8e484689111a499b192 [stream]
+[2026-03-17T14:04:16.277Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/e8556ec6ef77a92c1c650103ebf9a7df3642bf24f5ba95820df96994586b482c 200
+[2026-03-17T14:04:16.277Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/e8556ec6ef77a92c1c650103ebf9a7df3642bf24f5ba95820df96994586b482c [stream]
+[2026-03-17T14:04:16.285Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/dc06d86b568865a5ea79334b1fe84c435154802e8d6832818970eacf16d4c9f2 200
+[2026-03-17T14:04:16.286Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/dc06d86b568865a5ea79334b1fe84c435154802e8d6832818970eacf16d4c9f2 [stream]
+[2026-03-17T14:04:16.333Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/93a67b0fca4dec76c0b96a6122085edaf332565345f9a45aa338815bd34c1400 200
+[2026-03-17T14:04:16.334Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/93a67b0fca4dec76c0b96a6122085edaf332565345f9a45aa338815bd34c1400 [stream]
+[2026-03-17T14:04:16.352Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/e3c8502ed70baa180726b7b0c9344c4a5409bf2722e0710bd55f2afd464246b5 200
+[2026-03-17T14:04:16.352Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/e3c8502ed70baa180726b7b0c9344c4a5409bf2722e0710bd55f2afd464246b5 [stream]
+[2026-03-17T14:04:16.434Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/b074450dadface9752fdee576c4773f5f816b25cfc2cb56eac78373f7962ec70 200
+[2026-03-17T14:04:16.434Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/b074450dadface9752fdee576c4773f5f816b25cfc2cb56eac78373f7962ec70 [stream]
+[2026-03-17T14:04:16.521Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/cc700c4882ba53c4b3565b1f5d267e2a57b4f49fb22f47cd90c69af692101ac7 200
+[2026-03-17T14:04:16.521Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/cc700c4882ba53c4b3565b1f5d267e2a57b4f49fb22f47cd90c69af692101ac7 [stream]
+[2026-03-17T14:04:16.545Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/67ce1c9ce2d7a402294908f738ca10d97167475bc71e94aef6fcb3f7b4aca9b5 200
+[2026-03-17T14:04:16.545Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/67ce1c9ce2d7a402294908f738ca10d97167475bc71e94aef6fcb3f7b4aca9b5 [stream]
+[2026-03-17T14:04:16.577Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/bcf24bc44d17176968bee4d7832a211e0df611e41eb4d65bc55d2b6883dc4ecf 200
+[2026-03-17T14:04:16.577Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/bcf24bc44d17176968bee4d7832a211e0df611e41eb4d65bc55d2b6883dc4ecf [stream]
+[2026-03-17T14:04:16.638Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/17c7521df19cc51d9f5b5ab0d7d7796b09a522c4fa3cdb23e574b273c17dafd8 200
+[2026-03-17T14:04:16.638Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/17c7521df19cc51d9f5b5ab0d7d7796b09a522c4fa3cdb23e574b273c17dafd8 [stream]
+[2026-03-17T14:04:16.690Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/bb8d3ba82c4539d4bfebbe8af9398cc5890bcca21f6acae3c00f8a6a1cacc814 200
+[2026-03-17T14:04:16.691Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/bb8d3ba82c4539d4bfebbe8af9398cc5890bcca21f6acae3c00f8a6a1cacc814 [stream]
+[2026-03-17T14:04:16.976Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/704bfbf3c4aebb249b52f9503cbc581f42e3a3f66c0f1f2bc69fbed2d492686c 200
+[2026-03-17T14:04:16.976Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/704bfbf3c4aebb249b52f9503cbc581f42e3a3f66c0f1f2bc69fbed2d492686c [stream]
+[2026-03-17T14:04:17.091Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/e6fe489d50a1844caab286655353fe5574ddef2d8013fb4bb9e2745776b6131c 200
+[2026-03-17T14:04:17.091Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/e6fe489d50a1844caab286655353fe5574ddef2d8013fb4bb9e2745776b6131c [stream]
+i  hosting: uploading new files [27/32] (84%) 
+[2026-03-17T14:04:17.764Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/f9dbb3615666b35096b3b3e5bb1f93a53e0742e8808e906cccb548a04ab53e2f 200
+[2026-03-17T14:04:17.765Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/f9dbb3615666b35096b3b3e5bb1f93a53e0742e8808e906cccb548a04ab53e2f [stream]
+[2026-03-17T14:04:17.783Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/3b42324fa1f7adbafc80c3bcc4a944bc98cd8ce22ea6ebea2f32ea70119456e5 200
+[2026-03-17T14:04:17.783Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/3b42324fa1f7adbafc80c3bcc4a944bc98cd8ce22ea6ebea2f32ea70119456e5 [stream]
+[2026-03-17T14:04:17.811Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/b518709db54052c5efd05d0c64676d2159aaf35c69a4779f93727cfa63ee017e 200
+[2026-03-17T14:04:17.811Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/b518709db54052c5efd05d0c64676d2159aaf35c69a4779f93727cfa63ee017e [stream]
+[2026-03-17T14:04:18.396Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/dd73869f7a4737b9fbeb6c6acc8908dce896a285dcb111f7b55d753e07ae6be4 200
+[2026-03-17T14:04:18.396Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/dd73869f7a4737b9fbeb6c6acc8908dce896a285dcb111f7b55d753e07ae6be4 [stream]
+[2026-03-17T14:04:18.586Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/829d9e6faa4899020801a7821358ee3e610630fc6f5a4fec0d2b5e9d8217a99c 200
+[2026-03-17T14:04:18.586Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/pettycashapp-80f5e/versions/0615eced328e72db/files/829d9e6faa4899020801a7821358ee3e610630fc6f5a4fec0d2b5e9d8217a99c [stream]
+[2026-03-17T14:04:18.587Z] [hosting][upload queue][FINAL] {"max":3806,"min":1180,"avg":1808.9062499999995,"active":0,"complete":32,"success":32,"errored":0,"retried":0,"total":32,"elapsed":3814}
+i  hosting: upload complete 
++  hosting[pettycashapp-80f5e]: file upload complete 
+[2026-03-17T14:04:18.587Z] [hosting] deploy completed after 4990ms
+[2026-03-17T14:04:18.587Z] [
+  {
+    "config": {
+      "public": "build/web",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "site": "pettycashapp-80f5e"
+    },
+    "version": "projects/426337625591/sites/pettycashapp-80f5e/versions/0615eced328e72db"
+  }
+]
+i  hosting[pettycashapp-80f5e]: finalizing version... 
+[2026-03-17T14:04:18.589Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:18.589Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:18.590Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/pettycashapp-80f5e/versions/0615eced328e72db updateMask=status%2Cconfig
+[2026-03-17T14:04:18.590Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/pettycashapp-80f5e/versions/0615eced328e72db {"status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]}}
+[2026-03-17T14:04:19.257Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/pettycashapp-80f5e/versions/0615eced328e72db 200
+[2026-03-17T14:04:19.257Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/pettycashapp-80f5e/versions/0615eced328e72db {"name":"projects/426337625591/sites/pettycashapp-80f5e/versions/0615eced328e72db","status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-03-17T14:04:11.695992Z","createUser":{"email":"jcordobaconci@gmail.com"},"finalizeTime":"2026-03-17T14:04:19.019917Z","finalizeUser":{"email":"jcordobaconci@gmail.com"}}
+[2026-03-17T14:04:19.257Z] [hosting] finalized version for pettycashapp-80f5e:[object Object]
++  hosting[pettycashapp-80f5e]: version finalized 
+i  hosting[pettycashapp-80f5e]: releasing new version... 
+[2026-03-17T14:04:19.258Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:19.258Z] Checked if tokens are valid: true, expires at: 1773759392207
+[2026-03-17T14:04:19.259Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/pettycashapp-80f5e/channels/live/releases versionName=projects%2F426337625591%2Fsites%2Fpettycashapp-80f5e%2Fversions%2F0615eced328e72db
+[2026-03-17T14:04:19.259Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/pettycashapp-80f5e/channels/live/releases {}
+[2026-03-17T14:04:19.857Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/pettycashapp-80f5e/channels/live/releases 200
+[2026-03-17T14:04:19.857Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/pettycashapp-80f5e/channels/live/releases {"name":"projects/426337625591/sites/pettycashapp-80f5e/channels/live/releases/1773756258939000","version":{"name":"projects/426337625591/sites/pettycashapp-80f5e/versions/0615eced328e72db","status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-03-17T14:04:11.695992Z","createUser":{"email":"jcordobaconci@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocIFDyz5T_eWGvmTq9Lt3K_5V1vKtzBLxeUGwk631SEJYf-ejw=mo"},"finalizeTime":"2026-03-17T14:04:19.019917Z","finalizeUser":{"email":"jcordobaconci@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocIFDyz5T_eWGvmTq9Lt3K_5V1vKtzBLxeUGwk631SEJYf-ejw=mo"}},"type":"DEPLOY","releaseTime":"2026-03-17T14:04:18.939Z","releaseUser":{"email":"jcordobaconci@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocIFDyz5T_eWGvmTq9Lt3K_5V1vKtzBLxeUGwk631SEJYf-ejw=mo"}}
+[2026-03-17T14:04:19.857Z] [hosting] release: {"name":"projects/426337625591/sites/pettycashapp-80f5e/channels/live/releases/1773756258939000","version":{"name":"projects/426337625591/sites/pettycashapp-80f5e/versions/0615eced328e72db","status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-03-17T14:04:11.695992Z","createUser":{"email":"jcordobaconci@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocIFDyz5T_eWGvmTq9Lt3K_5V1vKtzBLxeUGwk631SEJYf-ejw=mo"},"finalizeTime":"2026-03-17T14:04:19.019917Z","finalizeUser":{"email":"jcordobaconci@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocIFDyz5T_eWGvmTq9Lt3K_5V1vKtzBLxeUGwk631SEJYf-ejw=mo"}},"type":"DEPLOY","releaseTime":"2026-03-17T14:04:18.939Z","releaseUser":{"email":"jcordobaconci@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocIFDyz5T_eWGvmTq9Lt3K_5V1vKtzBLxeUGwk631SEJYf-ejw=mo"}}
++  hosting[pettycashapp-80f5e]: release complete 
+
++  Deploy complete! 
+
+Project Console: https://console.firebase.google.com/project/pettycashapp-80f5e/overview
+Hosting URL: https://pettycashapp-80f5e.web.app

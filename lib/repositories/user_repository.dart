@@ -94,4 +94,32 @@ class UserRepository {
       throw e;
     }
   }
+
+  Future<void> recalculateBalances(String userId) async {
+    final movementsSnapshot = await _firestore.collection('movements')
+        .where('userId', isEqualTo: userId)
+        .get();
+        
+    double cash = 0.0;
+    double debit = 0.0;
+    
+    for (var doc in movementsSnapshot.docs) {
+      final data = doc.data();
+      final amount = (data['grossAmount'] as num?)?.toDouble() ?? 0.0;
+      final type = data['type']; 
+      final method = data['paymentMethod']; 
+      
+      final delta = type == 'income' ? amount : -amount;
+      if (method == 'cash') {
+        cash += delta;
+      } else {
+        debit += delta;
+      }
+    }
+    
+    await _users.doc(userId).update({
+      'cashBalance': cash,
+      'debitBalance': debit,
+    });
+  }
 }

@@ -34,11 +34,15 @@ class _VatSlot {
 class ValidationFormScreen extends ConsumerStatefulWidget {
   final ExtractedReceiptData data;
   final MovementType initialType;
+  final bool isReadOnly;
+  final MovementModel? existingMovement;
 
   const ValidationFormScreen({
     super.key,
     required this.data,
     this.initialType = MovementType.expense,
+    this.isReadOnly = false,
+    this.existingMovement,
   });
 
   @override
@@ -71,17 +75,23 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
   void initState() {
     super.initState();
     final d = widget.data;
-    _selectedType = widget.initialType;
-    _selectedInvoiceType = d.invoiceType;
+    final em = widget.existingMovement;
+    
+    _selectedType = em?.type ?? widget.initialType;
+    _selectedInvoiceType = em?.invoiceType ?? d.invoiceType;
+    _selectedCostCenter = em?.costCenter ?? CostCenter.Administracion;
+    _selectedPayment = em?.paymentMethod ?? PaymentMethod.cash;
 
-    // Pre-fill all OCR-extracted fields
-    _descCtrl          = TextEditingController(text: d.description);
-    _grossCtrl         = TextEditingController(text: d.grossAmount > 0 ? d.grossAmount.toStringAsFixed(2) : '');
-    _netCtrl           = TextEditingController(text: d.netAmount  > 0 ? d.netAmount.toStringAsFixed(2)  : '');
-    _invoiceNumberCtrl = TextEditingController(text: d.invoiceNumber ?? '');
+    // Controllers
+    _descCtrl          = TextEditingController(text: em?.description ?? '');
+    _grossCtrl         = TextEditingController(text: (em?.grossAmount ?? d.grossAmount) > 0 ? (em?.grossAmount ?? d.grossAmount).toStringAsFixed(2) : '');
+    _netCtrl           = TextEditingController(text: (em?.netAmount ?? d.netAmount) > 0 ? (em?.netAmount ?? d.netAmount).toStringAsFixed(2) : '');
+    _invoiceNumberCtrl = TextEditingController(text: em?.invoiceNumber ?? d.invoiceNumber ?? '');
 
-    // Date — parse from OCR or default to today
-    if (d.dateStr != null && d.dateStr!.isNotEmpty) {
+    // Date logic
+    if (em != null) {
+      _selectedDate = em.date;
+    } else if (d.dateStr != null && d.dateStr!.isNotEmpty) {
       try {
         final parts = d.dateStr!.split('/');
         if (parts.length == 3) {
@@ -91,14 +101,18 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     }
     _dateCtrl = TextEditingController(text: _formatDate(_selectedDate));
 
-    // Build first VAT slot from OCR data
-    final vatRate = _guessVatRate(d.netAmount, d.vat);
+    // VAT logic
+    final vAmt = em?.vat ?? d.vat;
+    final nAmt = em?.netAmount ?? d.netAmount;
+    final vatRate = _guessVatRate(nAmt, vAmt);
     _vatSlots.add(_VatSlot(
-      amountCtrl: TextEditingController(text: d.vat > 0 ? d.vat.toStringAsFixed(2) : ''),
+      amountCtrl: TextEditingController(text: vAmt > 0 ? vAmt.toStringAsFixed(2) : ''),
       rate: vatRate,
     ));
 
-    _grossCtrl.addListener(_recalcNet);
+    if (!widget.isReadOnly) {
+      _grossCtrl.addListener(_recalcNet);
+    }
   }
 
   double _guessVatRate(double net, double vat) {
@@ -274,10 +288,11 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Expanded(child: _field(_grossCtrl, 'Monto Total (ARS)', Icons.payments_outlined,
                               keyboardType: TextInputType.number,
+                              readOnly: widget.isReadOnly,
                               validator: (v) => (v == null || v.isEmpty) ? 'Requerido' : null)),
                           const SizedBox(width: 12),
                           if (_selectedType == MovementType.expense)
-                            Expanded(child: _invoiceTypeDropdown()),
+                            Expanded(child: _invoiceTypeDropdown(enabled: !widget.isReadOnly)),
                         ]),
                         const SizedBox(height: 16),
 
@@ -287,8 +302,8 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                               keyboardType: TextInputType.number, readOnly: true),
                           const SizedBox(height: 20),
                           _section('IVA / ALÍCUOTAS', Icons.percent),
-                          ..._vatSlots.asMap().entries.map((e) => _vatRow(e.key, e.value)),
-                          if (_vatSlots.length < 2)
+                          ..._vatSlots.asMap().entries.map((e) => _vatRow(e.key, e.value, readOnly: widget.isReadOnly)),
+                          if (_vatSlots.length < 2 && !widget.isReadOnly)
                             Padding(
                               padding: const EdgeInsets.only(top: 8, bottom: 4),
                               child: TextButton.icon(
@@ -305,6 +320,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
 
                         _section('DESCRIPCIÓN', Icons.description_outlined),
                         _field(_descCtrl, 'Razón Social / Descripción', Icons.store_outlined,
+                            readOnly: widget.isReadOnly,
                             validator: (v) => (v == null || v.isEmpty) ? 'Requerido' : null),
                         const SizedBox(height: 20),
 
@@ -317,7 +333,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                             value: c,
                             child: Text(_costCenterNames[c] ?? c.name),
                           )).toList(),
-                          onChanged: (v) => setState(() => _selectedCostCenter = v!),
+                          onChanged: widget.isReadOnly ? null : (CostCenter? v) => setState(() => _selectedCostCenter = v ?? CostCenter.Administracion),
                         ),
                         const SizedBox(height: 16),
                         _dropdown<PaymentMethod>(
@@ -328,7 +344,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                             DropdownMenuItem(value: PaymentMethod.cash,  child: Text('Efectivo')),
                             DropdownMenuItem(value: PaymentMethod.debit, child: Text('Tarjeta / Débito')),
                           ],
-                          onChanged: (v) => setState(() => _selectedPayment = v!),
+                          onChanged: widget.isReadOnly ? null : (PaymentMethod? v) => setState(() => _selectedPayment = v ?? PaymentMethod.cash),
                         ),
                         const SizedBox(height: 40),
 
@@ -360,7 +376,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     final isExpense = _selectedType == MovementType.expense;
     final gradientColors = isExpense
         ? [const Color(0xFF8B0000), AppTheme.expenseRed, const Color(0xFFFF6B35)]
-        : [const Color(0xFF1B5E20), AppTheme.incomeGreen, const Color(0xFF81C784)];
+        : [const Color(0xFF1B5E20), AppTheme.incomeGreen, const Color(0xFF4CAF50)];
 
     return SliverAppBar(
       expandedHeight: 160,
@@ -390,7 +406,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -402,7 +418,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
                         child: const Row(children: [
                           Icon(Icons.auto_awesome, color: Colors.white, size: 10),
                           SizedBox(width: 4),
@@ -412,14 +428,10 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                     ],
                   ]),
                   const SizedBox(height: 10),
-                  Text(
-                    isExpense ? 'Validar Egreso' : 'Nuevo Ingreso',
-                    style: GoogleFonts.montserrat(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
-                  ),
                   if (_parse(_grossCtrl.text) > 0)
                     Text(
                       '\$ ${_parse(_grossCtrl.text).toStringAsFixed(2)}',
-                      style: GoogleFonts.montserrat(color: Colors.white.withOpacity(0.85), fontSize: 15, fontWeight: FontWeight.w600),
+                      style: GoogleFonts.montserrat(color: Colors.white.withValues(alpha: 0.85), fontSize: 15, fontWeight: FontWeight.w600),
                     ),
                 ],
               ),
@@ -427,7 +439,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
           ),
         ),
         title: Text(
-          isExpense ? 'Validar Egreso' : 'Nuevo Ingreso',
+          isExpense ? 'Validar Egreso' : 'Registrar Ingreso',
           style: GoogleFonts.montserrat(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
         ),
         titlePadding: const EdgeInsetsDirectional.only(start: 56, bottom: 16),
@@ -524,21 +536,21 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     );
   }
 
-  Widget _invoiceTypeDropdown() {
+  Widget _invoiceTypeDropdown({bool enabled = true}) {
     return DropdownButtonFormField<String>(
       value: _selectedInvoiceType,
-      onChanged: (v) => setState(() {
+      onChanged: enabled ? (v) => setState(() {
         _selectedInvoiceType = v!;
         _recalcNet();
-      }),
+      }) : null,
       icon: const Icon(Icons.expand_more, color: Colors.black26, size: 18),
       style: GoogleFonts.montserrat(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textDark),
-      decoration: _inputDeco('Tipo Comprobante', Icons.receipt_outlined),
+      decoration: _inputDeco('Tipo Comprobante', Icons.receipt_outlined, readOnly: !enabled),
       items: ['Ticket', 'Factura A', 'Factura B', 'Factura C'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
     );
   }
 
-  Widget _vatRow(int index, _VatSlot slot) {
+  Widget _vatRow(int index, _VatSlot slot, {bool readOnly = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -547,6 +559,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
           child: TextFormField(
             controller: slot.amountCtrl,
             keyboardType: TextInputType.number,
+            readOnly: readOnly,
             style: GoogleFonts.montserrat(fontWeight: FontWeight.w600, fontSize: 14),
             decoration: _inputDeco('IVA ${index + 1} (\$)', Icons.percent),
           ),
@@ -555,7 +568,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
         Expanded(
           child: DropdownButtonFormField<double>(
             value: slot.rate,
-            onChanged: (v) => setState(() {
+            onChanged: readOnly ? null : (v) => setState(() {
               slot.rate = v!;
               _recalcNet();
             }),
@@ -565,7 +578,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
             items: _vatRates.map((r) => DropdownMenuItem(value: r, child: Text('${(r * 100).toStringAsFixed(1)}%'))).toList(),
           ),
         ),
-        if (_vatSlots.length > 1)
+        if (_vatSlots.length > 1 && !readOnly)
           IconButton(
             onPressed: () => setState(() { slot.amountCtrl.dispose(); _vatSlots.removeAt(index); _recalcNet(); }),
             icon: const Icon(Icons.remove_circle, color: AppTheme.expenseRed, size: 20),
@@ -579,7 +592,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     required String label,
     required IconData icon,
     required List<DropdownMenuItem<T>> items,
-    required ValueChanged<T?> onChanged,
+    ValueChanged<T?>? onChanged,
   }) {
     return DropdownButtonFormField<T>(
       value: value,

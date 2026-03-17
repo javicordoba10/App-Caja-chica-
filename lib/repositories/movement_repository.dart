@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:petty_cash_app/models/movement_model.dart';
 
@@ -47,11 +48,10 @@ class MovementRepository {
   }
 
   /// Removes attachments older than 60 days
-  Future<int> cleanupOldAttachments(FirebaseFirestore firestore) async {
+  Future<int> cleanupOldAttachments() async {
     final sixtyDaysAgo = DateTime.now().subtract(const Duration(days: 60));
     final snapshot = await _movements
         .where('date', isLessThan: Timestamp.fromDate(sixtyDaysAgo))
-        .where('imageUrl', isNotEqualTo: null)
         .get();
 
     int deletedCount = 0;
@@ -60,12 +60,13 @@ class MovementRepository {
       final url = data['imageUrl'] as String?;
       if (url != null && url.isNotEmpty) {
         try {
-          // Note: In a real app, you'd call FirebaseStorage delete here.
-          // For now, we clear the reference in Firestore.
+          // Permanently delete from Storage
+          await FirebaseStorage.instance.refFromURL(url).delete();
+          // Clear reference in Firestore
           await doc.reference.update({'imageUrl': FieldValue.delete()});
           deletedCount++;
         } catch (e) {
-          print('Error deleting attachment for doc \${doc.id}: $e');
+          print('Error deleting attachment for doc ${doc.id}: $e');
         }
       }
     }

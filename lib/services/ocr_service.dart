@@ -80,7 +80,7 @@ class OCRService {
     // Extraer tipo de comprobante (mejorado para tolerar espacios extra o guiones)
     String type = 'Ticket';
     final upperText = text.toUpperCase();
-    if (RegExp(r'(?:FACTURA|TIQUE\s+FACTURA)\s*[-:"·]*\s*A\b').hasMatch(upperText) || RegExp(r'C[OÓ]D(?:IGO)?\.?\s*01').hasMatch(upperText)) {
+    if (RegExp(r'(?:FACTURA|TIQUE\s+FACTURA)\s*[-:"·]*\s*A\b').hasMatch(upperText) || RegExp(r'C[OÓ]D(?:IGO)?\.?\s*01').hasMatch(upperText) || RegExp(r'\bFACTURA\s+A\b').hasMatch(upperText)) {
       type = 'Factura A';
     } else if (RegExp(r'(?:FACTURA|TIQUE\s+FACTURA)\s*[-:"·]*\s*B\b').hasMatch(upperText) || RegExp(r'C[OÓ]D(?:IGO)?\.?\s*06').hasMatch(upperText)) {
       type = 'Factura B';
@@ -88,24 +88,20 @@ class OCRService {
       type = 'Factura C';
     }
 
-    // Regex to find currency amounts: numbers optionally separated by dot/comma, ending with 2 decimals
-    final amountRegex = RegExp(r'\$?\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))');
+    // Regex to find currency amounts: numbers optionally separated by dot/comma/space, ending with 2 decimals
+    final amountRegex = RegExp(r'\$?\s*(\d{1,3}(?:[\s.,]\d{3})*(?:[.,]\d{2}))');
     final matches = amountRegex.allMatches(text);
     
     List<double> amounts = [];
     for (var match in matches) {
       String? matchedStr = match.group(1);
       if (matchedStr != null) {
-        // clean up String to convert to double
-        String cleanNum = matchedStr.replaceAll('.', '').replaceAll(',', '.');
-        // Handle cases where comma was thousands separator
+        String cleanNum = matchedStr.replaceAll(' ', '').replaceAll('.', '').replaceAll(',', '.');
         if (matchedStr.contains(',') && matchedStr.contains('.')) {
           if (matchedStr.lastIndexOf(',') < matchedStr.lastIndexOf('.')) {
-            // standard US format 1,000.00
-            cleanNum = matchedStr.replaceAll(',', '');
+            cleanNum = matchedStr.replaceAll(' ', '').replaceAll(',', '');
           } else {
-            // standard AR format 1.000,00
-            cleanNum = matchedStr.replaceAll('.', '').replaceAll(',', '.');
+            cleanNum = matchedStr.replaceAll(' ', '').replaceAll('.', '').replaceAll(',', '.');
           }
         }
         double? val = double.tryParse(cleanNum);
@@ -115,18 +111,27 @@ class OCRService {
 
     // Búsqueda de la Fecha
     String? foundDate;
-    final dateRegex = RegExp(r'(\d{2})[/.-](\d{2})[/.-](\d{4})');
+    final dateRegex = RegExp(r'(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})');
     final dateMatch = dateRegex.firstMatch(text);
     if (dateMatch != null) {
-      foundDate = "${dateMatch.group(1)}/${dateMatch.group(2)}/${dateMatch.group(3)}";
+      String day = dateMatch.group(1)!.padLeft(2, '0');
+      String month = dateMatch.group(2)!.padLeft(2, '0');
+      foundDate = "$day/$month/${dateMatch.group(3)}";
     }
 
     // Búsqueda del Número de Factura
     String? foundNumber;
-    final numRegex = RegExp(r'(?:N[uú]mero|Nro\.?|Factura)\s*(?:Nro\.?|N\s*[º°]|#)?\s*(\d{4}[-\s]\d{8})', caseSensitive: false);
-    final numMatch = numRegex.firstMatch(text);
-    if (numMatch != null) {
-      foundNumber = numMatch.group(1);
+    // Format: 0000-00000000 or similar
+    final numRegexLong = RegExp(r'\b(\d{4,5}[-\s]\d{7,8})\b');
+    final numMatchLong = numRegexLong.firstMatch(text);
+    if (numMatchLong != null) {
+      foundNumber = numMatchLong.group(1);
+    } else {
+      final numRegex = RegExp(r'(?:N[uú]mero|Nro\.?|Factura|Comprobante)\s*(?:Nro\.?|N\s*[º°]|#)?\s*(\d+)', caseSensitive: false);
+      final numMatch = numRegex.firstMatch(text);
+      if (numMatch != null) {
+        foundNumber = numMatch.group(1);
+      }
     }
 
     // Mejora OCR: Buscar palabras clave como TOTAL o IMPORTE que estén cerca de un número
@@ -137,30 +142,38 @@ class OCRService {
     String foundDescription = '';
     final validLines = lines.map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
     if (validLines.isNotEmpty) {
-      foundDescription = validLines.first;
-      // Truncate to reasonable length if it's too long
+      final firstLine = validLines.first;
+      if (!firstLine.contains('[OCR') && !firstLine.contains('ERROR')) {
+        foundDescription = firstLine;
+      }
       if (foundDescription.length > 50) {
          foundDescription = foundDescription.substring(0, 50);
       }
     }
     
-    for (var line in lines) {
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
       final upperLine = line.toUpperCase();
       if (upperLine.contains('TOTAL') || upperLine.contains('IMPORTE') || upperLine.contains('TOTAL FINAL')) {
-        // Buscar un número en esta línea
-        final matches = amountRegex.allMatches(line);
-        if (matches.isNotEmpty) {
-           String cleanNum = matches.last.group(1)!.replaceAll('.', '').replaceAll(',', '.');
-           if (matches.last.group(1)!.contains(',') && matches.last.group(1)!.contains('.')) {
-              if (matches.last.group(1)!.lastIndexOf(',') < matches.last.group(1)!.lastIndexOf('.')) {
-                cleanNum = matches.last.group(1)!.replaceAll(',', '');
-              } else {
-                cleanNum = matches.last.group(1)!.replaceAll('.', '').replaceAll(',', '.');
+        // Buscar un número en esta línea o en las 3 siguientes
+        for (int j = i; j <= i + 3 && j < lines.length; j++) {
+           final searchLine = lines[j];
+           final matches = amountRegex.allMatches(searchLine);
+           if (matches.isNotEmpty) {
+              String rawMatch = matches.last.group(1)!;
+              String cleanNum = rawMatch.replaceAll(' ', '').replaceAll('.', '').replaceAll(',', '.');
+              if (rawMatch.contains(',') && rawMatch.contains('.')) {
+                 if (rawMatch.lastIndexOf(',') < rawMatch.lastIndexOf('.')) {
+                   cleanNum = rawMatch.replaceAll(' ', '').replaceAll(',', '');
+                 } else {
+                   cleanNum = rawMatch.replaceAll(' ', '').replaceAll('.', '').replaceAll(',', '.');
+                 }
               }
-           }
-           double? val = double.tryParse(cleanNum);
-           if (val != null) {
-              possibleTotal = val;
+              double? val = double.tryParse(cleanNum);
+              if (val != null && val > possibleTotal) {
+                 possibleTotal = val;
+                 if (j == i) break; 
+              }
            }
         }
       }

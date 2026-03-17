@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
 import 'package:petty_cash_app/models/movement_model.dart';
+import 'package:petty_cash_app/services/ocr_service.dart';
+import 'package:petty_cash_app/ui/screens/validation_form_screen.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -151,51 +153,57 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   Widget _buildHistoryCard(MovementModel m) {
     final isIncome = m.type == MovementType.income;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: AppTheme.whiteCardDecoration,
-      child: Row(
-        children: [
-          _buildTypeIndicator(isIncome),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return InkWell(
+      onTap: () => Navigator.push(
+        context, 
+        MaterialPageRoute(builder: (_) => ValidationFormScreen(
+          data: ExtractedReceiptData(imagePath: m.imageUrl ?? ''), 
+          existingMovement: m,
+          isReadOnly: true,
+        ))
+      ),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: AppTheme.whiteCardDecoration,
+        child: Row(
+          children: [
+            _buildTypeIndicator(isIncome),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    m.description, 
+                    style: GoogleFonts.montserrat(fontWeight: FontWeight.w700, fontSize: 14),
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    '${DateFormat('dd MMM').format(m.date)} • ${_getEstablishmentCode(m.costCenter)} • ${m.paymentMethod == PaymentMethod.cash ? 'Efectivo' : 'Tarjeta'}',
+                    style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  m.description, 
-                  style: GoogleFonts.montserrat(fontWeight: FontWeight.w700, fontSize: 14),
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  "${isIncome ? '+' : '-'} \$ ${NumberFormat('#,##0').format(m.grossAmount)}",
+                  style: GoogleFonts.montserrat(
+                    color: isIncome ? AppTheme.incomeGreen : AppTheme.expenseRed,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
                 ),
-                Text(
-                  '${DateFormat('dd MMM').format(m.date)} • ${_getEstablishmentCode(m.costCenter)}',
-                  style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11, fontWeight: FontWeight.w500),
-                ),
+                if (m.imageUrl != null && m.imageUrl!.isNotEmpty)
+                  const Icon(Icons.confirmation_number_outlined, size: 18, color: AppTheme.textGrey),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                "${isIncome ? '+' : '-'} \$ ${NumberFormat('#,##0').format(m.grossAmount)}",
-                style: GoogleFonts.montserrat(
-                  color: isIncome ? AppTheme.incomeGreen : AppTheme.expenseRed,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                ),
-              ),
-              if (m.imageUrl != null && m.imageUrl!.isNotEmpty)
-                IconButton(
-                  icon: const Icon(Icons.confirmation_number_outlined, size: 18, color: AppTheme.textGrey),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  onPressed: () => _openReceipt(m.imageUrl!),
-                ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -204,12 +212,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: (isIncome ? Colors.green : Colors.red).withOpacity(0.1),
+        color: (isIncome ? AppTheme.incomeGreen : AppTheme.expenseRed).withOpacity(0.1),
         shape: BoxShape.circle,
       ),
       child: Icon(
         isIncome ? Icons.keyboard_double_arrow_up : Icons.keyboard_double_arrow_down,
-        color: isIncome ? Colors.green : Colors.red,
+        color: isIncome ? AppTheme.incomeGreen : AppTheme.expenseRed,
         size: 18,
       ),
     );

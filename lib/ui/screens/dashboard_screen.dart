@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -8,7 +9,16 @@ import 'package:petty_cash_app/models/user_model.dart';
 import 'package:petty_cash_app/models/movement_model.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:petty_cash_app/services/pdf_service.dart';
+import 'package:petty_cash_app/services/ocr_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:excel/excel.dart' as excel_lib;
+import 'dart:io' as io;
+import 'package:path_provider/path_provider.dart';
+import 'package:petty_cash_app/ui/screens/history_screen.dart';
+import 'package:petty_cash_app/ui/screens/validation_form_screen.dart';
+import 'package:petty_cash_app/ui/widgets/main_layout.dart';
+// Conditional import for web/native compatibility
+import 'dart:html' as html if (dart.library.io) 'package:petty_cash_app/services/html_stub.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -27,7 +37,6 @@ class DashboardScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Greeting Section
-              // Greeting Section
               userAsync.when(
                 data: (user) => _buildGreeting(user?.name ?? 'Usuario', user?.role ?? 'user'),
                 loading: () => _buildGreeting('...', 'user'),
@@ -44,7 +53,12 @@ class DashboardScreen extends ConsumerWidget {
                         'Efectivo', 
                         user?.cashBalance ?? 0.0, 
                         Icons.payments_outlined, 
-                        AppTheme.primaryOrange
+                        AppTheme.primaryOrange,
+                        onSync: () async {
+                          await ref.read(userRepositoryProvider).recalculateBalances(user!.id);
+                          await ref.read(movementRepositoryProvider).cleanupOldAttachments();
+                        },
+                        gradientColors: [AppTheme.primaryOrange, AppTheme.primaryYellow],
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -53,7 +67,8 @@ class DashboardScreen extends ConsumerWidget {
                         'Tarjeta', 
                         user?.debitBalance ?? 0.0, 
                         Icons.credit_card_outlined, 
-                        AppTheme.primaryYellow
+                        const Color(0xFF1A237E),
+                        gradientColors: [const Color(0xFF1A237E), const Color(0xFF3949AB)],
                       ),
                     ),
                   ],
@@ -69,7 +84,7 @@ class DashboardScreen extends ConsumerWidget {
 
               // Export/Print Actions
               userAsync.when(
-                data: (user) => _buildActionButtons(user, movementsAsync.value ?? []),
+                data: (user) => _buildActionButtons(context, user, movementsAsync.value ?? []),
                 loading: () => const SizedBox.shrink(),
                 error: (_, __) => const SizedBox.shrink(),
               ),
@@ -80,7 +95,7 @@ class DashboardScreen extends ConsumerWidget {
               const SizedBox(height: 24),
 
               // Recent list
-              _buildRecentTransactions(movementsAsync),
+              _buildRecentTransactions(context, ref, movementsAsync),
             ],
           ),
         ),
@@ -118,18 +133,21 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
   
-  Widget _buildBalanceCard(String title, double amount, IconData icon, Color color) {
+  Widget _buildBalanceCard(String title, double amount, IconData icon, Color mainColor, {VoidCallback? onSync, List<Color>? gradientColors}) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.pureWhite,
+        gradient: LinearGradient(
+          colors: gradientColors ?? [mainColor, mainColor.withValues(alpha: 0.8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.1)),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: AppTheme.cardShadow,
-            blurRadius: 10,
-            offset: Offset(0, 4),
+            color: mainColor.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           )
         ],
       ),
@@ -138,23 +156,29 @@ class DashboardScreen extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(icon, color: color, size: 18),
+              Icon(icon, color: Colors.white, size: 18),
               const SizedBox(width: 8),
               Text(
                 title,
                 style: GoogleFonts.montserrat(
-                  color: AppTheme.textGrey,
+                  color: Colors.white.withValues(alpha: 0.9),
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
               ),
+              const Spacer(),
+              if (onSync != null)
+                GestureDetector(
+                  onTap: onSync,
+                  child: const Icon(Icons.sync, color: Colors.white, size: 14),
+                ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             '\$ ${NumberFormat('#,##0.00').format(amount)}',
             style: GoogleFonts.montserrat(
-              color: AppTheme.textDark,
+              color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.w800,
             ),
@@ -195,40 +219,61 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildStatCard(String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: AppTheme.whiteCardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+      decoration: BoxDecoration(
+        color: AppTheme.pureWhite,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Stack(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  label, 
-                  style: GoogleFonts.montserrat(
-                    color: AppTheme.textGrey, 
-                    fontSize: 9, 
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Icon(icon, color: color, size: 14),
-            ],
+          Positioned(
+            left: 0, top: 0, bottom: 0,
+            child: Container(width: 4, decoration: BoxDecoration(color: color, borderRadius: const BorderRadius.horizontal(left: Radius.circular(4)))),
           ),
-          const SizedBox(height: 8),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: GoogleFonts.montserrat(
-                color: AppTheme.textDark,
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-              ),
+          Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        label, 
+                        style: GoogleFonts.montserrat(
+                          color: AppTheme.textGrey, 
+                          fontSize: 9, 
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Icon(icon, color: color, size: 14),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    value,
+                    style: GoogleFonts.montserrat(
+                      color: AppTheme.textDark,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -236,45 +281,103 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionButtons(UserModel? user, List<MovementModel> movements) {
-    return Row(
+  Widget _buildActionButtons(BuildContext context, UserModel? user, List<MovementModel> movements) {
+    return Column(
       children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () {
-              // TODO: Implement Excel export
-            },
-            icon: const Icon(Icons.description_outlined, size: 18),
-            label: const Text('Exportar Excel'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              foregroundColor: AppTheme.textDark,
-              side: BorderSide(color: Colors.black.withOpacity(0.1)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _exportToExcel(movements),
+                icon: const Icon(Icons.description_outlined, size: 18),
+                label: const Text('Exportar Excel'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  foregroundColor: AppTheme.textDark,
+                  side: BorderSide(color: Colors.black.withValues(alpha: 0.1)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () {
-               if (user != null) {
-                 PDFService.generateAndPrint(user.cashBalance, user.debitBalance, movements);
-               }
-            },
-            icon: const Icon(Icons.print_outlined, size: 18),
-            label: const Text('Imprimir PDF'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              foregroundColor: AppTheme.textDark,
-              side: BorderSide(color: Colors.black.withOpacity(0.1)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {
+                   if (user != null) {
+                     PDFService.generateAndPrint(user.cashBalance, user.debitBalance, movements);
+                   }
+                },
+                icon: const Icon(Icons.print_outlined, size: 18),
+                label: const Text('Imprimir Todo'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  foregroundColor: AppTheme.textDark,
+                  side: BorderSide(color: Colors.black.withValues(alpha: 0.1)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
+        const SizedBox(height: 12),
+        SizedBox(width: double.infinity, child: ElevatedButton.icon(
+          onPressed: () {
+             if (user != null) {
+               final expensesOnly = movements.where((m) => m.type == MovementType.expense).toList();
+               PDFService.generateAndPrint(user.cashBalance, user.debitBalance, expensesOnly);
+             }
+          },
+          icon: const Icon(Icons.picture_as_pdf_outlined, color: Colors.white),
+          label: const Text('IMPRIMIR SOLO GASTOS'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.expenseRed,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 4,
+          ),
+        )),
       ],
     );
   }
+
+  Future<void> _exportToExcel(List<MovementModel> movements) async {
+    final excel = excel_lib.Excel.createExcel();
+    final sheet = excel['Movimientos'];
+    excel.setDefaultSheet('Movimientos');
+
+    sheet.appendRow([excel_lib.TextCellValue('Fecha'), excel_lib.TextCellValue('Descripción'),
+      excel_lib.TextCellValue('Tipo'), excel_lib.TextCellValue('Establecimiento'),
+      excel_lib.TextCellValue('Monto BRUTO'), excel_lib.TextCellValue('Subtotal (NETO)'),
+      excel_lib.TextCellValue('IVA Total'), excel_lib.TextCellValue('Forma Pago')]);
+
+    for (final m in movements) {
+      sheet.appendRow([excel_lib.TextCellValue(DateFormat('dd/MM/yyyy').format(m.date)),
+        excel_lib.TextCellValue(m.description), excel_lib.TextCellValue(m.type == MovementType.income ? 'Ingreso' : 'Egreso'),
+        excel_lib.TextCellValue(m.costCenter.name), excel_lib.DoubleCellValue(m.grossAmount),
+        excel_lib.DoubleCellValue(m.netAmount), excel_lib.DoubleCellValue(m.vat),
+        excel_lib.TextCellValue(m.paymentMethod == PaymentMethod.cash ? 'Efectivo' : 'Tarjeta')]);
+    }
+
+    final bytes = excel.save();
+    if (bytes != null) {
+      if (kIsWeb) {
+        Future.microtask(() {
+          final blob = html.Blob([bytes], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+          final url = html.Url.createObjectUrlFromBlob(blob);
+          final anchor = html.AnchorElement(href: url)
+            ..setAttribute("download", "movimientos_${DateTime.now().millisecondsSinceEpoch}.xlsx")
+            ..click();
+          html.Url.revokeObjectUrl(url);
+        });
+      } else {
+        final directory = await getApplicationDocumentsDirectory();
+        final file = io.File('${directory.path}/movimientos.xlsx');
+        await file.writeAsBytes(bytes);
+      }
+    }
+  }
+
 
   Widget _buildMainChartSection(WidgetRef ref, AsyncValue<List<MovementModel>> movementsAsync) {
     final selectedRange = ref.watch(dashboardChartRangeProvider);
@@ -390,7 +493,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildRecentTransactions(AsyncValue<List<MovementModel>> movementsAsync) {
+  Widget _buildRecentTransactions(BuildContext context, WidgetRef ref, AsyncValue<List<MovementModel>> movementsAsync) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -402,7 +505,9 @@ class DashboardScreen extends ConsumerWidget {
               style: GoogleFonts.montserrat(fontWeight: FontWeight.w800, fontSize: 16),
             ),
             TextButton(
-              onPressed: () {},
+              onPressed: () {
+                ref.read(navigationProvider.notifier).state = 'history';
+              },
               child: Text('Ver Todo', style: TextStyle(color: AppTheme.primaryOrange, fontWeight: FontWeight.bold)),
             ),
           ],
@@ -426,7 +531,7 @@ class DashboardScreen extends ConsumerWidget {
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final m = latest[index];
-                return _buildTransactionCard(context, m);
+                return _buildTransactionCard(context, ref, m);
               },
             );
           },
@@ -438,74 +543,85 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTransactionCard(BuildContext context, MovementModel m) {
+  Widget _buildTransactionCard(BuildContext context, WidgetRef ref, MovementModel m) {
     final isIncome = m.type == MovementType.income;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: AppTheme.whiteCardDecoration,
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: (isIncome ? Colors.green : Colors.red).withOpacity(0.1),
-              shape: BoxShape.circle,
+    return InkWell(
+      onTap: () => Navigator.push(
+        context, 
+        MaterialPageRoute(builder: (_) => ValidationFormScreen(
+          data: ExtractedReceiptData(imagePath: m.imageUrl ?? ''), 
+          existingMovement: m,
+          isReadOnly: true,
+        ))
+      ),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: AppTheme.whiteCardDecoration,
+        child: Row(
+          children: [
+            _buildTypeIndicator(isIncome),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    m.description, 
+                    style: GoogleFonts.montserrat(fontWeight: FontWeight.w700, fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    '${DateFormat('dd MMM').format(m.date)} • ${_getEstablishmentCode(m.costCenter)} • ${m.paymentMethod == PaymentMethod.cash ? 'Efectivo' : 'Tarjeta'}', 
+                    style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
             ),
-            child: Icon(
-              isIncome ? Icons.keyboard_double_arrow_up : Icons.keyboard_double_arrow_down,
-              color: isIncome ? Colors.green : Colors.red,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  m.description, 
-                  style: GoogleFonts.montserrat(fontWeight: FontWeight.w700, fontSize: 14),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  "${isIncome ? '+' : '-'} \$ ${NumberFormat('#,##0').format(m.grossAmount)}",
+                  style: GoogleFonts.montserrat(
+                    color: isIncome ? Colors.green : Colors.red,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
                 ),
-                Text(
-                  '${DateFormat('dd MMM').format(m.date)} • ${_getEstablishmentCode(m.costCenter)}', 
-                  style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11, fontWeight: FontWeight.w500),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    if (m.imageUrl != null && m.imageUrl!.isNotEmpty)
+                      const Icon(Icons.confirmation_number_outlined, size: 18, color: AppTheme.textGrey),
+                    const SizedBox(width: 12),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                      onPressed: () => _confirmDelete(context, ref, m),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                "${isIncome ? '+' : '-'} \$ ${NumberFormat('#,##0').format(m.grossAmount)}",
-                style: GoogleFonts.montserrat(
-                  color: isIncome ? Colors.green : Colors.red,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  if (m.imageUrl != null && m.imageUrl!.isNotEmpty)
-                    GestureDetector(
-                      onTap: () async {
-                        final url = Uri.parse(m.imageUrl!);
-                        if (await canLaunchUrl(url)) {
-                          await launchUrl(url, mode: LaunchMode.externalApplication);
-                        }
-                      },
-                      child: const Icon(Icons.confirmation_number_outlined, size: 18, color: AppTheme.textGrey),
-                    ),
-                  const SizedBox(width: 12),
-                  const Icon(Icons.delete_outline, size: 18, color: Colors.black26),
-                ],
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTypeIndicator(bool isIncome) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: (isIncome ? Colors.green : Colors.red).withOpacity(0.1),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        isIncome ? Icons.keyboard_double_arrow_up : Icons.keyboard_double_arrow_down,
+        color: isIncome ? Colors.green : Colors.red,
+        size: 18,
       ),
     );
   }
@@ -556,6 +672,41 @@ class DashboardScreen extends ConsumerWidget {
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, WidgetRef ref, MovementModel movement) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Eliminar movimiento?'),
+        content: Text('¿Estás seguro de que deseas eliminar "${movement.description}"? Esta acción no se puede deshacer.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCELAR')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+            onPressed: () async {
+              Navigator.pop(ctx);
+               try {
+                  await ref.read(userRepositoryProvider).deleteMovementWithBalanceUpdate(movement);
+                  ref.refresh(movementsProvider);
+                 if (context.mounted) {
+                   ScaffoldMessenger.of(context).showSnackBar(
+                     const SnackBar(content: Text('Movimiento eliminado correctamente')),
+                   );
+                 }
+              } catch (e) {
+                 if (context.mounted) {
+                   ScaffoldMessenger.of(context).showSnackBar(
+                     SnackBar(content: Text('Error al eliminar: $e')),
+                   );
+                 }
+              }
+            }, 
+            child: const Text('ELIMINAR')
+          ),
+        ],
       ),
     );
   }
