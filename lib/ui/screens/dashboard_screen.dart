@@ -18,7 +18,8 @@ import 'package:petty_cash_app/ui/screens/history_screen.dart';
 import 'package:petty_cash_app/ui/screens/validation_form_screen.dart';
 import 'package:petty_cash_app/ui/widgets/main_layout.dart';
 // Conditional import for web/native compatibility
-import 'dart:html' as html if (dart.library.io) 'package:petty_cash_app/services/html_stub.dart';
+import 'package:petty_cash_app/services/html_stub.dart' if (dart.library.html) 'dart:html' as html;
+import 'package:petty_cash_app/ui/widgets/responsive_layout.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -44,12 +45,12 @@ class DashboardScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
               
-              // Balance Cards (2 Columns)
+              // Balance Cards (Responsive)
               userAsync.when(
-                data: (user) => Row(
-                  children: [
-                    Expanded(
-                      child: _buildBalanceCard(
+                data: (user) => ResponsiveLayout(
+                  mobile: Column(
+                    children: [
+                      _buildBalanceCard(
                         'Efectivo', 
                         user?.cashBalance ?? 0.0, 
                         Icons.payments_outlined, 
@@ -60,18 +61,43 @@ class DashboardScreen extends ConsumerWidget {
                         },
                         gradientColors: [AppTheme.primaryOrange, AppTheme.primaryYellow],
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildBalanceCard(
+                      const SizedBox(height: 16),
+                      _buildBalanceCard(
                         'Tarjeta', 
                         user?.debitBalance ?? 0.0, 
                         Icons.credit_card_outlined, 
                         const Color(0xFF1A237E),
                         gradientColors: [const Color(0xFF1A237E), const Color(0xFF3949AB)],
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  desktop: Row(
+                    children: [
+                      Expanded(
+                        child: _buildBalanceCard(
+                          'Efectivo', 
+                          user?.cashBalance ?? 0.0, 
+                          Icons.payments_outlined, 
+                          AppTheme.primaryOrange,
+                          onSync: () async {
+                            await ref.read(userRepositoryProvider).recalculateBalances(user!.id);
+                            await ref.read(movementRepositoryProvider).cleanupOldAttachments();
+                          },
+                          gradientColors: [AppTheme.primaryOrange, AppTheme.primaryYellow],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildBalanceCard(
+                          'Tarjeta', 
+                          user?.debitBalance ?? 0.0, 
+                          Icons.credit_card_outlined, 
+                          const Color(0xFF1A237E),
+                          gradientColors: [const Color(0xFF1A237E), const Color(0xFF3949AB)],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (_, __) => const Text('Error al cargar saldos'),
@@ -79,12 +105,12 @@ class DashboardScreen extends ConsumerWidget {
               const SizedBox(height: 24),
 
               // Metric Grid (2x2 for mobile)
-              _buildMetricGrid(movementsAsync),
+              _buildMetricGrid(context, movementsAsync),
               const SizedBox(height: 24),
 
               // Export/Print Actions
               userAsync.when(
-                data: (user) => _buildActionButtons(context, user, movementsAsync.value ?? []),
+                data: (user) => _buildActionButtons(context, ref, user, movementsAsync.value ?? []),
                 loading: () => const SizedBox.shrink(),
                 error: (_, __) => const SizedBox.shrink(),
               ),
@@ -188,7 +214,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMetricGrid(AsyncValue<List<MovementModel>> movementsAsync) {
+  Widget _buildMetricGrid(BuildContext context, AsyncValue<List<MovementModel>> movementsAsync) {
     return movementsAsync.when(
       data: (movements) {
         final incomes = movements.where((m) => m.type == MovementType.income).fold(0.0, (sum, m) => sum + m.grossAmount);
@@ -197,12 +223,12 @@ class DashboardScreen extends ConsumerWidget {
         final count = movements.length;
 
         return GridView.count(
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
+          crossAxisCount: ResponsiveLayout.isMobile(context) ? 1 : 2,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: 1.6,
+          childAspectRatio: ResponsiveLayout.isMobile(context) ? 3.5 : 2.8,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
           children: [
             _buildStatCard('INGRESOS', '\$ ${NumberFormat('#,##0').format(incomes)}', Icons.add_chart, Colors.green),
             _buildStatCard('SALDO NETO', '\$ ${NumberFormat('#,##0').format(net)}', Icons.account_balance_wallet_outlined, AppTheme.primaryOrange),
@@ -280,17 +306,39 @@ class DashboardScreen extends ConsumerWidget {
       ),
     );
   }
+   Widget _buildActionButtons(BuildContext context, WidgetRef ref, UserModel? user, List<MovementModel> movements) {
+    final selectedRange = ref.watch(dashboardChartRangeProvider);
+    final now = DateTime.now();
+    
+    // Filtramos movimientos según el rango seleccionado para impresión/excel
+    final filtered = movements.where((m) {
+      switch (selectedRange) {
+        case 'Diario':
+          return m.date.day == now.day && m.date.month == now.month && m.date.year == now.year;
+        case 'Semanal':
+          return m.date.isAfter(now.subtract(const Duration(days: 7)));
+        case 'Mensual':
+          return m.date.month == now.month && m.date.year == now.year;
+        case 'Anual':
+          return m.date.year == now.year;
+        default:
+          return true;
+      }
+    }).toList();
 
-  Widget _buildActionButtons(BuildContext context, UserModel? user, List<MovementModel> movements) {
+    final rangeSuffix = selectedRange == 'Anual' ? 'Año' : 
+                        selectedRange == 'Mensual' ? 'Mes' : 
+                        selectedRange == 'Semanal' ? 'Semana' : 'Día';
+
     return Column(
       children: [
         Row(
           children: [
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () => _exportToExcel(movements),
+                onPressed: () => _exportToExcel(filtered),
                 icon: const Icon(Icons.description_outlined, size: 18),
-                label: const Text('Exportar Excel'),
+                label: Text('Excel $rangeSuffix'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   foregroundColor: AppTheme.textDark,
@@ -304,11 +352,11 @@ class DashboardScreen extends ConsumerWidget {
               child: OutlinedButton.icon(
                 onPressed: () {
                    if (user != null) {
-                     PDFService.generateAndPrint(user.cashBalance, user.debitBalance, movements);
+                     PDFService.generateAndPrint(user.cashBalance, user.debitBalance, filtered);
                    }
                 },
                 icon: const Icon(Icons.print_outlined, size: 18),
-                label: const Text('Imprimir Todo'),
+                label: Text('Imprimir $rangeSuffix'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   foregroundColor: AppTheme.textDark,
@@ -323,12 +371,12 @@ class DashboardScreen extends ConsumerWidget {
         SizedBox(width: double.infinity, child: ElevatedButton.icon(
           onPressed: () {
              if (user != null) {
-               final expensesOnly = movements.where((m) => m.type == MovementType.expense).toList();
+               final expensesOnly = filtered.where((m) => m.type == MovementType.expense).toList();
                PDFService.generateAndPrint(user.cashBalance, user.debitBalance, expensesOnly);
              }
           },
           icon: const Icon(Icons.picture_as_pdf_outlined, color: Colors.white),
-          label: const Text('IMPRIMIR SOLO GASTOS'),
+          label: Text('IMPRIMIR GASTOS $rangeSuffix'.toUpperCase()),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppTheme.expenseRed,
             foregroundColor: Colors.white,
@@ -340,6 +388,7 @@ class DashboardScreen extends ConsumerWidget {
       ],
     );
   }
+
 
   Future<void> _exportToExcel(List<MovementModel> movements) async {
     final excel = excel_lib.Excel.createExcel();

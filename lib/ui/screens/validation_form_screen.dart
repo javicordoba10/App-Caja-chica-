@@ -1,4 +1,5 @@
 import 'dart:io' as io;
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +12,8 @@ import 'package:petty_cash_app/repositories/movement_repository.dart';
 import 'package:petty_cash_app/repositories/user_repository.dart';
 import 'package:petty_cash_app/services/ocr_service.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
+import 'package:petty_cash_app/ui/widgets/responsive_layout.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // ─── Full-name labels for cost centers ──────────────────────────────
 const Map<CostCenter, String> _costCenterNames = {
@@ -131,6 +134,12 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     // Listener después de inicializar todo
     if (!widget.isReadOnly) {
       _grossCtrl.addListener(_recalcNet);
+    }
+    
+    // Si es una previsualización de algo ya guardado, intentamos detectar si es PDF por la URL
+    if (em != null && em.imageUrl != null && em.imageUrl!.toLowerCase().contains('.pdf')) {
+       // Aprovechamos que widget.data es mutable o creamos una copia lógica si fuera necesario, 
+       // pero aquí simplemente usaremos el dato de la URL en la UI.
     }
     _isInitializing = false;
   }
@@ -329,16 +338,27 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                         // Date row
                         _datePicker(),
                         const SizedBox(height: 16),
-                        // Invoice type + gross amount in a row
-                        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Expanded(child: _field(_grossCtrl, 'Monto Total (ARS)', Icons.payments_outlined,
-                              keyboardType: TextInputType.number,
-                              readOnly: widget.isReadOnly,
-                              validator: (v) => (v == null || v.isEmpty) ? 'Requerido' : null)),
-                          const SizedBox(width: 12),
-                          if (_selectedType == MovementType.expense)
-                            Expanded(child: _invoiceTypeDropdown(enabled: !widget.isReadOnly)),
-                        ]),
+                        // Invoice type + gross amount (Responsive)
+                        if (ResponsiveLayout.isMobile(context))
+                          Column(children: [
+                            _field(_grossCtrl, 'Monto Total (ARS)', Icons.payments_outlined,
+                                keyboardType: TextInputType.number,
+                                readOnly: widget.isReadOnly,
+                                validator: (v) => (v == null || v.isEmpty) ? 'Requerido' : null),
+                            const SizedBox(height: 16),
+                            if (_selectedType == MovementType.expense)
+                              _invoiceTypeDropdown(enabled: !widget.isReadOnly),
+                          ])
+                        else
+                          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Expanded(child: _field(_grossCtrl, 'Monto Total (ARS)', Icons.payments_outlined,
+                                keyboardType: TextInputType.number,
+                                readOnly: widget.isReadOnly,
+                                validator: (v) => (v == null || v.isEmpty) ? 'Requerido' : null)),
+                            const SizedBox(width: 12),
+                            if (_selectedType == MovementType.expense)
+                              Expanded(child: _invoiceTypeDropdown(enabled: !widget.isReadOnly)),
+                          ]),
                         const SizedBox(height: 16),
 
                         // Net amount (read-only for Factura A, editable otherwise)
@@ -463,7 +483,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
+                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
                         child: const Row(children: [
                           Icon(Icons.auto_awesome, color: Colors.white, size: 10),
                           SizedBox(width: 4),
@@ -476,7 +496,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                   if (_parse(_grossCtrl.text) > 0)
                     Text(
                       '\$ ${_parse(_grossCtrl.text).toStringAsFixed(2)}',
-                      style: GoogleFonts.montserrat(color: Colors.white.withValues(alpha: 0.85), fontSize: 15, fontWeight: FontWeight.w600),
+                      style: GoogleFonts.montserrat(color: Colors.white.withOpacity(0.85), fontSize: 15, fontWeight: FontWeight.w600),
                     ),
                 ],
               ),
@@ -493,9 +513,14 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
   }
 
   Widget _buildReceiptPreview() {
+    final path = widget.data.imagePath;
+    if (path.isEmpty) return const SizedBox.shrink();
+    
+    final bool effectivelyPdf = widget.data.isPdf || path.toLowerCase().contains('.pdf') || path.toLowerCase().contains('blob:');
+
     return Container(
-      height: 160,
       width: double.infinity,
+      height: 220,
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
         color: AppTheme.pureWhite,
@@ -505,11 +530,13 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Stack(children: [
-          widget.data.isPdf
-              ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(Icons.picture_as_pdf, size: 48, color: AppTheme.expenseRed),
-                  SizedBox(height: 8),
-                  Text('DOCUMENTO PDF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+          effectivelyPdf
+              ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Icon(Icons.picture_as_pdf, size: 64, color: AppTheme.expenseRed),
+                  const SizedBox(height: 12),
+                  Text('DOCUMENTO PDF', style: GoogleFonts.montserrat(fontWeight: FontWeight.w800, fontSize: 12, color: AppTheme.textDark)),
+                  const SizedBox(height: 4),
+                  Text('Presiona el botón para visualizar', style: GoogleFonts.montserrat(fontSize: 10, color: AppTheme.textGrey)),
                 ]))
               : kIsWeb
                   ? Image.network(widget.data.imagePath, width: double.infinity, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))

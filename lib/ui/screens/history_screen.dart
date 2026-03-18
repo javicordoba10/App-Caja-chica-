@@ -8,6 +8,7 @@ import 'package:petty_cash_app/services/ocr_service.dart';
 import 'package:petty_cash_app/ui/screens/validation_form_screen.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:petty_cash_app/ui/widgets/responsive_layout.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
@@ -127,13 +128,24 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: AppTheme.orangeCardDecoration,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildSummaryItem('INGRESOS', inc, Colors.white),
-          Container(height: 30, width: 1, color: Colors.white24),
-          _buildSummaryItem('EGRESOS', exp, Colors.white),
-        ],
+      child: ResponsiveLayout(
+        mobile: Column(
+          children: [
+            _buildSummaryItem('INGRESOS', inc, Colors.white),
+            const SizedBox(height: 12),
+            Container(height: 1, width: 40, color: Colors.white24),
+            const SizedBox(height: 12),
+            _buildSummaryItem('EGRESOS', exp, Colors.white),
+          ],
+        ),
+        desktop: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildSummaryItem('INGRESOS', inc, Colors.white),
+            Container(height: 30, width: 1, color: Colors.white24),
+            _buildSummaryItem('EGRESOS', exp, Colors.white),
+          ],
+        ),
       ),
     );
   }

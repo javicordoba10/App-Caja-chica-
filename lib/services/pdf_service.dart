@@ -43,7 +43,7 @@ class PDFService {
               // Header
               pw.Text('Reporte de Caja Chica', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 8),
-              pw.Text('Fecha Generacion: \${DateFormat("dd/MM/yyyy HH:mm").format(DateTime.now())}'),
+              pw.Text('Fecha Generación: ${DateFormat("dd/MM/yyyy HH:mm").format(DateTime.now())}'),
               pw.Divider(),
               pw.SizedBox(height: 16),
 
@@ -138,6 +138,18 @@ class PDFService {
                   4: pw.Alignment.centerRight,
                 }
               ),
+              pw.SizedBox(height: 48),
+              // Firma en la parte inferior izquierda
+              pw.Container(
+                width: 180,
+                height: 50,
+                decoration: pw.BoxDecoration(
+                  border: pw.Border(top: pw.BorderSide(color: PdfColors.black, width: 1.0)),
+                ),
+                alignment: pw.Alignment.topLeft,
+                padding: const pw.EdgeInsets.only(top: 4),
+                child: pw.Text('Firma del Empleado', style: const pw.TextStyle(fontSize: 10)),
+              ),
             ],
           );
         },
@@ -209,19 +221,17 @@ class PDFService {
               ],
             ),
 
-            pw.SizedBox(height: 100),
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.end,
-              children: [
-                pw.Container(
-                  width: 200,
-                  height: 60,
-                  decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.black)),
-                  alignment: pw.Alignment.bottomLeft,
-                  padding: const pw.EdgeInsets.all(4),
-                  child: pw.Text('Firma:', style: const pw.TextStyle(fontSize: 10)),
-                ),
-              ],
+            pw.SizedBox(height: 48),
+            // Firma en la parte inferior izquierda
+            pw.Container(
+              width: 180,
+              height: 50,
+              decoration: pw.BoxDecoration(
+                border: pw.Border(top: pw.BorderSide(color: PdfColors.black, width: 1.0)),
+              ),
+              alignment: pw.Alignment.topLeft,
+              padding: const pw.EdgeInsets.only(top: 4),
+              child: pw.Text('Firma del Empleado', style: const pw.TextStyle(fontSize: 10)),
             ),
           ];
         },
