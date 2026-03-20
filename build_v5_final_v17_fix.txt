@@ -1,3 +1,0 @@
-
-Running Gradle task 'assembleRelease'...                           56,6s
-Gradle task assembleRelease failed with exit code 1

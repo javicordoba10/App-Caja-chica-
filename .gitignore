@@ -46,8 +46,12 @@ app.*.map.json
 
 # Logs and temporary research files
 *.txt
-*.md
+*.log
 !README.md
 !task.md
 !implementation_plan*.md
 !walkthrough*.md
+
+# Temporary Word files
+~$*.docx
+*.tmp
