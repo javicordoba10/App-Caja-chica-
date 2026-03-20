@@ -8,7 +8,8 @@ class UserModel {
   final double cashBalance;
   final double debitBalance;
   final String role;
-  final CostCenter establishment;
+  final List<CostCenter> establishments; // v25: Multiple establishments support
+  final bool isActive;
 
   UserModel({
     required this.id,
@@ -18,7 +19,8 @@ class UserModel {
     required this.cashBalance,
     required this.debitBalance,
     this.role = 'user',
-    this.establishment = CostCenter.Administracion,
+    this.establishments = const [CostCenter.Administracion],
+    this.isActive = true,
   });
 
   UserModel copyWith({
@@ -29,7 +31,8 @@ class UserModel {
     double? cashBalance,
     double? debitBalance,
     String? role,
-    CostCenter? establishment,
+    List<CostCenter>? establishments,
+    bool? isActive,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -39,7 +42,8 @@ class UserModel {
       cashBalance: cashBalance ?? this.cashBalance,
       debitBalance: debitBalance ?? this.debitBalance,
       role: role ?? this.role,
-      establishment: establishment ?? this.establishment,
+      establishments: establishments ?? this.establishments,
+      isActive: isActive ?? this.isActive,
     );
   }
 
@@ -51,12 +55,31 @@ class UserModel {
       'cashBalance': cashBalance,
       'debitBalance': debitBalance,
       'role': role,
-      'establishment': establishment.name,
+      'establishments': establishments.map((e) => e.name).toList(),
+      'isActive': isActive,
     };
   }
 
   factory UserModel.fromMap(Map<String, dynamic> map, String id) {
     double oldBalance = (map['balance'] ?? 0.0).toDouble();
+    
+    // Compatibility logic for single vs multiple establishments
+    List<CostCenter> establishmentsList = [];
+    if (map.containsKey('establishments') && map['establishments'] is List) {
+      establishmentsList = (map['establishments'] as List)
+          .map((e) => CostCenter.values.firstWhere((v) => v.name == e, orElse: () => CostCenter.Administracion))
+          .toList();
+    } else {
+      final oldEst = map['establishment'] ?? map['area'];
+      if (oldEst != null) {
+        establishmentsList = [
+          CostCenter.values.firstWhere((e) => e.name == oldEst, orElse: () => CostCenter.Administracion)
+        ];
+      } else {
+        establishmentsList = [CostCenter.Administracion];
+      }
+    }
+
     return UserModel(
       id: id,
       name: map['name'] ?? '',
@@ -65,10 +88,8 @@ class UserModel {
       cashBalance: map.containsKey('cashBalance') ? (map['cashBalance'] ?? 0.0).toDouble() : oldBalance,
       debitBalance: (map['debitBalance'] ?? 0.0).toDouble(),
       role: map['role'] ?? 'user',
-      establishment: CostCenter.values.firstWhere(
-        (e) => e.name == map['establishment'] || e.name == map['area'],
-        orElse: () => CostCenter.Administracion,
-      ),
+      isActive: map['isActive'] ?? true,
+      establishments: establishmentsList,
     );
   }
 }

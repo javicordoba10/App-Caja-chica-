@@ -18,6 +18,8 @@ class MovementModel {
   final DateTime date;
   final DateTime? invoiceDate; // v17: Fecha del comprobante (del OCR o manual)
   final String? imageUrl;
+  final String? userName; // v24: Attribution for admin view
+  final String? userEmail; // v24: Attribution for admin view
 
   MovementModel({
     required this.id,
@@ -34,6 +36,8 @@ class MovementModel {
     required this.date,
     this.invoiceDate,
     this.imageUrl,
+    this.userName,
+    this.userEmail,
   });
 
   Map<String, dynamic> toMap() {
@@ -51,6 +55,8 @@ class MovementModel {
       'date': Timestamp.fromDate(date),
       'invoiceDate': invoiceDate != null ? Timestamp.fromDate(invoiceDate!) : null,
       'imageUrl': imageUrl,
+      'userName': userName,
+      'userEmail': userEmail,
     };
   }
 
@@ -70,6 +76,8 @@ class MovementModel {
       date: (map['date'] as Timestamp).toDate(),
       invoiceDate: map['invoiceDate'] != null ? (map['invoiceDate'] as Timestamp).toDate() : null,
       imageUrl: map['imageUrl'],
+      userName: map['userName'],
+      userEmail: map['userEmail'],
     );
   }
 
@@ -87,6 +95,8 @@ class MovementModel {
     PaymentMethod? paymentMethod,
     DateTime? date,
     String? imageUrl,
+    String? userName,
+    String? userEmail,
   }) {
     return MovementModel(
       id: id ?? this.id,
@@ -103,6 +113,8 @@ class MovementModel {
       date: date ?? this.date,
       invoiceDate: invoiceDate ?? this.invoiceDate,
       imageUrl: imageUrl ?? this.imageUrl,
+      userName: userName ?? this.userName,
+      userEmail: userEmail ?? this.userEmail,
     );
   }
 }

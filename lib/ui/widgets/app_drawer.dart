@@ -57,7 +57,7 @@ class AppDrawer extends ConsumerWidget {
                     ),
                   ),
                   Text(
-                    user?.establishment.name ?? 'General',
+                    user?.establishments.map((e) => e.name).join(' • ') ?? 'General',
                     style: GoogleFonts.montserrat(
                       color: Colors.white60,
                       fontSize: 12,
@@ -96,6 +96,20 @@ class AppDrawer extends ConsumerWidget {
             label: 'Perfil',
             isSelected: currentRoute == 'profile',
             onTap: () => onItemSelected('profile'),
+          ),
+          
+          // Solo para Administradores
+          userAsync.when(
+            data: (user) => user?.role == 'admin' 
+              ? _DrawerItem(
+                  icon: Icons.admin_panel_settings_outlined,
+                  label: 'Gestión Usuarios',
+                  isSelected: currentRoute == 'users',
+                  onTap: () => onItemSelected('users'),
+                )
+              : const SizedBox.shrink(),
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
           ),
           
           const Spacer(),

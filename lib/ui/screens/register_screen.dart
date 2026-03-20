@@ -22,6 +22,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _confirmPassCtrl = TextEditingController();
   
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   Future<void> _register() async {
     if (_nameCtrl.text.isEmpty || _emailCtrl.text.isEmpty || _passCtrl.text.isEmpty) {
@@ -57,7 +59,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       final firebaseUser = credential.user;
       if (firebaseUser == null) throw Exception('No se pudo crear el usuario.');
 
-      // Step 2: Save user profile in Firestore using the UID from Auth
+      // Step 2: Send verification email
+      await firebaseUser.sendEmailVerification();
+
+      // Step 3: Save user profile in Firestore using the UID from Auth
       final userRepo = ref.read(userRepositoryProvider);
       final newUser = UserModel(
         id: firebaseUser.uid,
@@ -65,7 +70,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         email: _emailCtrl.text.trim(),
         cashBalance: 0.0,
         debitBalance: 0.0,
-        establishment: CostCenter.Administracion,
+        establishments: const [CostCenter.Administracion],
         role: 'user',
       );
       
@@ -77,7 +82,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
            const SnackBar(
-             content: Text('¡Registro exitoso! Ya puedes ingresar con tus datos.'),
+             content: Text('¡Registro exitoso! Por favor revisa tu correo para verificar tu cuenta e ingresar.'),
              backgroundColor: AppTheme.incomeGreen,
            ),
         );
@@ -190,9 +195,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       const SizedBox(height: 16),
                       _buildTextField(_emailCtrl, 'Correo Electrónico', Icons.email_outlined),
                       const SizedBox(height: 16),
-                      _buildTextField(_passCtrl, 'Contraseña', Icons.lock_outline, obscure: true, isPassword: true),
+                      _buildTextField(_passCtrl, 'Contraseña', Icons.lock_outline, 
+                        obscure: _obscurePassword, isPassword: true, 
+                        onToggle: () => setState(() => _obscurePassword = !_obscurePassword)),
                       const SizedBox(height: 16),
-                      _buildTextField(_confirmPassCtrl, 'Confirmar Contraseña', Icons.lock_reset_outlined, obscure: true, isPassword: true),
+                      _buildTextField(_confirmPassCtrl, 'Confirmar Contraseña', Icons.lock_reset_outlined, 
+                        obscure: _obscureConfirmPassword, isPassword: true, 
+                        onToggle: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword)),
 
                       const SizedBox(height: 30),
 
@@ -330,14 +339,20 @@ class SurgicalLogoPainter extends CustomPainter {
 }
 
 Widget _buildTextField(TextEditingController ctrl, String hint, IconData icon,
-      {bool obscure = false, bool isPassword = false}) {
+      {bool obscure = false, bool isPassword = false, VoidCallback? onToggle}) {
     return TextField(
       controller: ctrl,
       obscureText: obscure,
       style: GoogleFonts.montserrat(fontSize: 15),
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: Colors.grey),
-        suffixIcon: isPassword ? const Icon(Icons.visibility_off_outlined, color: Colors.grey) : null,
+        suffixIcon: isPassword ? IconButton(
+                icon: Icon(
+                  obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  color: Colors.grey,
+                ),
+                onPressed: onToggle,
+              ) : null,
         hintText: hint,
         hintStyle: const TextStyle(color: AppTheme.textGrey),
         filled: true,

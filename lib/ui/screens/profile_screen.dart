@@ -16,17 +16,20 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isEditing = false;
+  late TextEditingController _nameCtrl;
   late TextEditingController _phoneCtrl;
-  CostCenter _assignedEstablishment = CostCenter.Administracion;
+  List<CostCenter> _selectedEstablishments = [];
 
   @override
   void initState() {
     super.initState();
+    _nameCtrl = TextEditingController();
     _phoneCtrl = TextEditingController();
   }
 
   @override
   void dispose() {
+    _nameCtrl.dispose();
     _phoneCtrl.dispose();
     super.dispose();
   }
@@ -38,8 +41,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return userAsync.when(
         data: (user) {
           if (!_isEditing) {
+            _nameCtrl.text = user?.name ?? '';
             _phoneCtrl.text = user?.phone ?? '';
-            _assignedEstablishment = user?.establishment ?? CostCenter.Administracion;
+            _selectedEstablishments = List.from(user?.establishments ?? []);
           }
           
           return SingleChildScrollView(
@@ -54,7 +58,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _buildInfoCard(
                   title: 'DATOS PERSONALES',
                   children: [
-                    _buildInfoTile(Icons.person_outline, 'Nombre', user?.name ?? 'No disponible'),
+                    _buildEditableTile(Icons.person_outline, 'Nombre completo', _nameCtrl, enabled: _isEditing),
                     _buildInfoTile(Icons.email_outlined, 'Email', user?.email ?? 'No disponible'),
                     _buildEditableTile(Icons.phone_outlined, 'Teléfono', _phoneCtrl, enabled: _isEditing),
                   ],
@@ -64,12 +68,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _buildInfoCard(
                   title: 'CONFIGURACIÓN DE TRABAJO',
                   children: [
-                    _buildDropdownTile(
+                    _buildMultiSelectTile(
                       Icons.business_outlined, 
-                      'Establecimiento a Cargo', 
-                      _assignedEstablishment,
+                      'Establecimientos a Cargo', 
+                      _selectedEstablishments,
                       enabled: _isEditing,
-                      onChanged: (val) => setState(() => _assignedEstablishment = val!),
+                      onToggle: (val) {
+                        setState(() {
+                          if (_selectedEstablishments.contains(val)) {
+                            if (_selectedEstablishments.length > 1) {
+                              _selectedEstablishments.remove(val);
+                            }
+                          } else {
+                            _selectedEstablishments.add(val!);
+                          }
+                        });
+                      },
                     ),
                     _buildInfoTile(Icons.badge_outlined, 'Rol de Usuario', user?.role ?? 'Usuario'),
                   ],
@@ -93,7 +107,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       const SizedBox(width: 16),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: _saveProfile,
+                          onPressed: () => _saveProfile(user!.id),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.pureBlack,
                             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -176,7 +190,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ),
         Text(
-          user?.establishment.name ?? 'General',
+          user?.establishments.map((e) => _getEstablishmentName(e)).join(' • ') ?? 'General',
+          textAlign: TextAlign.center,
           style: GoogleFonts.montserrat(
             fontSize: 14,
             color: AppTheme.textGrey,
@@ -262,33 +277,43 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildDropdownTile(IconData icon, String label, CostCenter value, {required bool enabled, required ValueChanged<CostCenter?> onChanged}) {
+  Widget _buildMultiSelectTile(IconData icon, String label, List<CostCenter> current, {required bool enabled, required ValueChanged<CostCenter?> onToggle}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12.0),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: enabled ? AppTheme.primaryOrange : AppTheme.textGrey.withOpacity(0.5)),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 10, fontWeight: FontWeight.bold)),
-                if (enabled)
-                  DropdownButton<CostCenter>(
-                    value: value,
-                    isExpanded: true,
-                    underline: const SizedBox(),
-                    items: CostCenter.values.map((c) => DropdownMenuItem(
-                      value: c, 
-                      child: Text(_getEstablishmentName(c), style: GoogleFonts.montserrat(fontSize: 14, fontWeight: FontWeight.w600)),
-                    )).toList(),
-                    onChanged: onChanged,
-                  )
-                else
-                  Text(_getEstablishmentName(value), style: GoogleFonts.montserrat(color: AppTheme.textDark, fontSize: 14, fontWeight: FontWeight.w600)),
-              ],
-            ),
+          Row(
+            children: [
+              Icon(icon, size: 20, color: enabled ? AppTheme.primaryOrange : AppTheme.textGrey.withOpacity(0.5)),
+              const SizedBox(width: 16),
+              Text(label, style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 10, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: CostCenter.values.map((c) {
+              final isSelected = current.contains(c);
+              if (!enabled && !isSelected) return const SizedBox.shrink();
+              
+              return FilterChip(
+                label: Text(_getEstablishmentName(c), style: GoogleFonts.montserrat(
+                  fontSize: 12, 
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? Colors.white : AppTheme.textDark,
+                )),
+                selected: isSelected,
+                onSelected: enabled ? (selected) => onToggle(c) : null,
+                selectedColor: AppTheme.pureBlack,
+                checkmarkColor: Colors.white,
+                backgroundColor: Colors.black12,
+                showCheckmark: false,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              );
+            }).toList(),
           ),
         ],
       ),
@@ -309,11 +334,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  void _saveProfile() async {
-    // TODO: Implement save logic in UserRepository
-    setState(() => _isEditing = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Perfil actualizado ✓'), backgroundColor: AppTheme.incomeGreen),
-    );
+  void _saveProfile(String userId) async {
+    try {
+      await ref.read(userRepositoryProvider).updateUserProfile(
+        userId,
+        name: _nameCtrl.text,
+        phone: _phoneCtrl.text,
+        establishments: _selectedEstablishments,
+      );
+      
+      setState(() => _isEditing = false);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Perfil actualizado ✓'), backgroundColor: AppTheme.incomeGreen),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al guardar: $e'), backgroundColor: AppTheme.expenseRed),
+        );
+      }
+    }
   }
 }

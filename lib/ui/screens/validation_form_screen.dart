@@ -232,6 +232,8 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     final totalVat = _vatSlots.fold(0.0, (s, slot) => s + _parse(slot.amountCtrl.text));
     final movId   = const Uuid().v4();
 
+    final currentUser = ref.read(currentUserProvider).value;
+
     final movement = MovementModel(
       id:            movId,
       userId:        userId ?? 'unknown',
@@ -247,6 +249,8 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
       date:          DateTime.now(), // v17: Fecha de Carga (Listas)
       invoiceDate:   _selectedDate,  // v17: Fecha del Ticket (Detalles)
       imageUrl:      null,
+      userName:      currentUser?.name,
+      userEmail:     currentUser?.email,
     );
 
     userRepo.saveMovementWithBalanceUpdate(movement).then((_) {

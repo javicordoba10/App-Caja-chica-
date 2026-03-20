@@ -9,6 +9,7 @@ import 'package:petty_cash_app/ui/screens/validation_form_screen.dart';
 import 'package:petty_cash_app/models/movement_model.dart';
 import 'package:petty_cash_app/services/ocr_service.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
+import 'package:petty_cash_app/ui/screens/users_screen.dart';
 
 // State for navigation
 final navigationProvider = StateProvider<String>((ref) => 'dashboard');
@@ -60,6 +61,8 @@ class MainLayout extends ConsumerWidget {
         return 'Nuevo Registro';
       case 'profile':
         return 'Mi Perfil';
+      case 'users':
+        return 'Gestión de Usuarios';
       default:
         return 'Petty Cash';
     }
@@ -75,6 +78,8 @@ class MainLayout extends ConsumerWidget {
         return NewMovementScreen();
       case 'profile':
         return ProfileScreen();
+      case 'users':
+        return const UsersScreen();
       default:
         return DashboardScreen();
     }

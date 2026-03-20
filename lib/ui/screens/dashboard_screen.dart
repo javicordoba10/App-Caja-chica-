@@ -39,44 +39,44 @@ class DashboardScreen extends ConsumerWidget {
             children: [
               // Greeting Section
               userAsync.when(
-                data: (user) => _buildGreeting(user?.name ?? 'Usuario', user?.role ?? 'user'),
-                loading: () => _buildGreeting('...', 'user'),
-                error: (_, __) => _buildGreeting('Invitado', 'user'),
+                data: (user) {
+                  final viewAll = ref.watch(adminViewAllProvider);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildGreeting(user?.name ?? 'Usuario', user?.role ?? 'user', viewAll),
+                      if (user?.role == 'admin') ...[
+                        const SizedBox(height: 16),
+                        _buildViewToggle(ref, viewAll),
+                      ],
+                    ],
+                  );
+                },
+                loading: () => _buildGreeting('...', 'user', true),
+                error: (_, __) => _buildGreeting('Invitado', 'user', true),
               ),
               const SizedBox(height: 24),
               
               // Balance Cards (Responsive)
               userAsync.when(
-                data: (user) => ResponsiveLayout(
-                  mobile: Column(
-                    children: [
-                      _buildBalanceCard(
-                        'Efectivo', 
-                        user?.cashBalance ?? 0.0, 
-                        Icons.payments_outlined, 
-                        AppTheme.primaryOrange,
-                        onSync: () async {
-                          await ref.read(userRepositoryProvider).recalculateBalances(user!.id);
-                          await ref.read(movementRepositoryProvider).cleanupOldAttachments();
-                        },
-                        gradientColors: [AppTheme.primaryOrange, AppTheme.primaryYellow],
-                      ),
-                      const SizedBox(height: 16),
-                      _buildBalanceCard(
-                        'Tarjeta', 
-                        user?.debitBalance ?? 0.0, 
-                        Icons.credit_card_outlined, 
-                        const Color(0xFF1A237E),
-                        gradientColors: [const Color(0xFF1A237E), const Color(0xFF3949AB)],
-                      ),
-                    ],
-                  ),
-                  desktop: Row(
-                    children: [
-                      Expanded(
-                        child: _buildBalanceCard(
-                          'Efectivo', 
-                          user?.cashBalance ?? 0.0, 
+                data: (user) {
+                  final globalAsync = ref.watch(globalBalancesProvider);
+                  final viewAll = ref.watch(adminViewAllProvider);
+                  
+                  double displayCash = user?.cashBalance ?? 0.0;
+                  double displayDebit = user?.debitBalance ?? 0.0;
+                  
+                  if (viewAll && user?.role == 'admin') {
+                     displayCash = globalAsync.value?['cash'] ?? displayCash;
+                     displayDebit = globalAsync.value?['debit'] ?? displayDebit;
+                  }
+
+                  return ResponsiveLayout(
+                    mobile: Column(
+                      children: [
+                        _buildBalanceCard(
+                          (viewAll && user?.role == 'admin') ? 'Efectivo (Total)' : 'Efectivo', 
+                          displayCash, 
                           Icons.payments_outlined, 
                           AppTheme.primaryOrange,
                           onSync: () async {
@@ -85,20 +85,45 @@ class DashboardScreen extends ConsumerWidget {
                           },
                           gradientColors: [AppTheme.primaryOrange, AppTheme.primaryYellow],
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildBalanceCard(
-                          'Tarjeta', 
-                          user?.debitBalance ?? 0.0, 
+                        const SizedBox(height: 16),
+                        _buildBalanceCard(
+                          (viewAll && user?.role == 'admin') ? 'Tarjeta (Total)' : 'Tarjeta', 
+                          displayDebit, 
                           Icons.credit_card_outlined, 
                           const Color(0xFF1A237E),
                           gradientColors: [const Color(0xFF1A237E), const Color(0xFF3949AB)],
                         ),
-                      ),
-                    ],
-                  ),
-                ),
+                      ],
+                    ),
+                    desktop: Row(
+                      children: [
+                        Expanded(
+                          child: _buildBalanceCard(
+                            (viewAll && user?.role == 'admin') ? 'Efectivo (Total)' : 'Efectivo', 
+                            displayCash, 
+                            Icons.payments_outlined, 
+                            AppTheme.primaryOrange,
+                            onSync: () async {
+                              await ref.read(userRepositoryProvider).recalculateBalances(user!.id);
+                              await ref.read(movementRepositoryProvider).cleanupOldAttachments();
+                            },
+                            gradientColors: [AppTheme.primaryOrange, AppTheme.primaryYellow],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildBalanceCard(
+                            (viewAll && user?.role == 'admin') ? 'Tarjeta (Total)' : 'Tarjeta', 
+                            displayDebit, 
+                            Icons.credit_card_outlined, 
+                            const Color(0xFF1A237E),
+                            gradientColors: [const Color(0xFF1A237E), const Color(0xFF3949AB)],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (_, __) => const Text('Error al cargar saldos'),
               ),
@@ -128,13 +153,13 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildGreeting(String name, String role) {
+  Widget _buildGreeting(String name, String role, bool viewAll) {
     final hour = DateTime.now().hour;
     String greeting = 'Buenos días';
     if (hour >= 12 && hour < 20) greeting = 'Buenas tardes';
     if (hour >= 20 || hour < 5) greeting = 'Buenas noches';
 
-    final displayName = role == 'admin' ? 'Administrador $name' : name;
+    final displayName = (role == 'admin' && viewAll) ? 'Administrador $name' : name;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -625,6 +650,19 @@ class DashboardScreen extends ConsumerWidget {
                     '${DateFormat('dd MMM').format(m.date)} • ${_getEstablishmentCode(m.costCenter)} • ${m.paymentMethod == PaymentMethod.cash ? 'Efectivo' : 'Tarjeta'}', 
                     style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11, fontWeight: FontWeight.w500),
                   ),
+                  if (ref.watch(adminViewAllProvider) && m.userName != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        'Por: ${m.userName}',
+                        style: GoogleFonts.montserrat(
+                          color: AppTheme.primaryOrange, 
+                          fontSize: 10, 
+                          fontWeight: FontWeight.w700,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -708,6 +746,33 @@ class DashboardScreen extends ConsumerWidget {
     }
   }
 
+  Widget _buildViewToggle(WidgetRef ref, bool viewAll) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ViewTab(
+            label: 'Supervisión (Todo)',
+            isSelected: viewAll,
+            icon: Icons.business_center_outlined,
+            onTap: () => ref.read(adminViewAllProvider.notifier).state = true,
+          ),
+          _ViewTab(
+            label: 'Personal (Mío)',
+            isSelected: !viewAll,
+            icon: Icons.person_outline,
+            onTap: () => ref.read(adminViewAllProvider.notifier).state = false,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRangeSelector(WidgetRef ref, String selected) {
     final ranges = ['Diario', 'Semanal', 'Mensual', 'Anual'];
     return Container(
@@ -775,6 +840,56 @@ class DashboardScreen extends ConsumerWidget {
             child: const Text('ELIMINAR')
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ViewTab extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _ViewTab({
+    required this.label,
+    required this.isSelected,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.pureWhite : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: isSelected 
+              ? [const BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))]
+              : null,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon, 
+              size: 14, 
+              color: isSelected ? AppTheme.primaryOrange : AppTheme.textGrey
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.montserrat(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? AppTheme.textDark : AppTheme.textGrey,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

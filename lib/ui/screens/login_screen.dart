@@ -20,6 +20,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   Future<void> _login() async {
     final email = _emailCtrl.text.trim();
@@ -47,6 +48,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final user = await userRepo.getUser(firebaseUser.uid);
 
       if (user != null) {
+        if (!user.isActive) {
+          throw Exception('Tu cuenta ha sido bloqueada por un administrador.');
+        }
         ref.read(currentUserIdProvider.notifier).state = user.id;
         if (mounted) {
           Navigator.pushReplacement(
@@ -66,8 +70,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           email: firebaseUser.email ?? email,
           cashBalance: 0.0,
           debitBalance: 0.0,
-          establishment: CostCenter.Administracion,
+          establishments: const [CostCenter.Administracion],
           role: 'user',
+          isActive: true, // Default to active
         );
         await userRepo.createUser(newUser);
 
@@ -209,8 +214,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         _passCtrl,
                         'Contraseña',
                         Icons.lock_outline,
-                        obscure: true,
+                        obscure: _obscurePassword,
                         isPassword: true,
+                        onToggle: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
                       const SizedBox(height: 12),
                       Align(
@@ -378,7 +384,7 @@ class SurgicalLogoPainter extends CustomPainter {
 }
 
 Widget _buildTextField(TextEditingController ctrl, String hint, IconData icon,
-      {bool obscure = false, bool isPassword = false}) {
+      {bool obscure = false, bool isPassword = false, VoidCallback? onToggle}) {
     return TextField(
       controller: ctrl,
       obscureText: obscure,
@@ -386,7 +392,13 @@ Widget _buildTextField(TextEditingController ctrl, String hint, IconData icon,
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: Colors.grey),
         suffixIcon: isPassword
-            ? const Icon(Icons.visibility_off_outlined, color: Colors.grey)
+            ? IconButton(
+                icon: Icon(
+                  obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  color: Colors.grey,
+                ),
+                onPressed: onToggle,
+              )
             : null,
         hintText: hint,
         hintStyle: const TextStyle(color: AppTheme.textGrey),

@@ -196,6 +196,19 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     '${DateFormat('dd MMM').format(m.date)} • ${_getEstablishmentCode(m.costCenter)} • ${m.paymentMethod == PaymentMethod.cash ? 'Efectivo' : 'Tarjeta'}',
                     style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11, fontWeight: FontWeight.w500),
                   ),
+                  if (ref.watch(adminViewAllProvider) && m.userName != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        'Por: ${m.userName}',
+                        style: GoogleFonts.montserrat(
+                          color: AppTheme.primaryOrange, 
+                          fontSize: 10, 
+                          fontWeight: FontWeight.w700,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

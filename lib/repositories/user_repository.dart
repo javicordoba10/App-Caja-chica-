@@ -37,6 +37,28 @@ class UserRepository {
     await _users.doc(user.id).set(user.toMap());
   }
 
+  Stream<List<UserModel>> streamAllUsers() {
+    return _users.snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      }).toList();
+    });
+  }
+
+  Future<void> updateUserRole(String userId, String newRole) async {
+    await _users.doc(userId).update({'role': newRole});
+  }
+
+  Future<void> updateUserStatus(String userId, bool isActive) async {
+    await _users.doc(userId).update({'isActive': isActive});
+  }
+
+  Future<void> deleteUser(String userId) async {
+    // Note: This only deletes the Firestore document. 
+    // Authentication deletion usually requires admin SDK or re-authentication.
+    await _users.doc(userId).delete();
+  }
+
   Future<void> updateBalance(String userId, double amount, bool isIncome, PaymentMethod method) async {
     final docRef = _users.doc(userId);
     final fieldName = method == PaymentMethod.cash ? 'cashBalance' : 'debitBalance';
@@ -121,5 +143,18 @@ class UserRepository {
       'cashBalance': cash,
       'debitBalance': debit,
     });
+  }
+
+  Future<void> updateUserProfile(String userId, {String? name, String? phone, List<CostCenter>? establishments}) async {
+    final Map<String, dynamic> updates = {};
+    if (name != null) updates['name'] = name;
+    if (phone != null) updates['phone'] = phone;
+    if (establishments != null) {
+      updates['establishments'] = establishments.map((e) => e.name).toList();
+    }
+    
+    if (updates.isNotEmpty) {
+      await _users.doc(userId).update(updates);
+    }
   }
 }
