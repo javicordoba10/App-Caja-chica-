@@ -68,7 +68,8 @@ class OCRService {
     
     final text = recognizedText.text;
     
-    return _parseText(text, filePath, isPdf: isPdfFile);
+    final fileBytes = await io.File(filePath).readAsBytes();
+    return _parseText(text, filePath, isPdf: isPdfFile, bytes: fileBytes);
   }
 
   Future<String> _convertPdfToImage(String pdfPath) async {

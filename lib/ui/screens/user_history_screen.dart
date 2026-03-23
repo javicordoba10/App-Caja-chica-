@@ -210,19 +210,48 @@ class _UserHistoryScreenState extends ConsumerState<UserHistoryScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (m.imageUrl != null && m.imageUrl!.isNotEmpty)
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      icon: const Icon(Icons.receipt_long_outlined, size: 20, color: AppTheme.primaryOrange),
-                      onPressed: () => _viewReceipt(m),
+                    InkWell(
+                      onTap: () => _viewReceipt(m),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryOrange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.receipt_long_outlined, size: 16, color: AppTheme.primaryOrange),
+                            const SizedBox(width: 4),
+                            Text(
+                              'VER',
+                              style: GoogleFonts.montserrat(
+                                color: AppTheme.primaryOrange,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else if (m.type == MovementType.expense)
+                    Text(
+                      'Sin Comprobante',
+                      style: GoogleFonts.montserrat(
+                        color: Colors.black26,
+                        fontSize: 8,
+                        fontWeight: FontWeight.w600,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                   const SizedBox(width: 8),
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                    icon: const Icon(Icons.delete_outline, size: 22, color: Colors.redAccent),
                     onPressed: () => _confirmDelete(m),
                   ),
                 ],

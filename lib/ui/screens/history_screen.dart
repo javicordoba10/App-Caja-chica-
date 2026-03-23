@@ -224,11 +224,74 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   ),
                 ),
                 if (m.imageUrl != null && m.imageUrl!.isNotEmpty)
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.remove_red_eye_outlined, size: 22, color: AppTheme.primaryOrange),
-                    onPressed: () => _openReceipt(m.imageUrl!),
-                    tooltip: 'Ver Comprobante',
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        InkWell(
+                          onTap: () => _openReceipt(m.imageUrl!),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryOrange.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.receipt_long_outlined, size: 16, color: AppTheme.primaryOrange),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'VER',
+                                  style: GoogleFonts.montserrat(
+                                    color: AppTheme.primaryOrange,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: const Icon(Icons.delete_outline, size: 22, color: AppTheme.expenseRed),
+                          onPressed: () => _confirmDelete(m),
+                          tooltip: 'Eliminar Registro',
+                        ),
+                      ],
+                    ),
+                  )
+                else if (m.type == MovementType.expense)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Sin Comprobante',
+                          style: GoogleFonts.montserrat(
+                            color: Colors.black26,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: Icon(Icons.delete_outline, size: 20, color: AppTheme.expenseRed.withOpacity(0.5)),
+                          onPressed: () => _confirmDelete(m),
+                        ),
+                      ],
+                    ),
                   ),
               ],
             ),
@@ -302,10 +365,52 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     }
   }
 
+  void _confirmDelete(MovementModel movement) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('¿Eliminar registro?', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+        content: Text('¿Deseas eliminar "${movement.description}"? El saldo se recalculará automáticamente.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCELAR')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.expenseRed, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await ref.read(userRepositoryProvider).deleteMovementWithBalanceUpdate(movement);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registro eliminado ✓'), backgroundColor: AppTheme.incomeGreen));
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.expenseRed));
+                }
+              }
+            },
+            child: const Text('ELIMINAR'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _openReceipt(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      final uri = Uri.parse(url);
+      final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No hay una aplicación para abrir este archivo: ${url.length > 20 ? url.substring(0, 20) : url}...')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al abrir comprobante: $e')),
+        );
+      }
     }
   }
 }

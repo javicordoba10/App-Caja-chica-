@@ -69,6 +69,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
   PaymentMethod _selectedPayment = PaymentMethod.cash;
   String _selectedInvoiceType = 'Ticket';
   bool _isLoading = false;
+  String _loadingMessage = 'Cargando...';
   DateTime _selectedDate = DateTime.now();
 
   static const List<double> _vatRates = [0.0, 0.105, 0.21, 0.27];
@@ -217,22 +218,37 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
   }
 
   // ── save ─────────────────────────────────────────────────────────────
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _loadingMessage = 'Guardando...';
+    });
 
     final userId        = ref.read(currentUserIdProvider);
     final userRepo      = ref.read(userRepositoryProvider);
     final movementRepo  = ref.read(movementRepositoryProvider);
-    final scaffoldMsg   = ScaffoldMessenger.of(context);
-    final navigator     = Navigator.of(context);
 
     final gross   = _parse(_grossCtrl.text);
     final net     = _parse(_netCtrl.text);
     final totalVat = _vatSlots.fold(0.0, (s, slot) => s + _parse(slot.amountCtrl.text));
     final movId   = const Uuid().v4();
-
     final currentUser = ref.read(currentUserProvider).value;
+
+    // Capturamos los bytes antes de lanzar el proceso de fondo
+    Uint8List? uploadBytes = widget.data.bytes;
+    if (uploadBytes == null && widget.data.imagePath.isNotEmpty && !kIsWeb) {
+      try {
+        uploadBytes = await io.File(widget.data.imagePath).readAsBytes();
+      } catch (e) {
+        debugPrint('Error leyendo bytes: $e');
+      }
+    }
+
+    // Iniciamos subida en segundo plano (fire-and-forget)
+    if (uploadBytes != null) {
+      _startBackgroundUpload(userId ?? 'unknown', movId, uploadBytes, widget.data.isPdf, movementRepo);
+    }
 
     final movement = MovementModel(
       id:            movId,
@@ -246,49 +262,49 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
       description:   _descCtrl.text,
       costCenter:    _selectedCostCenter,
       paymentMethod: _selectedPayment,
-      date:          DateTime.now(), // v17: Fecha de Carga (Listas)
-      invoiceDate:   _selectedDate,  // v17: Fecha del Ticket (Detalles)
-      imageUrl:      null,
+      date:          DateTime.now(),
+      invoiceDate:   _selectedDate,
+      imageUrl:      null, // Se actualizará en segundo plano
       userName:      currentUser?.name,
       userEmail:     currentUser?.email,
     );
 
-    userRepo.saveMovementWithBalanceUpdate(movement).then((_) {
-      scaffoldMsg.showSnackBar(const SnackBar(
-        content: Text('Registro guardado ✓'),
-        backgroundColor: AppTheme.incomeGreen,
-        duration: Duration(seconds: 3),
-      ));
-    }).catchError((e) {
-      scaffoldMsg.showSnackBar(SnackBar(
-        content: Text('Error al guardar: $e'),
-        backgroundColor: AppTheme.expenseRed,
-      ));
-    });
-
-    if (widget.data.bytes != null) {
-      _uploadInBackground(userId ?? 'unknown', movId, widget.data.bytes!, widget.data.isPdf, movementRepo, movement, scaffoldMsg);
+    try {
+      await userRepo.saveMovementWithBalanceUpdate(movement).timeout(const Duration(seconds: 10));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Guardado ✓ (Subiendo archivo...)'),
+          backgroundColor: AppTheme.incomeGreen,
+        ));
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error al guardar: $e'),
+          backgroundColor: AppTheme.expenseRed,
+        ));
+        setState(() => _isLoading = false);
+      }
     }
-
-    navigator.pop();
   }
 
-  void _uploadInBackground(String uid, String id, Uint8List bytes, bool isPdf,
-      MovementRepository repo, MovementModel original, ScaffoldMessengerState msg) async {
+  void _startBackgroundUpload(String uid, String mid, Uint8List bytes, bool isPdf, MovementRepository repo) async {
     try {
       final ext = isPdf ? 'pdf' : 'jpg';
-      final ref = FirebaseStorage.instance.ref().child('receipts/$uid/$id.$ext');
+      final ref = FirebaseStorage.instance.ref().child('receipts/$uid/$mid.$ext');
       final meta = SettableMetadata(contentType: isPdf ? 'application/pdf' : 'image/jpeg');
-      final task = await ref.putData(bytes, meta);
-      final url  = await task.ref.getDownloadURL();
-      await repo.updateImageUrl(id, url);
+      
+      final task = await ref.putData(bytes, meta).timeout(const Duration(minutes: 2));
+      final url = await task.ref.getDownloadURL();
+      await repo.updateImageUrl(mid, url);
+      debugPrint('>>> Subida en segundo plano exitosa: $mid');
     } catch (e) {
-      msg.showSnackBar(const SnackBar(
-        content: Text('Aviso: No se pudo subir el adjunto (CORS).'),
-        backgroundColor: AppTheme.expenseRed,
-      ));
+      debugPrint('>>> ERROR en subida silenciosa ($mid): $e');
     }
   }
+
+  // Eliminamos _uploadInBackground ya que ahora es síncrono
 
   // ── date picker ──────────────────────────────────────────────────────
   Future<void> _pickDate() async {
@@ -429,8 +445,20 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
           ),
           if (_isLoading)
             Container(
-              color: Colors.black26,
-              child: const Center(child: CircularProgressIndicator(color: AppTheme.primaryOrange)),
+              color: Colors.black45,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(color: AppTheme.primaryOrange),
+                    const SizedBox(height: 20),
+                    Text(
+                      _loadingMessage,
+                      style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
             ),
         ],
       ),
@@ -522,38 +550,81 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     
     final bool effectivelyPdf = widget.data.isPdf || path.toLowerCase().contains('.pdf') || path.toLowerCase().contains('blob:');
 
-    return Container(
-      width: double.infinity,
-      height: 220,
-      margin: const EdgeInsets.only(bottom: 24),
-      decoration: BoxDecoration(
-        color: AppTheme.pureWhite,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Stack(children: [
-          effectivelyPdf
-              ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.picture_as_pdf, size: 64, color: AppTheme.expenseRed),
-                  const SizedBox(height: 12),
-                  Text('DOCUMENTO PDF', style: GoogleFonts.montserrat(fontWeight: FontWeight.w800, fontSize: 12, color: AppTheme.textDark)),
-                  const SizedBox(height: 4),
-                  Text('Presiona el botón para visualizar', style: GoogleFonts.montserrat(fontSize: 10, color: AppTheme.textGrey)),
-                ]))
-              : kIsWeb
-                  ? Image.network(widget.data.imagePath, width: double.infinity, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))
-                  : Image.file(io.File(widget.data.imagePath), width: double.infinity, fit: BoxFit.cover),
-          Positioned(
-            top: 10, right: 10,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(color: AppTheme.primaryOrange, borderRadius: BorderRadius.circular(16)),
-              child: const Text('VISTA PREVIA', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)),
+    return GestureDetector(
+      onTap: () async {
+        final url = widget.existingMovement?.imageUrl ?? widget.data.imagePath;
+        if (url.isNotEmpty) {
+          try {
+            final uri = Uri.parse(url);
+            // Intentamos abrir directamente, ya que canLaunchUrl a veces falla falsamente en Android 11+ o Web
+            final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
+            
+            if (!success && mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('No hay una aplicación para abrir este archivo: ${url.length > 20 ? url.substring(0, 20) : url}...')),
+              );
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error al procesar el enlace: $e')),
+              );
+            }
+          }
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        height: 220,
+        margin: const EdgeInsets.only(bottom: 24),
+        decoration: BoxDecoration(
+          color: AppTheme.pureWhite,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(children: [
+            effectivelyPdf
+                ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    const Icon(Icons.picture_as_pdf, size: 64, color: AppTheme.expenseRed),
+                    const SizedBox(height: 12),
+                    Text('DOCUMENTO PDF', style: GoogleFonts.montserrat(fontWeight: FontWeight.w800, fontSize: 12, color: AppTheme.textDark)),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryOrange,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'VER DOCUMENTO ORIGINAL',
+                        style: GoogleFonts.montserrat(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ]))
+                : kIsWeb
+                    ? Image.network(widget.data.imagePath, width: double.infinity, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))
+                    : Image.file(io.File(widget.data.imagePath), width: double.infinity, fit: BoxFit.cover),
+            Positioned(
+              top: 10, right: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(color: AppTheme.primaryOrange, borderRadius: BorderRadius.circular(16)),
+                child: const Text('VISTA PREVIA', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)),
+              ),
             ),
-          ),
-        ]),
+            if (!effectivelyPdf)
+              Positioned(
+                bottom: 10, right: 10,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(20)),
+                  child: const Icon(Icons.fullscreen, color: Colors.white, size: 18),
+                ),
+              ),
+          ]),
+        ),
       ),
     );
   }

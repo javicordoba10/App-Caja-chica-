@@ -55,3 +55,17 @@ app.*.map.json
 # Temporary Word files
 ~$*.docx
 *.tmp
+
+# Allow releases directory for APK distribution
+!releases/
+# Ignore APK binaries (GitHub 100MB limit)
+*.apk
+
+# Firebase/Web Cache
+.firebase/
+**/build/
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+.flutter-plugins*
