@@ -150,7 +150,7 @@ class _UserCard extends ConsumerWidget {
                 children: [
                   const Text('SALDO TOTAL', style: TextStyle(fontSize: 10, color: Colors.grey)),
                   Text(
-                    'ARS ${(user.cashBalance + user.debitBalance).toStringAsFixed(2)}',
+                    'ARS ${user.balances.values.fold(0.0, (sum, val) => sum + val).toStringAsFixed(2)}',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                 ],

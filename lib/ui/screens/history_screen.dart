@@ -193,7 +193,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    '${DateFormat('dd MMM').format(m.date)} • ${_getEstablishmentCode(m.costCenter)} • ${m.paymentMethod == PaymentMethod.cash ? 'Efectivo' : 'Tarjeta'}',
+                    '${DateFormat('dd MMM').format(m.date)} • ${_getEstablishmentCode(m.costCenter)} • ${m.paymentMethod}',
                     style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11, fontWeight: FontWeight.w500),
                   ),
                   if (ref.watch(adminViewAllProvider) && m.userName != null)
@@ -267,7 +267,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                       ],
                     ),
                   )
-                else if (m.type == MovementType.expense)
+                else
                   Padding(
                     padding: const EdgeInsets.only(top: 12),
                     child: Row(
@@ -287,7 +287,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                           visualDensity: VisualDensity.compact,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
-                          icon: Icon(Icons.delete_outline, size: 20, color: AppTheme.expenseRed.withOpacity(0.5)),
+                          icon: const Icon(Icons.delete_outline, size: 22, color: AppTheme.expenseRed),
                           onPressed: () => _confirmDelete(m),
                         ),
                       ],

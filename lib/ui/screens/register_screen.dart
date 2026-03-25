@@ -68,8 +68,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         id: firebaseUser.uid,
         name: _nameCtrl.text.trim(),
         email: _emailCtrl.text.trim(),
-        cashBalance: 0.0,
-        debitBalance: 0.0,
+        balances: {'Efectivo': 0.0, 'Tarjeta / Débito': 0.0},
+        paymentMethods: const ['Efectivo', 'Tarjeta / Débito'],
         establishments: const [CostCenter.Administracion],
         role: 'user',
       );

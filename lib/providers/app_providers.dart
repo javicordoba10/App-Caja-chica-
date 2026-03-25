@@ -90,8 +90,12 @@ final allUsersProvider = StreamProvider<List<UserModel>>((ref) {
 final globalBalancesProvider = Provider<AsyncValue<Map<String, double>>>((ref) {
   final allUsersAsync = ref.watch(allUsersProvider);
   return allUsersAsync.whenData((users) {
-    final cash = users.fold(0.0, (sum, u) => sum + u.cashBalance);
-    final debit = users.fold(0.0, (sum, u) => sum + u.debitBalance);
-    return {'cash': cash, 'debit': debit};
+    final totals = <String, double>{};
+    for (var u in users) {
+      u.balances.forEach((method, balance) {
+        totals[method] = (totals[method] ?? 0.0) + balance;
+      });
+    }
+    return totals;
   });
 });

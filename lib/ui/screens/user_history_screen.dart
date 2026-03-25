@@ -236,7 +236,7 @@ class _UserHistoryScreenState extends ConsumerState<UserHistoryScreen> {
                         ),
                       ),
                     )
-                  else if (m.type == MovementType.expense)
+                  else
                     Text(
                       'Sin Comprobante',
                       style: GoogleFonts.montserrat(
@@ -251,7 +251,7 @@ class _UserHistoryScreenState extends ConsumerState<UserHistoryScreen> {
                     visualDensity: VisualDensity.compact,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    icon: const Icon(Icons.delete_outline, size: 22, color: Colors.redAccent),
+                    icon: const Icon(Icons.delete_outline, size: 22, color: AppTheme.expenseRed),
                     onPressed: () => _confirmDelete(m),
                   ),
                 ],

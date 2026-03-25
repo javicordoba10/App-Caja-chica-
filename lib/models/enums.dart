@@ -3,4 +3,3 @@ enum CostCenter {
 }
 
 enum MovementType { income, expense }
-enum PaymentMethod { cash, debit }

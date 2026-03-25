@@ -19,6 +19,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   late TextEditingController _nameCtrl;
   late TextEditingController _phoneCtrl;
   List<CostCenter> _selectedEstablishments = [];
+  List<String> _selectedPaymentMethods = [];
+  final _newMethodCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -31,6 +33,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void dispose() {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
+    _newMethodCtrl.dispose();
     super.dispose();
   }
 
@@ -44,6 +47,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _nameCtrl.text = user?.name ?? '';
             _phoneCtrl.text = user?.phone ?? '';
             _selectedEstablishments = List.from(user?.establishments ?? []);
+            _selectedPaymentMethods = List.from(user?.paymentMethods ?? []);
           }
           
           return SingleChildScrollView(
@@ -61,6 +65,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     _buildEditableTile(Icons.person_outline, 'Nombre completo', _nameCtrl, enabled: _isEditing),
                     _buildInfoTile(Icons.email_outlined, 'Email', user?.email ?? 'No disponible'),
                     _buildEditableTile(Icons.phone_outlined, 'Teléfono', _phoneCtrl, enabled: _isEditing),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                
+                _buildInfoCard(
+                  title: 'GESTIÓN DE FORMAS DE PAGO',
+                  children: [
+                    _buildPaymentMethodsList(user, enabled: _isEditing),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -320,6 +332,63 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  Widget _buildPaymentMethodsList(UserModel? user, {required bool enabled}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _selectedPaymentMethods.map((m) {
+            return Chip(
+              label: Text(m, style: GoogleFonts.montserrat(fontSize: 12, fontWeight: FontWeight.w600)),
+              onDeleted: enabled ? () {
+                setState(() {
+                  if (_selectedPaymentMethods.length > 1) {
+                    _selectedPaymentMethods.remove(m);
+                  }
+                });
+              } : null,
+              deleteIconColor: AppTheme.expenseRed,
+              backgroundColor: Colors.black12,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            );
+          }).toList(),
+        ),
+        if (enabled) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _newMethodCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Ej: Mercado Pago',
+                    hintStyle: GoogleFonts.montserrat(fontSize: 12, color: AppTheme.textGrey),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () {
+                  final text = _newMethodCtrl.text.trim();
+                  if (text.isNotEmpty && !_selectedPaymentMethods.contains(text)) {
+                    setState(() {
+                      _selectedPaymentMethods.add(text);
+                      _newMethodCtrl.clear();
+                    });
+                  }
+                },
+                icon: const Icon(Icons.add_circle_outline, color: AppTheme.primaryOrange),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
   String _getEstablishmentName(CostCenter c) {
     switch (c) {
       case CostCenter.Administracion: return 'Administración';
@@ -341,6 +410,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         name: _nameCtrl.text,
         phone: _phoneCtrl.text,
         establishments: _selectedEstablishments,
+        paymentMethods: _selectedPaymentMethods,
       );
       
       setState(() => _isEditing = false);

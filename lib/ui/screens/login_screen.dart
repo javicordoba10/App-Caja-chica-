@@ -68,8 +68,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           id: firebaseUser.uid,
           name: displayName,
           email: firebaseUser.email ?? email,
-          cashBalance: 0.0,
-          debitBalance: 0.0,
+          balances: {'Efectivo': 0.0, 'Tarjeta / Débito': 0.0},
+          paymentMethods: const ['Efectivo', 'Tarjeta / Débito'],
           establishments: const [CostCenter.Administracion],
           role: 'user',
           isActive: true, // Default to active

@@ -14,7 +14,7 @@ class MovementModel {
   final String? invoiceNumber;
   final String description;
   final CostCenter costCenter;
-  final PaymentMethod paymentMethod;
+  final String paymentMethod;
   final DateTime date;
   final DateTime? invoiceDate; // v17: Fecha del comprobante (del OCR o manual)
   final String? imageUrl;
@@ -51,7 +51,7 @@ class MovementModel {
       'invoiceNumber': invoiceNumber,
       'description': description,
       'costCenter': costCenter.name,
-      'paymentMethod': paymentMethod.name,
+      'paymentMethod': paymentMethod,
       'date': Timestamp.fromDate(date),
       'invoiceDate': invoiceDate != null ? Timestamp.fromDate(invoiceDate!) : null,
       'imageUrl': imageUrl,
@@ -72,7 +72,7 @@ class MovementModel {
       invoiceNumber: map['invoiceNumber'],
       description: map['description'] ?? '',
       costCenter: CostCenter.values.firstWhere((e) => e.name == map['costCenter'], orElse: () => CostCenter.Administracion),
-      paymentMethod: PaymentMethod.values.firstWhere((e) => e.name == map['paymentMethod'], orElse: () => PaymentMethod.cash),
+      paymentMethod: map['paymentMethod'] ?? 'Efectivo',
       date: (map['date'] as Timestamp).toDate(),
       invoiceDate: map['invoiceDate'] != null ? (map['invoiceDate'] as Timestamp).toDate() : null,
       imageUrl: map['imageUrl'],
@@ -92,7 +92,7 @@ class MovementModel {
     String? invoiceNumber,
     String? description,
     CostCenter? costCenter,
-    PaymentMethod? paymentMethod,
+    String? paymentMethod,
     DateTime? date,
     String? imageUrl,
     String? userName,

@@ -6,32 +6,28 @@ import 'package:intl/intl.dart';
 import '../models/movement_model.dart';
 
 class PDFService {
-  static Future<void> generateAndPrint(double cashBalance, double debitBalance, List<MovementModel> movements) async {
+  static Future<void> generateAndPrint(Map<String, double> balances, List<MovementModel> movements) async {
     final pdf = pw.Document();
     final format = NumberFormat.currency(locale: 'es_AR', symbol: '\$');
 
-    // Calculate totals and initial balances for each method
-    double totalCashExpenses = 0.0;
-    double totalCashIncomes = 0.0;
-    double totalDebitExpenses = 0.0;
-    double totalDebitIncomes = 0.0;
-
+    // Aggregate data by payment method
+    final methodStats = <String, Map<String, double>>{};
+    
     for (var m in movements) {
+      final method = m.paymentMethod;
+      if (!methodStats.containsKey(method)) {
+        methodStats[method] = {'expenses': 0.0, 'incomes': 0.0};
+      }
       if (m.type == MovementType.expense) {
-        if(m.paymentMethod == PaymentMethod.cash) totalCashExpenses += m.grossAmount;
-        else totalDebitExpenses += m.grossAmount;
+        methodStats[method]!['expenses'] = methodStats[method]!['expenses']! + m.grossAmount;
       } else {
-        if(m.paymentMethod == PaymentMethod.cash) totalCashIncomes += m.grossAmount;
-        else totalDebitIncomes += m.grossAmount;
+        methodStats[method]!['incomes'] = methodStats[method]!['incomes']! + m.grossAmount;
       }
     }
 
-    final initialCashBalance = cashBalance - totalCashIncomes + totalCashExpenses;
-    final initialDebitBalance = debitBalance - totalDebitIncomes + totalDebitExpenses;
-
-    final totalExpenses = totalCashExpenses + totalDebitExpenses;
-    final totalIncomes = totalCashIncomes + totalDebitIncomes;
-    final finalTotalBalance = cashBalance + debitBalance;
+    final totalExpenses = movements.where((m) => m.type == MovementType.expense).fold(0.0, (sum, m) => sum + m.grossAmount);
+    final totalIncomes = movements.where((m) => m.type == MovementType.income).fold(0.0, (sum, m) => sum + m.grossAmount);
+    final finalTotalBalance = balances.values.fold(0.0, (sum, b) => sum + b);
 
     pdf.addPage(
       pw.Page(
@@ -51,40 +47,35 @@ class PDFService {
               pw.Text('Resumen', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 8),
               
-              // Cash section
-              pw.Text('Billetera Efectivo', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey800)),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('Saldo Inicial Efectivo:'),
-                  pw.Text(format.format(initialCashBalance)),
-                ]
-              ),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('Saldo Final Efectivo:'),
-                  pw.Text(format.format(cashBalance), style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                ]
-              ),
-              pw.SizedBox(height: 8),
+              // Dynamic Sections for each method
+              ...balances.entries.map((entry) {
+                final method = entry.key;
+                final finalBal = entry.value;
+                final stats = methodStats[method] ?? {'expenses': 0.0, 'incomes': 0.0};
+                final initialBal = finalBal - stats['incomes']! + stats['expenses']!;
 
-              // Debit section
-              pw.Text('Billetera Tarjeta/Débito', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey800)),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('Saldo Inicial Tarjeta:'),
-                  pw.Text(format.format(initialDebitBalance)),
-                ]
-              ),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('Saldo Final Tarjeta:'),
-                  pw.Text(format.format(debitBalance), style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                ]
-              ),
+                return pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('Billetera $method', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey800)),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Saldo Inicial:'),
+                        pw.Text(format.format(initialBal)),
+                      ]
+                    ),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Saldo Final $method:'),
+                        pw.Text(format.format(finalBal), style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                      ]
+                    ),
+                    pw.SizedBox(height: 12),
+                  ]
+                );
+              }),
               pw.Divider(color: PdfColors.grey300),
               
               // Totals
@@ -199,7 +190,7 @@ class PDFService {
                 DateFormat('dd/MM/yy').format(m.date),
                 m.description,
                 m.costCenter.name,
-                m.paymentMethod == PaymentMethod.cash ? 'Efectivo' : 'Tarjeta',
+                m.paymentMethod,
                 format.format(m.grossAmount)
               ]).toList(),
               headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),

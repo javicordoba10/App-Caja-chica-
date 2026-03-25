@@ -63,66 +63,111 @@ class DashboardScreen extends ConsumerWidget {
                   final globalAsync = ref.watch(globalBalancesProvider);
                   final viewAll = ref.watch(adminViewAllProvider);
                   
-                  double displayCash = user?.cashBalance ?? 0.0;
-                  double displayDebit = user?.debitBalance ?? 0.0;
-                  
-                  if (viewAll && user?.role == 'admin') {
-                     displayCash = globalAsync.value?['cash'] ?? displayCash;
-                     displayDebit = globalAsync.value?['debit'] ?? displayDebit;
-                  }
+                   final balanceEntries = user?.balances.entries.toList() ?? [];
+                   final totalBalance = balanceEntries.fold(0.0, (sum, e) => sum + e.value);
+                   final globalTotal = globalAsync.value?.values.fold(0.0, (sum, v) => sum + v) ?? 0.0;
+                   
+                   return ResponsiveLayout(
+                     mobile: Column(
+                       children: [
+                         // Saldo Total Card (Mobile)
+                         Padding(
+                           padding: const EdgeInsets.only(bottom: 16),
+                           child: _buildBalanceCard(
+                             (viewAll && user?.role == 'admin') ? 'Saldo Disponible (Total)' : 'Saldo Disponible', 
+                             (viewAll && user?.role == 'admin') ? globalTotal : totalBalance, 
+                             Icons.account_balance_wallet_rounded, 
+                             const Color(0xFF004D40),
+                             gradientColors: [const Color(0xFF004D40), const Color(0xFF00897B)],
+                           ),
+                         ),
+                         ...balanceEntries.asMap().entries.map((e) {
+                           final index = e.key;
+                           final entry = e.value;
+                           final methodName = entry.key;
+                           double amount = entry.value;
 
-                  return ResponsiveLayout(
-                    mobile: Column(
-                      children: [
-                        _buildBalanceCard(
-                          (viewAll && user?.role == 'admin') ? 'Efectivo (Total)' : 'Efectivo', 
-                          displayCash, 
-                          Icons.payments_outlined, 
-                          AppTheme.primaryOrange,
-                          onSync: () async {
-                            await ref.read(userRepositoryProvider).recalculateBalances(user!.id);
-                            await ref.read(movementRepositoryProvider).cleanupOldAttachments();
-                          },
-                          gradientColors: [AppTheme.primaryOrange, AppTheme.primaryYellow],
-                        ),
-                        const SizedBox(height: 16),
-                        _buildBalanceCard(
-                          (viewAll && user?.role == 'admin') ? 'Tarjeta (Total)' : 'Tarjeta', 
-                          displayDebit, 
-                          Icons.credit_card_outlined, 
-                          const Color(0xFF1A237E),
-                          gradientColors: [const Color(0xFF1A237E), const Color(0xFF3949AB)],
-                        ),
-                      ],
-                    ),
-                    desktop: Row(
-                      children: [
-                        Expanded(
-                          child: _buildBalanceCard(
-                            (viewAll && user?.role == 'admin') ? 'Efectivo (Total)' : 'Efectivo', 
-                            displayCash, 
-                            Icons.payments_outlined, 
-                            AppTheme.primaryOrange,
-                            onSync: () async {
-                              await ref.read(userRepositoryProvider).recalculateBalances(user!.id);
-                              await ref.read(movementRepositoryProvider).cleanupOldAttachments();
-                            },
-                            gradientColors: [AppTheme.primaryOrange, AppTheme.primaryYellow],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildBalanceCard(
-                            (viewAll && user?.role == 'admin') ? 'Tarjeta (Total)' : 'Tarjeta', 
-                            displayDebit, 
-                            Icons.credit_card_outlined, 
-                            const Color(0xFF1A237E),
-                            gradientColors: [const Color(0xFF1A237E), const Color(0xFF3949AB)],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
+                           if (viewAll && user?.role == 'admin') {
+                             amount = globalAsync.value?[methodName] ?? amount;
+                           }
+
+                           final isEfectivo = methodName.toLowerCase().contains('efectivo');
+                           final isTarjeta = methodName.toLowerCase().contains('tarjeta') || methodName.toLowerCase().contains('débito');
+                           
+                           return Padding(
+                             padding: EdgeInsets.only(bottom: index == balanceEntries.length - 1 ? 0 : 16),
+                             child: _buildBalanceCard(
+                               (viewAll && user?.role == 'admin') ? '$methodName (Total)' : methodName, 
+                               amount, 
+                               isEfectivo ? Icons.payments_outlined : (isTarjeta ? Icons.credit_card_outlined : Icons.account_balance_wallet_outlined), 
+                               isEfectivo ? AppTheme.primaryOrange : (isTarjeta ? const Color(0xFF1A237E) : Colors.teal),
+                               gradientColors: isEfectivo 
+                                 ? [AppTheme.primaryOrange, AppTheme.primaryYellow] 
+                                 : (isTarjeta 
+                                     ? [const Color(0xFF1A237E), const Color(0xFF3949AB)]
+                                     : [Colors.teal, Colors.tealAccent.shade700]),
+                             ),
+                           );
+                         }).toList(),
+                       ],
+                     ),
+                     desktop: Column(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: [
+                         // Saldo Total Card (Desktop Emphasis)
+                         SizedBox(
+                           width: double.infinity,
+                           child: Padding(
+                             padding: const EdgeInsets.only(bottom: 20),
+                             child: _buildBalanceCard(
+                               (viewAll && user?.role == 'admin') ? 'Saldo Disponible (Total)' : 'Saldo Disponible', 
+                               (viewAll && user?.role == 'admin') ? globalTotal : totalBalance, 
+                               Icons.account_balance_wallet_rounded, 
+                              const Color(0xFF004D40),
+                              gradientColors: [const Color(0xFF004D40), const Color(0xFF00897B)],
+                              onSync: () async {
+                                final scaffold = ScaffoldMessenger.of(context);
+                                scaffold.showSnackBar(const SnackBar(content: Text('Recalculando balances...')));
+                                await ref.read(userRepositoryProvider).recalculateBalances(user!.id);
+                                ref.invalidate(currentUserProvider);
+                                scaffold.showSnackBar(const SnackBar(content: Text('Balances actualizados ✓')));
+                              },
+                            ),
+                           ),
+                         ),
+                         Wrap(
+                           spacing: 16,
+                           runSpacing: 16,
+                           children: balanceEntries.map((entry) {
+                             final methodName = entry.key;
+                             double amount = entry.value;
+
+                             if (viewAll && user?.role == 'admin') {
+                               amount = globalAsync.value?[methodName] ?? amount;
+                             }
+
+                             final isEfectivo = methodName.toLowerCase().contains('efectivo');
+                             final isTarjeta = methodName.toLowerCase().contains('tarjeta') || methodName.toLowerCase().contains('débito');
+
+                             return SizedBox(
+                               width: (MediaQuery.of(context).size.width - 40 - 32) / 3,
+                               child: _buildBalanceCard(
+                                 (viewAll && user?.role == 'admin') ? '$methodName (Total)' : methodName, 
+                                 amount, 
+                                 isEfectivo ? Icons.payments_outlined : (isTarjeta ? Icons.credit_card_outlined : Icons.account_balance_wallet_outlined), 
+                                 isEfectivo ? AppTheme.primaryOrange : (isTarjeta ? const Color(0xFF1A237E) : Colors.teal),
+                                 gradientColors: isEfectivo 
+                                   ? [AppTheme.primaryOrange, AppTheme.primaryYellow] 
+                                   : (isTarjeta 
+                                       ? [const Color(0xFF1A237E), const Color(0xFF3949AB)]
+                                       : [Colors.teal, Colors.tealAccent.shade700]),
+                               ),
+                             );
+                           }).toList(),
+                         ),
+                       ],
+                     ),
+                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (_, __) => const Text('Error al cargar saldos'),
@@ -218,10 +263,10 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ),
               const Spacer(),
-              if (onSync != null)
+               if (onSync != null)
                 GestureDetector(
                   onTap: onSync,
-                  child: const Icon(Icons.sync, color: Colors.white, size: 14),
+                  child: const Icon(Icons.sync, color: Colors.white, size: 18),
                 ),
             ],
           ),
@@ -377,7 +422,7 @@ class DashboardScreen extends ConsumerWidget {
               child: OutlinedButton.icon(
                 onPressed: () {
                    if (user != null) {
-                     PDFService.generateAndPrint(user.cashBalance, user.debitBalance, filtered);
+                     PDFService.generateAndPrint(user.balances, filtered);
                    }
                 },
                 icon: const Icon(Icons.print_outlined, size: 18),
@@ -397,7 +442,7 @@ class DashboardScreen extends ConsumerWidget {
           onPressed: () {
              if (user != null) {
                final expensesOnly = filtered.where((m) => m.type == MovementType.expense).toList();
-               PDFService.generateAndPrint(user.cashBalance, user.debitBalance, expensesOnly);
+                PDFService.generateAndPrint(user.balances, expensesOnly);
              }
           },
           icon: const Icon(Icons.picture_as_pdf_outlined, color: Colors.white),
@@ -430,7 +475,7 @@ class DashboardScreen extends ConsumerWidget {
         excel_lib.TextCellValue(m.description), excel_lib.TextCellValue(m.type == MovementType.income ? 'Ingreso' : 'Egreso'),
         excel_lib.TextCellValue(m.costCenter.name), excel_lib.DoubleCellValue(m.grossAmount),
         excel_lib.DoubleCellValue(m.netAmount), excel_lib.DoubleCellValue(m.vat),
-        excel_lib.TextCellValue(m.paymentMethod == PaymentMethod.cash ? 'Efectivo' : 'Tarjeta')]);
+        excel_lib.TextCellValue(m.paymentMethod)]);
     }
 
     final bytes = excel.save();
@@ -647,7 +692,7 @@ class DashboardScreen extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    '${DateFormat('dd MMM').format(m.date)} • ${_getEstablishmentCode(m.costCenter)} • ${m.paymentMethod == PaymentMethod.cash ? 'Efectivo' : 'Tarjeta'}', 
+                    '${DateFormat('dd MMM').format(m.date)} • ${_getEstablishmentCode(m.costCenter)} • ${m.paymentMethod}', 
                     style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11, fontWeight: FontWeight.w500),
                   ),
                   if (ref.watch(adminViewAllProvider) && m.userName != null)

@@ -59,16 +59,15 @@ class UserRepository {
     await _users.doc(userId).delete();
   }
 
-  Future<void> updateBalance(String userId, double amount, bool isIncome, PaymentMethod method) async {
+  Future<void> updateBalance(String userId, double amount, bool isIncome, String method) async {
     final docRef = _users.doc(userId);
-    final fieldName = method == PaymentMethod.cash ? 'cashBalance' : 'debitBalance';
-    final otherField = method == PaymentMethod.cash ? 'debitBalance' : 'cashBalance';
     final value = isIncome ? amount : -amount;
 
     try {
       await docRef.set({
-        fieldName: FieldValue.increment(value),
-        otherField: FieldValue.increment(0.0),
+        'balances': {
+          method: FieldValue.increment(value),
+        }
       }, SetOptions(merge: true));
     } catch (e) {
       rethrow;
@@ -79,15 +78,14 @@ class UserRepository {
     final userDocRef = _users.doc(movement.userId);
     final movementDocRef = _firestore.collection('movements').doc(movement.id);
     
-    final fieldName = movement.paymentMethod == PaymentMethod.cash ? 'cashBalance' : 'debitBalance';
-    final otherField = movement.paymentMethod == PaymentMethod.cash ? 'debitBalance' : 'cashBalance';
     final amountDelta = movement.type == MovementType.income ? movement.grossAmount : -movement.grossAmount;
     
     try {
       final p1 = movementDocRef.set(movement.toMap());
       final p2 = userDocRef.set({
-        fieldName: FieldValue.increment(amountDelta),
-        otherField: FieldValue.increment(0.0),
+        'balances': {
+          movement.paymentMethod: FieldValue.increment(amountDelta),
+        }
       }, SetOptions(merge: true));
       
       await Future.wait([p1, p2]);
@@ -100,15 +98,14 @@ class UserRepository {
     final userDocRef = _users.doc(movement.userId);
     final movementDocRef = _firestore.collection('movements').doc(movement.id);
     
-    final fieldName = movement.paymentMethod == PaymentMethod.cash ? 'cashBalance' : 'debitBalance';
-    final otherField = movement.paymentMethod == PaymentMethod.cash ? 'debitBalance' : 'cashBalance';
     final amountDelta = movement.type == MovementType.income ? -movement.grossAmount : movement.grossAmount;
     
     try {
       final p1 = movementDocRef.delete();
       final p2 = userDocRef.set({
-        fieldName: FieldValue.increment(amountDelta),
-        otherField: FieldValue.increment(0.0),
+        'balances': {
+          movement.paymentMethod: FieldValue.increment(amountDelta),
+        }
       }, SetOptions(merge: true));
       
       await Future.wait([p1, p2]);
@@ -122,33 +119,32 @@ class UserRepository {
         .where('userId', isEqualTo: userId)
         .get();
         
-    double cash = 0.0;
-    double debit = 0.0;
+    Map<String, double> balances = {};
     
     for (var doc in movementsSnapshot.docs) {
       final data = doc.data();
       final amount = (data['grossAmount'] as num?)?.toDouble() ?? 0.0;
       final type = data['type']; 
-      final method = data['paymentMethod']; 
+      // Compatibility: Map enum strings to the labels if needed.
+      // But we already converted the model to use labels.
+      String method = data['paymentMethod'] ?? 'Efectivo';
+      if (method == 'cash') method = 'Efectivo';
+      if (method == 'debit') method = 'Tarjeta / Débito';
       
       final delta = type == 'income' ? amount : -amount;
-      if (method == 'cash') {
-        cash += delta;
-      } else {
-        debit += delta;
-      }
+      balances[method] = (balances[method] ?? 0.0) + delta;
     }
     
     await _users.doc(userId).update({
-      'cashBalance': cash,
-      'debitBalance': debit,
+      'balances': balances,
     });
   }
 
-  Future<void> updateUserProfile(String userId, {String? name, String? phone, List<CostCenter>? establishments}) async {
+  Future<void> updateUserProfile(String userId, {String? name, String? phone, List<CostCenter>? establishments, List<String>? paymentMethods}) async {
     final Map<String, dynamic> updates = {};
     if (name != null) updates['name'] = name;
     if (phone != null) updates['phone'] = phone;
+    if (paymentMethods != null) updates['paymentMethods'] = paymentMethods;
     if (establishments != null) {
       updates['establishments'] = establishments.map((e) => e.name).toList();
     }

@@ -66,7 +66,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
 
   late MovementType _selectedType;
   CostCenter _selectedCostCenter = CostCenter.Administracion;
-  PaymentMethod _selectedPayment = PaymentMethod.cash;
+  String _selectedPayment = 'Efectivo';
   String _selectedInvoiceType = 'Ticket';
   bool _isLoading = false;
   String _loadingMessage = 'Cargando...';
@@ -92,7 +92,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     _selectedType = em?.type ?? widget.initialType;
     _selectedInvoiceType = em?.invoiceType ?? d.invoiceType;
     _selectedCostCenter = em?.costCenter ?? CostCenter.Administracion;
-    _selectedPayment = em?.paymentMethod ?? PaymentMethod.cash;
+    _selectedPayment = em?.paymentMethod ?? 'Efectivo';
 
     // Controllers - Asegurar que si hay datos OCR se muestren aunque sean 0.0 (excepto si es manual puro)
     _descCtrl          = TextEditingController(text: em?.description ?? '');
@@ -333,6 +333,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
   // ─────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final userMethods = ref.watch(currentUserProvider).value?.paymentMethods ?? ['Efectivo', 'Tarjeta / Débito'];
     return Scaffold(
       backgroundColor: AppTheme.backgroundWhite,
       body: Stack(
@@ -421,15 +422,15 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                           onChanged: widget.isReadOnly ? null : (CostCenter? v) => setState(() => _selectedCostCenter = v ?? CostCenter.Administracion),
                         ),
                         const SizedBox(height: 16),
-                        _dropdown<PaymentMethod>(
-                          value: _selectedPayment,
+                        _dropdown<String>(
+                          value: userMethods.contains(_selectedPayment) ? _selectedPayment : userMethods.first,
                           label: 'Forma de Pago',
                           icon: Icons.account_balance_wallet_outlined,
-                          items: const [
-                            DropdownMenuItem(value: PaymentMethod.cash,  child: Text('Efectivo')),
-                            DropdownMenuItem(value: PaymentMethod.debit, child: Text('Tarjeta / Débito')),
-                          ],
-                          onChanged: widget.isReadOnly ? null : (PaymentMethod? v) => setState(() => _selectedPayment = v ?? PaymentMethod.cash),
+                          items: userMethods.map((m) => DropdownMenuItem(
+                            value: m,
+                            child: Text(m),
+                          )).toList(),
+                          onChanged: widget.isReadOnly ? null : (String? v) => setState(() => _selectedPayment = v ?? 'Efectivo'),
                         ),
                         const SizedBox(height: 40),
 
