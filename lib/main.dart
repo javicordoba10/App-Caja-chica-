@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'firebase_options.dart';
 import 'ui/theme/app_theme.dart';
 import 'ui/screens/login_screen.dart';
+import 'providers/app_providers.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,15 +16,17 @@ void main() async {
   runApp(const ProviderScope(child: PettyCashApp()));
 }
 
-class PettyCashApp extends StatelessWidget {
+class PettyCashApp extends ConsumerWidget {
   const PettyCashApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final companyConfig = ref.watch(companyConfigProvider).value;
+
     return MaterialApp(
       title: 'Petty Cash',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
+      theme: AppTheme.lightTheme(companyConfig),
       home: const LoginScreen(),
     );
   }

@@ -21,6 +21,7 @@ class MovementModel {
   final String? userName; // v24: Attribution for admin view
   final String? userEmail; // v24: Attribution for admin view
   final MovementCategory? category; // v28: Classification
+  final String companyId; // v29: SaaS multi-tenancy support
 
   MovementModel({
     required this.id,
@@ -40,6 +41,7 @@ class MovementModel {
     this.userName,
     this.userEmail,
     this.category,
+    this.companyId = 'alm_agro',
   });
 
   Map<String, dynamic> toMap() {
@@ -60,6 +62,7 @@ class MovementModel {
       'userName': userName,
       'userEmail': userEmail,
       'category': category?.name,
+      'companyId': companyId,
     };
   }
 
@@ -84,6 +87,7 @@ class MovementModel {
       category: map['category'] != null 
           ? MovementCategory.values.firstWhere((e) => e.name == map['category'], orElse: () => MovementCategory.otros)
           : null,
+      companyId: map['companyId'] ?? 'alm_agro',
     );
   }
 
@@ -104,6 +108,7 @@ class MovementModel {
     String? userName,
     String? userEmail,
     MovementCategory? category,
+    String? companyId,
   }) {
     return MovementModel(
       id: id ?? this.id,
@@ -123,6 +128,7 @@ class MovementModel {
       userName: userName ?? this.userName,
       userEmail: userEmail ?? this.userEmail,
       category: category ?? this.category,
+      companyId: companyId ?? this.companyId,
     );
   }
 }

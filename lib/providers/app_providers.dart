@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:async';
 import 'package:petty_cash_app/models/user_model.dart';
 import 'package:petty_cash_app/models/movement_model.dart';
+import 'package:petty_cash_app/models/company_config_model.dart';
 import 'package:petty_cash_app/repositories/user_repository.dart';
 import 'package:petty_cash_app/repositories/movement_repository.dart';
 
@@ -58,14 +59,15 @@ final movementsProvider = StreamProvider<List<MovementModel>>((ref) {
 
   final currentUser = ref.watch(currentUserProvider).value;
   final role = currentUser?.role ?? 'user';
+  final companyId = currentUser?.companyId ?? 'alm_agro';
   final viewAll = ref.watch(adminViewAllProvider);
   
   final movementRepository = ref.watch(movementRepositoryProvider);
   
   // If user is admin but wants personal view, we treat as 'user' for filtering
-  final effectiveRole = (role == 'admin' && viewAll) ? 'admin' : 'user';
+  final effectiveRole = (role == 'admin' && viewAll) ? 'admin' : (role == 'superadmin' ? 'superadmin' : 'user');
   
-  return movementRepository.getMovements(userId, effectiveRole);
+  return movementRepository.getMovements(userId, effectiveRole, companyId);
 });
 
 // Provider to store which user is being supervised by the admin
@@ -74,16 +76,22 @@ final adminSelectedUserIdProvider = StateProvider<String?>((ref) => null);
 // Streams movements for a SPECIFIC user selected by an admin
 final selectedUserMovementsProvider = StreamProvider.family<List<MovementModel>, String>((ref, userId) {
   final movementRepository = ref.watch(movementRepositoryProvider);
-  return movementRepository.getMovements(userId, 'user'); // We want only their own
+  final currentUser = ref.watch(currentUserProvider).value;
+  final companyId = currentUser?.companyId ?? 'alm_agro';
+  final role = currentUser?.role ?? 'user';
+
+  return movementRepository.getMovements(userId, 'user', companyId); // We want only their own within same company
 });
 
 // Streams all users for admin management
 final allUsersProvider = StreamProvider<List<UserModel>>((ref) {
   final user = ref.watch(currentUserProvider).value;
-  if (user?.role != 'admin') return const Stream.empty();
+  if (user == null || (user.role != 'admin' && user.role != 'superadmin')) {
+    return const Stream.empty();
+  }
   
   final userRepository = ref.watch(userRepositoryProvider);
-  return userRepository.streamAllUsers();
+  return userRepository.streamAllUsers(user.role, user.companyId);
 });
 
 // Provides the sum of balances of ALL users (Consolidated Corporate Balance)
@@ -97,5 +105,19 @@ final globalBalancesProvider = Provider<AsyncValue<Map<String, double>>>((ref) {
       });
     }
     return totals;
+  });
+});
+
+// Streams the branding configuration for the current company
+final companyConfigProvider = StreamProvider<CompanyConfigModel?>((ref) {
+  final user = ref.watch(currentUserProvider).value;
+  if (user == null) return const Stream.empty();
+  
+  final firestore = ref.watch(firestoreProvider);
+  return firestore.collection('companies_config').doc(user.companyId).snapshots().map((doc) {
+    if (doc.exists) {
+      return CompanyConfigModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+    }
+    return null;
   });
 });

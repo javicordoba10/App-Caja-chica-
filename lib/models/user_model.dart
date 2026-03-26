@@ -10,6 +10,7 @@ class UserModel {
   final List<CostCenter> establishments; // v25: Multiple establishments support
   final String role;
   final bool isActive;
+  final String companyId; // v29: SaaS multi-tenancy support
 
   UserModel({
     required this.id,
@@ -21,6 +22,7 @@ class UserModel {
     this.role = 'user',
     this.establishments = const [CostCenter.Administracion],
     this.isActive = true,
+    this.companyId = 'alm_agro',
   });
 
   UserModel copyWith({
@@ -33,6 +35,7 @@ class UserModel {
     String? role,
     List<CostCenter>? establishments,
     bool? isActive,
+    String? companyId,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -44,6 +47,7 @@ class UserModel {
       role: role ?? this.role,
       establishments: establishments ?? this.establishments,
       isActive: isActive ?? this.isActive,
+      companyId: companyId ?? this.companyId,
     );
   }
 
@@ -57,6 +61,7 @@ class UserModel {
       'role': role,
       'establishments': establishments.map((e) => e.name).toList(),
       'isActive': isActive,
+      'companyId': companyId,
     };
   }
 
@@ -125,6 +130,7 @@ class UserModel {
       role: map['role'] ?? 'user',
       isActive: map['isActive'] ?? true,
       establishments: establishmentsList,
+      companyId: map['companyId'] ?? 'alm_agro',
     );
   }
 }

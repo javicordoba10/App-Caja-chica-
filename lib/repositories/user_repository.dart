@@ -37,8 +37,15 @@ class UserRepository {
     await _users.doc(user.id).set(user.toMap());
   }
 
-  Stream<List<UserModel>> streamAllUsers() {
-    return _users.snapshots().map((snapshot) {
+  Stream<List<UserModel>> streamAllUsers(String role, String companyId) {
+    Query query = _users;
+    
+    // SaaS Isolation: Admins only see users from their own company
+    if (role != 'superadmin') {
+      query = query.where('companyId', isEqualTo: companyId);
+    }
+    
+    return query.snapshots().map((snapshot) {
       return snapshot.docs.map((doc) {
         return UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
       }).toList();

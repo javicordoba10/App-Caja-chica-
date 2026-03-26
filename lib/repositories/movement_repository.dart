@@ -28,10 +28,16 @@ class MovementRepository {
     await _movements.doc(id).update({'imageUrl': url});
   }
 
-  Stream<List<MovementModel>> getMovements(String userId, String role) {
+  Stream<List<MovementModel>> getMovements(String userId, String role, String companyId) {
     Query query = _movements;
     
-    if (role != 'admin') {
+    // SaaS Isolation Level 1: Company Isolation
+    if (role != 'superadmin') {
+      query = query.where('companyId', isEqualTo: companyId);
+    }
+    
+    // SaaS Isolation Level 2: User Role Isolation (only for non-admins)
+    if (role == 'user') {
       query = query.where('userId', isEqualTo: userId);
     }
     

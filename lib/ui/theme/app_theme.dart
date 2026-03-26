@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:petty_cash_app/models/company_config_model.dart';
 
 class AppTheme {
-  // Brand Colors (Agropecuaria Las Marías)
-  static const Color primaryOrange = Color(0xFFBA4817); // Naranja Corporativo
-  static const Color primaryYellow = Color(0xFFE5A102); // Amarillo Institucional
+  // Brand Colors (Defaults for Agropecuaria Las Marías)
+  static const Color defaultPrimary = Color(0xFFBA4817);
+  static const Color defaultSecondary = Color(0xFFE5A102);
+  
   static const Color pureBlack = Color(0xFF000000);
   static const Color pureWhite = Color(0xFFFFFFFF);
   
@@ -17,6 +19,7 @@ class AppTheme {
   static const Color expenseRed = Color(0xFFD32F2F);
   static const Color incomeGreen = Color(0xFF388E3C);
 
+  // --- Static Getters (Compatibility) ---
   static LinearGradient get headerGradient => const LinearGradient(
     colors: [
       pureBlack,
@@ -29,18 +32,43 @@ class AppTheme {
 
   static LinearGradient get buttonGradient => const LinearGradient(
     colors: [
-      primaryOrange,
-      primaryYellow,
+      defaultPrimary,
+      defaultSecondary,
     ],
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
   );
 
-  static ThemeData get lightTheme {
+  static BoxDecoration get orangeCardDecoration => BoxDecoration(
+    gradient: buttonGradient,
+    borderRadius: BorderRadius.circular(20),
+    boxShadow: [
+      BoxShadow(
+        color: defaultPrimary.withOpacity(0.2),
+        blurRadius: 12,
+        offset: const Offset(0, 6),
+      )
+    ],
+  );
+
+  // --- Dynamic Methods (SaaS Branding) ---
+  static LinearGradient dynamicButtonGradient(CompanyConfigModel? config) => LinearGradient(
+    colors: [
+      config?.primaryColor ?? defaultPrimary,
+      config?.secondaryColor ?? defaultSecondary,
+    ],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
+
+  static ThemeData lightTheme(CompanyConfigModel? config) {
+    final primary = config?.primaryColor ?? defaultPrimary;
+    final secondary = config?.secondaryColor ?? defaultSecondary;
+
     return ThemeData(
       useMaterial3: true,
       scaffoldBackgroundColor: backgroundWhite,
-      primaryColor: primaryOrange,
+      primaryColor: primary,
       textTheme: GoogleFonts.montserratTextTheme(),
       appBarTheme: AppBarTheme(
         backgroundColor: pureWhite,
@@ -54,15 +82,15 @@ class AppTheme {
         ),
       ),
       colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryOrange,
-        primary: primaryOrange,
-        secondary: primaryYellow,
+        seedColor: primary,
+        primary: primary,
+        secondary: secondary,
         surface: cardWhite,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: 0,
-          backgroundColor: primaryOrange,
+          backgroundColor: primary,
           foregroundColor: pureWhite,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           textStyle: GoogleFonts.montserrat(fontWeight: FontWeight.w700),
@@ -71,12 +99,12 @@ class AppTheme {
     );
   }
 
-  static BoxDecoration orangeCardDecoration = BoxDecoration(
-    gradient: buttonGradient,
+  static BoxDecoration dynamicColoredCardDecoration(CompanyConfigModel? config) => BoxDecoration(
+    gradient: dynamicButtonGradient(config),
     borderRadius: BorderRadius.circular(20),
     boxShadow: [
       BoxShadow(
-        color: primaryOrange.withOpacity(0.2),
+        color: (config?.primaryColor ?? defaultPrimary).withOpacity(0.2),
         blurRadius: 12,
         offset: const Offset(0, 6),
       )
@@ -95,4 +123,9 @@ class AppTheme {
       )
     ],
   );
+
+  // Aliases for compatibility
+  static const Color primaryOrange = defaultPrimary;
+  static const Color primaryYellow = defaultSecondary;
+  static LinearGradient get orangeGradient => buttonGradient;
 }
