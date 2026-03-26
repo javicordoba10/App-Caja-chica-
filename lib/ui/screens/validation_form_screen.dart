@@ -27,6 +27,16 @@ const Map<CostCenter, String> _costCenterNames = {
   CostCenter.ElMoro:         'El Moro',
 };
 
+const Map<MovementCategory, String> _categoryNames = {
+  MovementCategory.combustible: 'Combustible',
+  MovementCategory.comida: 'Comida',
+  MovementCategory.alojamiento: 'Alojamiento',
+  MovementCategory.ferreteria: 'Ferretería',
+  MovementCategory.personalChanga: 'Personal - Changas',
+  MovementCategory.viajePeaje: 'Viaje - Peaje',
+  MovementCategory.otros: 'Otros',
+};
+
 // ─── VAT rate data ───────────────────────────────────────────────────
 class _VatSlot {
   final TextEditingController amountCtrl;
@@ -71,6 +81,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
   bool _isLoading = false;
   String _loadingMessage = 'Cargando...';
   DateTime _selectedDate = DateTime.now();
+  MovementCategory _selectedCategory = MovementCategory.otros;
 
   static const List<double> _vatRates = [0.0, 0.105, 0.21, 0.27];
 
@@ -93,6 +104,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     _selectedInvoiceType = em?.invoiceType ?? d.invoiceType;
     _selectedCostCenter = em?.costCenter ?? CostCenter.Administracion;
     _selectedPayment = em?.paymentMethod ?? 'Efectivo';
+    _selectedCategory = em?.category ?? MovementCategory.otros;
 
     // Controllers - Asegurar que si hay datos OCR se muestren aunque sean 0.0 (excepto si es manual puro)
     _descCtrl          = TextEditingController(text: em?.description ?? '');
@@ -267,6 +279,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
       imageUrl:      null, // Se actualizará en segundo plano
       userName:      currentUser?.name,
       userEmail:     currentUser?.email,
+      category:      _selectedCategory,
     );
 
     try {
@@ -287,6 +300,33 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Widget _buildCategoryChips() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: MovementCategory.values.map((cat) {
+        final isSelected = _selectedCategory == cat;
+        return FilterChip(
+          label: Text(_categoryNames[cat] ?? cat.name, style: GoogleFonts.montserrat(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? Colors.white : AppTheme.textDark,
+          )),
+          selected: isSelected,
+          onSelected: widget.isReadOnly ? null : (selected) {
+            if (selected) setState(() => _selectedCategory = cat);
+          },
+          selectedColor: AppTheme.pureBlack,
+          checkmarkColor: Colors.white,
+          backgroundColor: Colors.black12,
+          showCheckmark: false,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        );
+      }).toList(),
+    );
   }
 
   void _startBackgroundUpload(String uid, String mid, Uint8List bytes, bool isPdf, MovementRepository repo) async {
@@ -432,6 +472,10 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                           )).toList(),
                           onChanged: widget.isReadOnly ? null : (String? v) => setState(() => _selectedPayment = v ?? 'Efectivo'),
                         ),
+                        const SizedBox(height: 24),
+                        _section('RUBRO / CATEGORÍA', Icons.category_outlined),
+                        const SizedBox(height: 12),
+                        _buildCategoryChips(),
                         const SizedBox(height: 40),
 
                         // ── Gradient Save Button ──────────────────────────────

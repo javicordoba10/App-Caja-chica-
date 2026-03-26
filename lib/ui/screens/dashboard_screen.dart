@@ -57,7 +57,6 @@ class DashboardScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
               
-              // Balance Cards (Responsive)
               userAsync.when(
                 data: (user) {
                   final globalAsync = ref.watch(globalBalancesProvider);
@@ -188,6 +187,8 @@ class DashboardScreen extends ConsumerWidget {
 
               // Charts
               _buildMainChartSection(ref, movementsAsync),
+              const SizedBox(height: 24),
+              _buildCategoryChartSection(ref, movementsAsync),
               const SizedBox(height: 24),
 
               // Recent list
@@ -468,14 +469,16 @@ class DashboardScreen extends ConsumerWidget {
     sheet.appendRow([excel_lib.TextCellValue('Fecha'), excel_lib.TextCellValue('Descripción'),
       excel_lib.TextCellValue('Tipo'), excel_lib.TextCellValue('Establecimiento'),
       excel_lib.TextCellValue('Monto BRUTO'), excel_lib.TextCellValue('Subtotal (NETO)'),
-      excel_lib.TextCellValue('IVA Total'), excel_lib.TextCellValue('Forma Pago')]);
+      excel_lib.TextCellValue('IVA Total'), excel_lib.TextCellValue('Forma Pago'),
+      excel_lib.TextCellValue('Rubro')]);
 
     for (final m in movements) {
       sheet.appendRow([excel_lib.TextCellValue(DateFormat('dd/MM/yyyy').format(m.date)),
         excel_lib.TextCellValue(m.description), excel_lib.TextCellValue(m.type == MovementType.income ? 'Ingreso' : 'Egreso'),
         excel_lib.TextCellValue(m.costCenter.name), excel_lib.DoubleCellValue(m.grossAmount),
         excel_lib.DoubleCellValue(m.netAmount), excel_lib.DoubleCellValue(m.vat),
-        excel_lib.TextCellValue(m.paymentMethod)]);
+        excel_lib.TextCellValue(m.paymentMethod),
+        excel_lib.TextCellValue(m.category?.displayName ?? 'Otros')]);
     }
 
     final bytes = excel.save();
@@ -558,7 +561,22 @@ class DashboardScreen extends ConsumerWidget {
                   BarChartData(
                     alignment: BarChartAlignment.spaceAround,
                     maxY: dataMap.values.fold(0.0, (max, v) => v > max ? v : max) * 1.2 + 1,
-                    barTouchData: BarTouchData(enabled: true),
+                    barTouchData: BarTouchData(
+                      enabled: true,
+                      touchTooltipData: BarTouchTooltipData(
+                        getTooltipColor: (_) => const Color(0xFF263238),
+                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                          return BarTooltipItem(
+                            rod.toY.toStringAsFixed(0),
+                            GoogleFonts.montserrat(
+                              color: AppTheme.pureWhite,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                     titlesData: FlTitlesData(
                       show: true,
                       bottomTitles: AxisTitles(
@@ -577,7 +595,24 @@ class DashboardScreen extends ConsumerWidget {
                           },
                         ),
                       ),
-                      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 35,
+                          getTitlesWidget: (value, meta) {
+                            if (value == 0) return const SizedBox.shrink();
+                            String text = '';
+                            if (value >= 1000000) {
+                              text = '${(value / 1000000).toStringAsFixed(1)}M';
+                            } else if (value >= 1000) {
+                              text = '${(value / 1000).toStringAsFixed(0)}k';
+                            } else {
+                              text = value.toStringAsFixed(0);
+                            }
+                            return Text(text, style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 8));
+                          },
+                        ),
+                      ),
                       topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                       rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     ),
@@ -883,6 +918,146 @@ class DashboardScreen extends ConsumerWidget {
               }
             }, 
             child: const Text('ELIMINAR')
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryChartSection(WidgetRef ref, AsyncValue<List<MovementModel>> movementsAsync) {
+    final selectedRange = ref.watch(dashboardChartRangeProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: AppTheme.whiteCardDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Gastos por Rubro',
+            style: GoogleFonts.montserrat(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: AppTheme.textDark,
+            ),
+          ),
+          const SizedBox(height: 24),
+          movementsAsync.when(
+            data: (movements) {
+              final categories = MovementCategory.values;
+              final dataMap = { for (var c in categories) c : 0.0 };
+              
+              final now = DateTime.now();
+              final filteredMovements = movements.where((m) {
+                if (m.type != MovementType.expense) return false;
+                
+                switch (selectedRange) {
+                  case 'Diario':
+                    return m.date.day == now.day && m.date.month == now.month && m.date.year == now.year;
+                  case 'Semanal':
+                    return m.date.isAfter(now.subtract(const Duration(days: 7)));
+                  case 'Mensual':
+                    return m.date.month == now.month && m.date.year == now.year;
+                  case 'Anual':
+                    return m.date.year == now.year;
+                  default:
+                    return true;
+                }
+              });
+
+              for (var m in filteredMovements) {
+                final cat = m.category ?? MovementCategory.otros;
+                dataMap[cat] = (dataMap[cat] ?? 0.0) + m.grossAmount;
+              }
+
+              return SizedBox(
+                height: 200,
+                child: BarChart(
+                  BarChartData(
+                    alignment: BarChartAlignment.spaceAround,
+                    maxY: dataMap.values.fold(0.0, (max, v) => v > max ? v : max) * 1.2 + 1,
+                    barTouchData: BarTouchData(
+                      enabled: true,
+                      touchTooltipData: BarTouchTooltipData(
+                        getTooltipColor: (_) => const Color(0xFF263238),
+                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                          return BarTooltipItem(
+                            rod.toY.toStringAsFixed(0),
+                            GoogleFonts.montserrat(
+                              color: AppTheme.pureWhite,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    titlesData: FlTitlesData(
+                      show: true,
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (value, meta) {
+                            final index = value.toInt();
+                            if (index < 0 || index >= categories.length) return const SizedBox.shrink();
+                            String label = categories[index].displayName;
+                            if (label.length > 5) label = label.substring(0, 4) + '.';
+                            return SideTitleWidget(
+                              meta: meta,
+                              child: Text(
+                                label.toUpperCase(),
+                                style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 8, fontWeight: FontWeight.bold),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 35,
+                          getTitlesWidget: (value, meta) {
+                            if (value == 0) return const SizedBox.shrink();
+                            String text = '';
+                            if (value >= 1000000) {
+                              text = '${(value / 1000000).toStringAsFixed(1)}M';
+                            } else if (value >= 1000) {
+                              text = '${(value / 1000).toStringAsFixed(0)}k';
+                            } else {
+                              text = value.toStringAsFixed(0);
+                            }
+                            return Text(text, style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 8));
+                          },
+                        ),
+                      ),
+                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ),
+                    gridData: const FlGridData(show: false),
+                    borderData: FlBorderData(show: false),
+                    barGroups: categories.asMap().entries.map((e) {
+                      return BarChartGroupData(
+                        x: e.key,
+                        barRods: [
+                          BarChartRodData(
+                            toY: dataMap[e.value] ?? 0,
+                            gradient: const LinearGradient(
+                              colors: [AppTheme.primaryOrange, AppTheme.primaryYellow],
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                            ),
+                            width: 22,
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+              );
+            },
+            loading: () => const SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
+            error: (_, __) => const Text('Error al procesar gráfico'),
           ),
         ],
       ),

@@ -191,6 +191,18 @@ class _UserHistoryScreenState extends ConsumerState<UserHistoryScreen> {
                   maxLines: 1, overflow: TextOverflow.ellipsis),
                 Text('${DateFormat('dd MMM yyyy').format(m.date)} • ${m.costCenter.name}', 
                   style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                if (m.category != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      m.category!.displayName,
+                      style: GoogleFonts.montserrat(
+                        color: AppTheme.primaryOrange,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -227,9 +239,10 @@ class _UserHistoryScreenState extends ConsumerState<UserHistoryScreen> {
                             Text(
                               'VER',
                               style: GoogleFonts.montserrat(
-                                color: AppTheme.primaryOrange,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
+                                color: AppTheme.primaryOrange, 
+                                fontSize: 10, 
+                                fontWeight: FontWeight.w700,
+                                fontStyle: FontStyle.italic,
                               ),
                             ),
                           ],
@@ -240,10 +253,30 @@ class _UserHistoryScreenState extends ConsumerState<UserHistoryScreen> {
                     Text(
                       'Sin Comprobante',
                       style: GoogleFonts.montserrat(
-                        color: Colors.black26,
-                        fontSize: 8,
+                        color: Colors.black26, 
+                        fontSize: 8, 
                         fontWeight: FontWeight.w600,
                         fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  if (m.category != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          m.category!.displayName.toUpperCase(),
+                          style: GoogleFonts.montserrat(
+                            color: AppTheme.textGrey,
+                            fontSize: 8,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                       ),
                     ),
                   const SizedBox(width: 8),

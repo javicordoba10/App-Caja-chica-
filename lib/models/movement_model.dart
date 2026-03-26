@@ -20,6 +20,7 @@ class MovementModel {
   final String? imageUrl;
   final String? userName; // v24: Attribution for admin view
   final String? userEmail; // v24: Attribution for admin view
+  final MovementCategory? category; // v28: Classification
 
   MovementModel({
     required this.id,
@@ -38,6 +39,7 @@ class MovementModel {
     this.imageUrl,
     this.userName,
     this.userEmail,
+    this.category,
   });
 
   Map<String, dynamic> toMap() {
@@ -57,6 +59,7 @@ class MovementModel {
       'imageUrl': imageUrl,
       'userName': userName,
       'userEmail': userEmail,
+      'category': category?.name,
     };
   }
 
@@ -78,6 +81,9 @@ class MovementModel {
       imageUrl: map['imageUrl'],
       userName: map['userName'],
       userEmail: map['userEmail'],
+      category: map['category'] != null 
+          ? MovementCategory.values.firstWhere((e) => e.name == map['category'], orElse: () => MovementCategory.otros)
+          : null,
     );
   }
 
@@ -97,6 +103,7 @@ class MovementModel {
     String? imageUrl,
     String? userName,
     String? userEmail,
+    MovementCategory? category,
   }) {
     return MovementModel(
       id: id ?? this.id,
@@ -115,6 +122,7 @@ class MovementModel {
       imageUrl: imageUrl ?? this.imageUrl,
       userName: userName ?? this.userName,
       userEmail: userEmail ?? this.userEmail,
+      category: category ?? this.category,
     );
   }
 }
