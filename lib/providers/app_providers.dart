@@ -108,13 +108,15 @@ final globalBalancesProvider = Provider<AsyncValue<Map<String, double>>>((ref) {
   });
 });
 
-// Streams the branding configuration for the current company
+// Streams the branding configuration for the current company (Support pre-login)
 final companyConfigProvider = StreamProvider<CompanyConfigModel?>((ref) {
   final user = ref.watch(currentUserProvider).value;
-  if (user == null) return const Stream.empty();
+  
+  // En v28.1, usamos alm_agro como default absoluto
+  final companyId = user?.companyId ?? 'alm_agro';
   
   final firestore = ref.watch(firestoreProvider);
-  return firestore.collection('companies_config').doc(user.companyId).snapshots().map((doc) {
+  return firestore.collection('companies_config').doc(companyId).snapshots().map((doc) {
     if (doc.exists) {
       return CompanyConfigModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
     }

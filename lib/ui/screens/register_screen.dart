@@ -72,6 +72,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         paymentMethods: const ['Efectivo', 'Tarjeta / Débito'],
         establishments: const [CostCenter.Administracion],
         role: 'user',
+        companyId: 'alm_agro',
       );
       
       await userRepo.createUser(newUser);

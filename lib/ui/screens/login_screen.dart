@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
 import '../../models/movement_model.dart';
 import '../../providers/app_providers.dart';
@@ -84,7 +85,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           establishments: const [CostCenter.Administracion],
           role: 'user',
           isActive: true, 
-          companyId: 'alm_agro', // Nuevo campo obligatorio en v29
+          companyId: 'alm_agro',
         );
         await userRepo.createUser(newUser);
 
@@ -305,11 +306,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ],
                       ),
 
-                      const SizedBox(height: 60),
-
-                      const SizedBox(height: 80),
-
                       const SizedBox(height: 20),
+                      
+                      const SizedBox(height: 30),
 
                       // Footer
                       Column(

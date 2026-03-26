@@ -10,6 +10,7 @@ import 'package:petty_cash_app/models/movement_model.dart';
 import 'package:petty_cash_app/services/ocr_service.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:petty_cash_app/ui/screens/users_screen.dart';
+import 'package:petty_cash_app/providers/app_providers.dart';
 
 // State for navigation
 final navigationProvider = StateProvider<String>((ref) => 'dashboard');

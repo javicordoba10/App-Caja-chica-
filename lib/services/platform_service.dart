@@ -33,4 +33,6 @@ class PlatformService {
       // url_launcher se encarga de esto en DashboardScreen
     }
   }
+
+  // Nota: v28.1 Restaurada - Se elimina captura de parámetros para simplificar la estabilidad.
 }

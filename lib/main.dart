@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'firebase_options.dart';
 import 'ui/theme/app_theme.dart';
 import 'ui/screens/login_screen.dart';
 import 'providers/app_providers.dart';
+import 'package:petty_cash_app/services/platform_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,19 +14,28 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  
-  runApp(const ProviderScope(child: PettyCashApp()));
+
+  runApp(
+    const ProviderScope(
+      child: PettyCashApp(),
+    ),
+  );
 }
 
-class PettyCashApp extends StatelessWidget {
+class PettyCashApp extends ConsumerWidget {
   const PettyCashApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Escuchamos la configuración de marca (soporta pre-login)
+    final companyConfig = ref.watch(companyConfigProvider).value;
+
     return MaterialApp(
       title: 'Petty Cash',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
+      theme: companyConfig != null 
+          ? AppTheme.buildDynamicTheme(companyConfig)
+          : AppTheme.lightTheme,
       home: const LoginScreen(),
     );
   }
