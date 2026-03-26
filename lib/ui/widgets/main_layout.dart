@@ -20,34 +20,38 @@ class MainLayout extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentRoute = ref.watch(navigationProvider);
+    final companyConfig = ref.watch(companyConfigProvider).value;
     final scaffoldKey = GlobalKey<ScaffoldState>();
 
-    return Scaffold(
-      key: scaffoldKey,
-      appBar: AppBar(
-        title: Text(_getTitle(currentRoute)),
-        backgroundColor: AppTheme.pureWhite,
-        surfaceTintColor: AppTheme.pureWhite,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: AppTheme.pureBlack),
-          onPressed: () => scaffoldKey.currentState?.openDrawer(),
+    return Theme(
+      data: AppTheme.buildDynamicTheme(companyConfig),
+      child: Scaffold(
+        key: scaffoldKey,
+        appBar: AppBar(
+          title: Text(_getTitle(currentRoute)),
+          backgroundColor: AppTheme.pureWhite,
+          surfaceTintColor: AppTheme.pureWhite,
+          leading: IconButton(
+            icon: const Icon(Icons.menu, color: AppTheme.pureBlack),
+            onPressed: () => scaffoldKey.currentState?.openDrawer(),
+          ),
+          actions: [
+            if (currentRoute == 'history')
+              IconButton(
+                icon: const Icon(Icons.add, color: AppTheme.primaryOrange),
+                onPressed: () => ref.read(navigationProvider.notifier).state = 'new',
+              ),
+          ],
         ),
-        actions: [
-          if (currentRoute == 'history')
-             IconButton(
-               icon: const Icon(Icons.add, color: AppTheme.primaryOrange),
-               onPressed: () => ref.read(navigationProvider.notifier).state = 'new',
-             ),
-        ],
+        drawer: AppDrawer(
+          currentRoute: currentRoute,
+          onItemSelected: (route) {
+            scaffoldKey.currentState?.closeDrawer();
+            ref.read(navigationProvider.notifier).state = route;
+          },
+        ),
+        body: _buildBody(currentRoute),
       ),
-      drawer: AppDrawer(
-        currentRoute: currentRoute,
-        onItemSelected: (route) {
-          scaffoldKey.currentState?.closeDrawer();
-          ref.read(navigationProvider.notifier).state = route;
-        },
-      ),
-      body: _buildBody(currentRoute),
     );
   }
 

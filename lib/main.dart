@@ -16,17 +16,15 @@ void main() async {
   runApp(const ProviderScope(child: PettyCashApp()));
 }
 
-class PettyCashApp extends ConsumerWidget {
+class PettyCashApp extends StatelessWidget {
   const PettyCashApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final companyConfig = ref.watch(companyConfigProvider).value;
-
+  Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Petty Cash',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme(companyConfig),
+      theme: AppTheme.lightTheme,
       home: const LoginScreen(),
     );
   }

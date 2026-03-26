@@ -51,6 +51,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (!user.isActive) {
           throw Exception('Tu cuenta ha sido bloqueada por un administrador.');
         }
+
+        // v29.3: Auto-Migration (Auto-Sello)
+        // Si el usuario no tiene companyId en Firestore, lo sellamos con la empresa default
+        final rawDoc = await FirebaseFirestore.instance.collection('users').doc(user.id).get();
+        if (!rawDoc.data()!.containsKey('companyId')) {
+          await FirebaseFirestore.instance.collection('users').doc(user.id).update({
+            'companyId': 'alm_agro',
+          });
+          print('v29.3: Usuario ${user.email} auto-migrado a alm_agro');
+        }
+
         ref.read(currentUserIdProvider.notifier).state = user.id;
         if (mounted) {
           Navigator.pushReplacement(
@@ -72,7 +83,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           paymentMethods: const ['Efectivo', 'Tarjeta / Débito'],
           establishments: const [CostCenter.Administracion],
           role: 'user',
-          isActive: true, // Default to active
+          isActive: true, 
+          companyId: 'alm_agro', // Nuevo campo obligatorio en v29
         );
         await userRepo.createUser(newUser);
 

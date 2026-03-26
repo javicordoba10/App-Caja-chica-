@@ -12,13 +12,10 @@ import 'package:petty_cash_app/services/pdf_service.dart';
 import 'package:petty_cash_app/services/ocr_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:excel/excel.dart' as excel_lib;
-import 'dart:io' as io;
-import 'package:path_provider/path_provider.dart';
+import 'package:petty_cash_app/services/platform_service.dart';
 import 'package:petty_cash_app/ui/screens/history_screen.dart';
 import 'package:petty_cash_app/ui/screens/validation_form_screen.dart';
 import 'package:petty_cash_app/ui/widgets/main_layout.dart';
-// Conditional import for web/native compatibility
-import 'package:petty_cash_app/services/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import 'package:petty_cash_app/ui/widgets/responsive_layout.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -483,20 +480,10 @@ class DashboardScreen extends ConsumerWidget {
 
     final bytes = excel.save();
     if (bytes != null) {
-      if (kIsWeb) {
-        Future.microtask(() {
-          final blob = html.Blob([bytes], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-          final url = html.Url.createObjectUrlFromBlob(blob);
-          final anchor = html.AnchorElement(href: url)
-            ..setAttribute("download", "movimientos_${DateTime.now().millisecondsSinceEpoch}.xlsx")
-            ..click();
-          html.Url.revokeObjectUrl(url);
-        });
-      } else {
-        final directory = await getApplicationDocumentsDirectory();
-        final file = io.File('${directory.path}/movimientos.xlsx');
-        await file.writeAsBytes(bytes);
-      }
+      await PlatformService.saveExcel(
+        Uint8List.fromList(bytes), 
+        "movimientos_${DateTime.now().millisecondsSinceEpoch}.xlsx"
+      );
     }
   }
 
@@ -769,7 +756,7 @@ class DashboardScreen extends ConsumerWidget {
                         icon: const Icon(Icons.remove_red_eye_outlined, size: 22, color: AppTheme.primaryOrange),
                         onPressed: () async {
                           if (kIsWeb) {
-                            html.window.open(m.imageUrl!, '_blank');
+                            PlatformService.openUrl(m.imageUrl!);
                           } else {
                             final uri = Uri.parse(m.imageUrl!);
                             if (await canLaunchUrl(uri)) {

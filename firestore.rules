@@ -7,7 +7,11 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      return request.auth != null && getUserData().role == 'superadmin';
+      return request.auth != null && getUserData().get('role', 'user') == 'superadmin';
+    }
+    
+    function getUserCompanyId() {
+      return getUserData().get('companyId', 'alm_agro');
     }
 
     // Users collection
@@ -15,7 +19,7 @@ service cloud.firestore {
       allow read, write: if request.auth != null && (
         request.auth.uid == userId || 
         isSuperAdmin() ||
-        (getUserData().role == 'admin' && getUserData().companyId == resource.data.companyId)
+        (getUserData().get('role', 'user') == 'admin' && getUserCompanyId() == resource.data.get('companyId', 'alm_agro'))
       );
     }
     
@@ -25,13 +29,13 @@ service cloud.firestore {
         isSuperAdmin() ||
         (resource == null && request.resource.data.userId == request.auth.uid) || 
         (resource != null && (resource.data.userId == request.auth.uid || 
-         (getUserData().role == 'admin' && getUserData().companyId == resource.data.companyId)))
+         (getUserData().get('role', 'user') == 'admin' && getUserCompanyId() == resource.data.get('companyId', 'alm_agro'))))
       );
     }
 
     // Company Config
     match /companies_config/{companyId} {
-      allow read: if request.auth != null && (isSuperAdmin() || getUserData().companyId == companyId);
+      allow read: if request.auth != null; // Soft read for branding
       allow write: if isSuperAdmin();
     }
   }

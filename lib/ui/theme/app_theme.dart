@@ -61,14 +61,11 @@ class AppTheme {
     end: Alignment.centerRight,
   );
 
-  static ThemeData lightTheme(CompanyConfigModel? config) {
-    final primary = config?.primaryColor ?? defaultPrimary;
-    final secondary = config?.secondaryColor ?? defaultSecondary;
-
+  static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
       scaffoldBackgroundColor: backgroundWhite,
-      primaryColor: primary,
+      primaryColor: defaultPrimary,
       textTheme: GoogleFonts.montserratTextTheme(),
       appBarTheme: AppBarTheme(
         backgroundColor: pureWhite,
@@ -82,15 +79,15 @@ class AppTheme {
         ),
       ),
       colorScheme: ColorScheme.fromSeed(
-        seedColor: primary,
-        primary: primary,
-        secondary: secondary,
+        seedColor: defaultPrimary,
+        primary: defaultPrimary,
+        secondary: defaultSecondary,
         surface: cardWhite,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: 0,
-          backgroundColor: primary,
+          backgroundColor: defaultPrimary,
           foregroundColor: pureWhite,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           textStyle: GoogleFonts.montserrat(fontWeight: FontWeight.w700),
@@ -99,17 +96,22 @@ class AppTheme {
     );
   }
 
-  static BoxDecoration dynamicColoredCardDecoration(CompanyConfigModel? config) => BoxDecoration(
-    gradient: dynamicButtonGradient(config),
-    borderRadius: BorderRadius.circular(20),
-    boxShadow: [
-      BoxShadow(
-        color: (config?.primaryColor ?? defaultPrimary).withOpacity(0.2),
-        blurRadius: 12,
-        offset: const Offset(0, 6),
-      )
-    ],
-  );
+  // Versión parametrizada para uso futuro/interno
+  static ThemeData buildDynamicTheme(CompanyConfigModel? config) {
+    if (config == null) return lightTheme;
+    final primary = config.primaryColor;
+    final secondary = config.secondaryColor;
+
+    return lightTheme.copyWith(
+      primaryColor: primary,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: primary,
+        primary: primary,
+        secondary: secondary,
+        surface: cardWhite,
+      ),
+    );
+  }
 
   static BoxDecoration whiteCardDecoration = BoxDecoration(
     color: cardWhite,

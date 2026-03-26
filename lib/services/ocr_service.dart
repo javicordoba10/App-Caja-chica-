@@ -1,4 +1,3 @@
-import 'dart:io' as io;
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
@@ -6,6 +5,7 @@ import 'package:petty_cash_app/models/movement_model.dart';
 import 'package:petty_cash_app/services/pdf_converter_stub.dart' if (dart.library.io) 'package:petty_cash_app/services/pdf_converter_mobile.dart';
 import 'dart:convert';
 import 'package:petty_cash_app/services/ocr_stub.dart' if (dart.library.html) 'package:petty_cash_app/services/ocr_web.dart';
+import 'package:petty_cash_app/services/html_stub.dart' if (dart.library.io) 'dart:io' as io; // Safe conditional import
 
 class ExtractedReceiptData {
   final double netAmount;
