@@ -34,5 +34,28 @@ class PlatformService {
     }
   }
 
-  // Nota: v28.1 Restaurada - Se elimina captura de parámetros para simplificar la estabilidad.
+  static String? getUriParameter(String key) {
+    if (kIsWeb) {
+      try {
+        final uri = Uri.base;
+        debugPrint('PlatformService: Analizando URI: $uri');
+        if (uri.queryParameters.containsKey(key)) {
+          final val = uri.queryParameters[key];
+          debugPrint('PlatformService: Encontrado en query: $val');
+          return val;
+        }
+        if (uri.hasFragment && uri.fragment.contains('?')) {
+          final queryPart = uri.fragment.split('?').last;
+          final params = Uri.splitQueryString(queryPart);
+          if (params.containsKey(key)) {
+            final val = params[key];
+            debugPrint('PlatformService: Encontrado en fragment: $val');
+            return val;
+          }
+        }
+        debugPrint('PlatformService: No se encontro el parametro $key');
+      } catch (_) {}
+    }
+    return null;
+  }
 }

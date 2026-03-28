@@ -98,14 +98,28 @@ class AppDrawer extends ConsumerWidget {
             onTap: () => onItemSelected('profile'),
           ),
           
-          // Solo para Administradores
+          // Solo para Administradores de Inquilino
           userAsync.when(
-            data: (user) => user?.role == 'admin' 
+            data: (user) => (user?.role == 'admin' || user?.role == 'superadmin')
               ? _DrawerItem(
                   icon: Icons.admin_panel_settings_outlined,
                   label: 'Gestión Usuarios',
                   isSelected: currentRoute == 'users',
                   onTap: () => onItemSelected('users'),
+                )
+              : const SizedBox.shrink(),
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
+          
+          // Solo para SuperAdmin Global (SaaS)
+          userAsync.when(
+            data: (user) => user?.role == 'superadmin' 
+              ? _DrawerItem(
+                  icon: Icons.business_center_outlined,
+                  label: 'Gestión SaaS',
+                  isSelected: currentRoute == 'superadmin',
+                  onTap: () => onItemSelected('superadmin'),
                 )
               : const SizedBox.shrink(),
             loading: () => const SizedBox.shrink(),

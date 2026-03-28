@@ -10,6 +10,7 @@ import 'package:petty_cash_app/models/movement_model.dart';
 import 'package:petty_cash_app/services/ocr_service.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:petty_cash_app/ui/screens/users_screen.dart';
+import 'package:petty_cash_app/ui/screens/superadmin_screen.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
 
 // State for navigation
@@ -24,19 +25,32 @@ class MainLayout extends ConsumerWidget {
     final companyConfig = ref.watch(companyConfigProvider).value;
     final scaffoldKey = GlobalKey<ScaffoldState>();
 
+    final inspectId = ref.watch(superAdminInspectTenantProvider);
+    final isInspecting = inspectId != null;
+
     return Theme(
       data: AppTheme.buildDynamicTheme(companyConfig),
       child: Scaffold(
         key: scaffoldKey,
         appBar: AppBar(
-          title: Text(_getTitle(currentRoute)),
-          backgroundColor: AppTheme.pureWhite,
-          surfaceTintColor: AppTheme.pureWhite,
+          title: Text(isInspecting ? '👁️ AUDITANDO: ${companyConfig?.name ?? inspectId}' : _getTitle(currentRoute), style: TextStyle(color: isInspecting ? AppTheme.expenseRed : AppTheme.textDark, fontWeight: isInspecting ? FontWeight.bold : FontWeight.normal, fontSize: isInspecting ? 14 : 18)),
+          backgroundColor: isInspecting ? AppTheme.expenseRed.withOpacity(0.1) : AppTheme.pureWhite,
+          surfaceTintColor: isInspecting ? AppTheme.expenseRed.withOpacity(0.1) : AppTheme.pureWhite,
           leading: IconButton(
-            icon: const Icon(Icons.menu, color: AppTheme.pureBlack),
+            icon: Icon(Icons.menu, color: isInspecting ? AppTheme.expenseRed : AppTheme.pureBlack),
             onPressed: () => scaffoldKey.currentState?.openDrawer(),
           ),
           actions: [
+            if (isInspecting)
+               Padding(
+                 padding: const EdgeInsets.only(right: 8.0),
+                 child: OutlinedButton.icon(
+                   icon: const Icon(Icons.close, size: 16, color: AppTheme.expenseRed),
+                   label: const Text('SALIR', style: TextStyle(color: AppTheme.expenseRed, fontWeight: FontWeight.bold)),
+                   style: OutlinedButton.styleFrom(side: const BorderSide(color: AppTheme.expenseRed)),
+                   onPressed: () => ref.read(superAdminInspectTenantProvider.notifier).state = null,
+                 ),
+               ),
             if (currentRoute == 'history')
               IconButton(
                 icon: const Icon(Icons.add, color: AppTheme.primaryOrange),
@@ -68,6 +82,8 @@ class MainLayout extends ConsumerWidget {
         return 'Mi Perfil';
       case 'users':
         return 'Gestión de Usuarios';
+      case 'superadmin':
+        return 'Consola SaaS';
       default:
         return 'Petty Cash';
     }
@@ -85,6 +101,8 @@ class MainLayout extends ConsumerWidget {
         return ProfileScreen();
       case 'users':
         return const UsersScreen();
+      case 'superadmin':
+        return const SuperadminScreen();
       default:
         return DashboardScreen();
     }

@@ -69,3 +69,4 @@ app.*.map.json
 .pub-cache/
 .pub/
 .flutter-plugins*
+*.apk

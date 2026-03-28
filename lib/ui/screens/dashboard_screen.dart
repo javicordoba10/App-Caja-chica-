@@ -25,6 +25,7 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final userAsync = ref.watch(currentUserProvider);
     final movementsAsync = ref.watch(movementsProvider);
+    final isInspecting = ref.watch(superAdminInspectTenantProvider) != null;
 
     return RefreshIndicator(
         onRefresh: () async => ref.refresh(movementsProvider),
@@ -37,12 +38,12 @@ class DashboardScreen extends ConsumerWidget {
               // Greeting Section
               userAsync.when(
                 data: (user) {
-                  final viewAll = ref.watch(adminViewAllProvider);
+                  final viewAll = ref.watch(adminViewAllProvider) || isInspecting;
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildGreeting(user?.name ?? 'Usuario', user?.role ?? 'user', viewAll),
-                      if (user?.role == 'admin') ...[
+                      if (user?.role != 'user' && !isInspecting) ...[
                         const SizedBox(height: 16),
                         _buildViewToggle(ref, viewAll),
                       ],
@@ -50,14 +51,14 @@ class DashboardScreen extends ConsumerWidget {
                   );
                 },
                 loading: () => _buildGreeting('...', 'user', true),
-                error: (_, __) => _buildGreeting('Invitado', 'user', true),
+                error: (err, stack) => _buildGreeting('Error Fatal: $err', 'user', true),
               ),
               const SizedBox(height: 24),
               
               userAsync.when(
                 data: (user) {
                   final globalAsync = ref.watch(globalBalancesProvider);
-                  final viewAll = ref.watch(adminViewAllProvider);
+                  final viewAll = ref.watch(adminViewAllProvider) || isInspecting;
                   
                    final balanceEntries = user?.balances.entries.toList() ?? [];
                    final totalBalance = balanceEntries.fold(0.0, (sum, e) => sum + e.value);
@@ -70,8 +71,8 @@ class DashboardScreen extends ConsumerWidget {
                          Padding(
                            padding: const EdgeInsets.only(bottom: 16),
                            child: _buildBalanceCard(
-                             (viewAll && user?.role == 'admin') ? 'Saldo Disponible (Total)' : 'Saldo Disponible', 
-                             (viewAll && user?.role == 'admin') ? globalTotal : totalBalance, 
+                             (viewAll && user?.role != 'user') ? 'Saldo Disponible (Total)' : 'Saldo Disponible', 
+                             (viewAll && user?.role != 'user') ? globalTotal : totalBalance, 
                              Icons.account_balance_wallet_rounded, 
                              const Color(0xFF004D40),
                              gradientColors: [const Color(0xFF004D40), const Color(0xFF00897B)],
@@ -83,7 +84,7 @@ class DashboardScreen extends ConsumerWidget {
                            final methodName = entry.key;
                            double amount = entry.value;
 
-                           if (viewAll && user?.role == 'admin') {
+                           if (viewAll && user?.role != 'user') {
                              amount = globalAsync.value?[methodName] ?? amount;
                            }
 
@@ -93,7 +94,7 @@ class DashboardScreen extends ConsumerWidget {
                            return Padding(
                              padding: EdgeInsets.only(bottom: index == balanceEntries.length - 1 ? 0 : 16),
                              child: _buildBalanceCard(
-                               (viewAll && user?.role == 'admin') ? '$methodName (Total)' : methodName, 
+                               (viewAll && user?.role != 'user') ? '$methodName (Total)' : methodName, 
                                amount, 
                                isEfectivo ? Icons.payments_outlined : (isTarjeta ? Icons.credit_card_outlined : Icons.account_balance_wallet_outlined), 
                                isEfectivo ? AppTheme.primaryOrange : (isTarjeta ? const Color(0xFF1A237E) : Colors.teal),
@@ -116,8 +117,8 @@ class DashboardScreen extends ConsumerWidget {
                            child: Padding(
                              padding: const EdgeInsets.only(bottom: 20),
                              child: _buildBalanceCard(
-                               (viewAll && user?.role == 'admin') ? 'Saldo Disponible (Total)' : 'Saldo Disponible', 
-                               (viewAll && user?.role == 'admin') ? globalTotal : totalBalance, 
+                               (viewAll && user?.role != 'user') ? 'Saldo Disponible (Total)' : 'Saldo Disponible', 
+                               (viewAll && user?.role != 'user') ? globalTotal : totalBalance, 
                                Icons.account_balance_wallet_rounded, 
                               const Color(0xFF004D40),
                               gradientColors: [const Color(0xFF004D40), const Color(0xFF00897B)],
@@ -138,7 +139,7 @@ class DashboardScreen extends ConsumerWidget {
                              final methodName = entry.key;
                              double amount = entry.value;
 
-                             if (viewAll && user?.role == 'admin') {
+                             if (viewAll && user?.role != 'user') {
                                amount = globalAsync.value?[methodName] ?? amount;
                              }
 
@@ -148,7 +149,7 @@ class DashboardScreen extends ConsumerWidget {
                              return SizedBox(
                                width: (MediaQuery.of(context).size.width - 40 - 32) / 3,
                                child: _buildBalanceCard(
-                                 (viewAll && user?.role == 'admin') ? '$methodName (Total)' : methodName, 
+                                 (viewAll && user?.role != 'user') ? '$methodName (Total)' : methodName, 
                                  amount, 
                                  isEfectivo ? Icons.payments_outlined : (isTarjeta ? Icons.credit_card_outlined : Icons.account_balance_wallet_outlined), 
                                  isEfectivo ? AppTheme.primaryOrange : (isTarjeta ? const Color(0xFF1A237E) : Colors.teal),
@@ -166,7 +167,7 @@ class DashboardScreen extends ConsumerWidget {
                    );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (_, __) => const Text('Error al cargar saldos'),
+                error: (err, __) => Text('Error al cargar saldos: $err', style: const TextStyle(color: Colors.red)),
               ),
               const SizedBox(height: 24),
 
@@ -202,7 +203,7 @@ class DashboardScreen extends ConsumerWidget {
     if (hour >= 12 && hour < 20) greeting = 'Buenas tardes';
     if (hour >= 20 || hour < 5) greeting = 'Buenas noches';
 
-    final displayName = (role == 'admin' && viewAll) ? 'Administrador $name' : name;
+    final displayName = (role != 'user' && viewAll) ? '${role == 'superadmin' ? 'SuperAdmin' : 'Administrador'} $name' : name;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -677,7 +678,7 @@ class DashboardScreen extends ConsumerWidget {
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, __) => const Text('Error al cargar movimientos'),
+          error: (err, __) => Text('Error movimientos: $err', style: const TextStyle(color: Colors.red)),
         ),
         const SizedBox(height: 40),
       ],
@@ -717,7 +718,7 @@ class DashboardScreen extends ConsumerWidget {
                     '${DateFormat('dd MMM').format(m.date)} • ${_getEstablishmentCode(m.costCenter)} • ${m.paymentMethod}', 
                     style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11, fontWeight: FontWeight.w500),
                   ),
-                  if (ref.watch(adminViewAllProvider) && m.userName != null)
+                  if (ref.watch(adminViewAllProvider) && m.userName != null && ref.watch(superAdminInspectTenantProvider) == null)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(

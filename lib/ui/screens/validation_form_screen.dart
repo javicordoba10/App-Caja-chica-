@@ -280,6 +280,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
       userName:      currentUser?.name,
       userEmail:     currentUser?.email,
       category:      _selectedCategory,
+      companyId:     currentUser?.companyId ?? 'alm_agro', // FIX: Inherit dynamic tenant!
     );
 
     try {

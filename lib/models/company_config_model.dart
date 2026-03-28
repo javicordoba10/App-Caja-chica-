@@ -30,12 +30,30 @@ class CompanyConfigModel {
   factory CompanyConfigModel.fromMap(Map<String, dynamic> map, String documentId) {
     return CompanyConfigModel(
       id: documentId,
-      name: map['name'] ?? '',
+      name: map['name'] ?? map['displayName'] ?? '',
       logoUrl: map['logoUrl'],
-      primaryColor: Color(map['primaryColor'] ?? const Color(0xFFFF9800).value),
-      secondaryColor: Color(map['secondaryColor'] ?? const Color(0xFFFFC107).value),
+      primaryColor: _parseColor(map['primaryColor'], const Color(0xFFFF9800)),
+      secondaryColor: _parseColor(map['secondaryColor'], const Color(0xFFFFC107)),
       isActive: map['isActive'] ?? true,
     );
+  }
+
+  static Color _parseColor(dynamic value, Color defaultColor) {
+    if (value == null) return defaultColor;
+    if (value is int) return Color(value);
+    if (value is String) {
+      try {
+        String hex = value.trim().replaceAll('#', '');
+        if (hex.length == 6) hex = 'FF$hex';
+        if (hex.length == 8) {
+          return Color(int.parse(hex, radix: 16));
+        }
+      } catch (e) {
+        debugPrint('Color Filter Error: $e for value $value');
+      }
+    }
+    // Diagnosis: Fallback to RED if something is wrong
+    return Colors.red; 
   }
 
   CompanyConfigModel copyWith({

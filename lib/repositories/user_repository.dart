@@ -38,12 +38,9 @@ class UserRepository {
   }
 
   Stream<List<UserModel>> streamAllUsers(String role, String companyId) {
-    Query query = _users;
-    
-    // SaaS Isolation: Admins only see users from their own company
-    if (role != 'superadmin') {
-      query = query.where('companyId', isEqualTo: companyId);
-    }
+    // STRICT SaaS Isolation: ALL roles (incluyendo superadmin) están restringidos
+    // a visualizar usuarios EXCLUSIVAMENTE de su propia compañía base gráfica.
+    Query query = _users.where('companyId', isEqualTo: companyId);
     
     return query.snapshots().map((snapshot) {
       return snapshot.docs.map((doc) {

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -37,6 +38,12 @@ final ocrServiceProvider = Provider<OCRService>((ref) => OCRService());
 // Current logged in user ID (Set during LoginScreen)
 final currentUserIdProvider = StateProvider<String?>((ref) => null);
 
+// Tenant ID captured from URL (for onboarding/pre-login branding)
+final targetCompanyIdProvider = StateProvider<String?>((ref) => null);
+
+// Tenant ID selected by SuperAdmin for "God-Mode" inspection
+final superAdminInspectTenantProvider = StateProvider<String?>((ref) => null);
+
 // Streams the current user's profile and live balance
 final currentUserProvider = StreamProvider<UserModel?>((ref) {
   final userId = ref.watch(currentUserIdProvider);
@@ -61,13 +68,19 @@ final movementsProvider = StreamProvider<List<MovementModel>>((ref) {
   final role = currentUser?.role ?? 'user';
   final companyId = currentUser?.companyId ?? 'alm_agro';
   final viewAll = ref.watch(adminViewAllProvider);
+  final inspectTenant = ref.watch(superAdminInspectTenantProvider);
   
   final movementRepository = ref.watch(movementRepositoryProvider);
   
-  // If user is admin but wants personal view, we treat as 'user' for filtering
-  final effectiveRole = (role == 'admin' && viewAll) ? 'admin' : (role == 'superadmin' ? 'superadmin' : 'user');
+  final effectiveRole = (role == 'superadmin' && inspectTenant != null) 
+      ? 'admin' // Impersonate admin
+      : (role == 'admin' && viewAll) ? 'admin' : (role == 'superadmin' ? 'superadmin' : 'user');
+      
+  final effectiveCompanyId = (role == 'superadmin' && inspectTenant != null)
+      ? inspectTenant
+      : companyId;
   
-  return movementRepository.getMovements(userId, effectiveRole, companyId);
+  return movementRepository.getMovements(userId, effectiveRole, effectiveCompanyId);
 });
 
 // Provider to store which user is being supervised by the admin
@@ -79,8 +92,13 @@ final selectedUserMovementsProvider = StreamProvider.family<List<MovementModel>,
   final currentUser = ref.watch(currentUserProvider).value;
   final companyId = currentUser?.companyId ?? 'alm_agro';
   final role = currentUser?.role ?? 'user';
+  final inspectTenant = ref.watch(superAdminInspectTenantProvider);
+  
+  final effectiveCompanyId = (role == 'superadmin' && inspectTenant != null)
+      ? inspectTenant
+      : companyId;
 
-  return movementRepository.getMovements(userId, 'user', companyId); // We want only their own within same company
+  return movementRepository.getMovements(userId, 'user', effectiveCompanyId); 
 });
 
 // Streams all users for admin management
@@ -90,8 +108,13 @@ final allUsersProvider = StreamProvider<List<UserModel>>((ref) {
     return const Stream.empty();
   }
   
+  final inspectTenant = ref.watch(superAdminInspectTenantProvider);
+  final effectiveCompanyId = (user.role == 'superadmin' && inspectTenant != null)
+      ? inspectTenant
+      : user.companyId;
+      
   final userRepository = ref.watch(userRepositoryProvider);
-  return userRepository.streamAllUsers(user.role, user.companyId);
+  return userRepository.streamAllUsers(user.role, effectiveCompanyId);
 });
 
 // Provides the sum of balances of ALL users (Consolidated Corporate Balance)
@@ -111,15 +134,21 @@ final globalBalancesProvider = Provider<AsyncValue<Map<String, double>>>((ref) {
 // Streams the branding configuration for the current company (Support pre-login)
 final companyConfigProvider = StreamProvider<CompanyConfigModel?>((ref) {
   final user = ref.watch(currentUserProvider).value;
+  final targetId = ref.watch(targetCompanyIdProvider);
+  final inspectTenant = ref.watch(superAdminInspectTenantProvider);
   
-  // En v28.1, usamos alm_agro como default absoluto
-  final companyId = user?.companyId ?? 'alm_agro';
+  // Priority: SuperAdmin Inspect > Logged In User > URL Param > Default ALM
+  final companyId = inspectTenant ?? user?.companyId ?? targetId ?? 'alm_agro';
   
   final firestore = ref.watch(firestoreProvider);
   return firestore.collection('companies_config').doc(companyId).snapshots().map((doc) {
+    debugPrint('Provider: Intentando leer doc "$companyId". ¿Existe? ${doc.exists}');
     if (doc.exists) {
-      return CompanyConfigModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      final config = CompanyConfigModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      debugPrint('Provider: Marca cargada: ${config.name}');
+      return config;
     }
+    debugPrint('Provider: Marca "$companyId" no encontrada en Firestore.');
     return null;
   });
 });

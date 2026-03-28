@@ -4,6 +4,20 @@
   },
   "hosting": {
     "public": "build/web",
+    "headers": [
+      {
+        "source": "flutter_service_worker.js",
+        "headers": [{"key": "Cache-Control", "value": "no-store, max-age=0"}]
+      },
+      {
+        "source": "index.html",
+        "headers": [{"key": "Cache-Control", "value": "no-store, max-age=0"}]
+      },
+      {
+        "source": "main.dart.js",
+        "headers": [{"key": "Cache-Control", "value": "no-store, max-age=0"}]
+      }
+    ],
     "ignore": [
       "firebase.json",
       "**/.*",

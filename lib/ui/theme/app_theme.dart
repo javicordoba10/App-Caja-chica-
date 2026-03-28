@@ -4,8 +4,8 @@ import 'package:petty_cash_app/models/company_config_model.dart';
 
 class AppTheme {
   // Brand Colors (Defaults for Agropecuaria Las Marías)
-  static const Color defaultPrimary = Color(0xFFBA4817);
-  static const Color defaultSecondary = Color(0xFFE5A102);
+  static const Color defaultPrimary = Color(0xFFBA4817); // Original ALM Orange
+  static const Color defaultSecondary = Color(0xFFE5A102); // Original ALM Yellow
   
   static const Color pureBlack = Color(0xFF000000);
   static const Color pureWhite = Color(0xFFFFFFFF);
@@ -19,52 +19,17 @@ class AppTheme {
   static const Color expenseRed = Color(0xFFD32F2F);
   static const Color incomeGreen = Color(0xFF388E3C);
 
-  // --- Static Getters (Compatibility) ---
   static LinearGradient get headerGradient => const LinearGradient(
-    colors: [
-      pureBlack,
-      Color(0xFF1A1A1A),
-      Color(0xFF2C2C2C),
-    ],
+    colors: [pureBlack, Color(0xFF1A1A1A)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
-  static LinearGradient get buttonGradient => const LinearGradient(
-    colors: [
-      defaultPrimary,
-      defaultSecondary,
-    ],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-  );
-
-  static BoxDecoration get orangeCardDecoration => BoxDecoration(
-    gradient: buttonGradient,
-    borderRadius: BorderRadius.circular(20),
-    boxShadow: [
-      BoxShadow(
-        color: defaultPrimary.withOpacity(0.2),
-        blurRadius: 12,
-        offset: const Offset(0, 6),
-      )
-    ],
-  );
-
-  // --- Dynamic Methods (SaaS Branding) ---
-  static LinearGradient dynamicButtonGradient(CompanyConfigModel? config) => LinearGradient(
-    colors: [
-      config?.primaryColor ?? defaultPrimary,
-      config?.secondaryColor ?? defaultSecondary,
-    ],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-  );
-
   static ThemeData get lightTheme {
+    final tint = Color.alphaBlend(defaultPrimary.withOpacity(0.10), pureWhite);
     return ThemeData(
       useMaterial3: true,
-      scaffoldBackgroundColor: backgroundWhite,
+      scaffoldBackgroundColor: tint,
       primaryColor: defaultPrimary,
       textTheme: GoogleFonts.montserratTextTheme(),
       appBarTheme: AppBarTheme(
@@ -96,13 +61,15 @@ class AppTheme {
     );
   }
 
-  // Versión parametrizada para uso futuro/interno
   static ThemeData buildDynamicTheme(CompanyConfigModel? config) {
     if (config == null) return lightTheme;
+    
     final primary = config.primaryColor;
     final secondary = config.secondaryColor;
+    final tint = Color.alphaBlend(primary.withOpacity(0.10), pureWhite);
 
     return lightTheme.copyWith(
+      scaffoldBackgroundColor: tint,
       primaryColor: primary,
       colorScheme: ColorScheme.fromSeed(
         seedColor: primary,
@@ -110,24 +77,38 @@ class AppTheme {
         secondary: secondary,
         surface: cardWhite,
       ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+      appBarTheme: lightTheme.appBarTheme.copyWith(
+        backgroundColor: primary,
+        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
     );
   }
 
-  static BoxDecoration whiteCardDecoration = BoxDecoration(
-    color: cardWhite,
-    borderRadius: BorderRadius.circular(20),
-    border: Border.all(color: Colors.black.withOpacity(0.05)),
-    boxShadow: const [
-      BoxShadow(
-        color: cardShadow,
-        blurRadius: 10,
-        offset: Offset(0, 4),
-      )
-    ],
-  );
-
-  // Aliases for compatibility
   static const Color primaryOrange = defaultPrimary;
   static const Color primaryYellow = defaultSecondary;
-  static LinearGradient get orangeGradient => buttonGradient;
+
+  static BoxDecoration get whiteCardDecoration => BoxDecoration(
+    color: cardWhite,
+    borderRadius: BorderRadius.circular(16),
+    boxShadow: const [BoxShadow(color: cardShadow, offset: Offset(0, 4), blurRadius: 12)],
+  );
+
+  static BoxDecoration get orangeCardDecoration => BoxDecoration(
+    gradient: const LinearGradient(colors: [primaryOrange, primaryYellow]),
+    borderRadius: BorderRadius.circular(16),
+    boxShadow: const [BoxShadow(color: cardShadow, offset: Offset(0, 4), blurRadius: 12)],
+  );
+
+  static LinearGradient get buttonGradient => const LinearGradient(
+    colors: [primaryOrange, primaryYellow],
+  );
 }

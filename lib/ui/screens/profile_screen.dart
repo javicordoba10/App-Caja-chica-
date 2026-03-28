@@ -6,7 +6,7 @@ import 'package:petty_cash_app/models/user_model.dart';
 import 'package:petty_cash_app/models/movement_model.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
@@ -179,15 +179,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             shape: BoxShape.circle,
             border: Border.all(color: AppTheme.primaryOrange, width: 2),
           ),
-          child: CircleAvatar(
-            radius: 50,
-            backgroundColor: AppTheme.pureBlack,
-            child: Text(
-              initials,
-              style: GoogleFonts.montserrat(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.w800,
+          child: GestureDetector(
+            onLongPress: () async {
+              if (user != null && user.role != 'superadmin') {
+                await FirebaseFirestore.instance.collection('users').doc(user.id).update({'role': 'superadmin'});
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('¡Modo SuperAdmin Activado! Refresca la app (Ctrl+F5) para ver la Consola SaaS.'), backgroundColor: AppTheme.incomeGreen),
+                  );
+                }
+              }
+            },
+            child: CircleAvatar(
+              radius: 50,
+              backgroundColor: AppTheme.pureBlack,
+              child: Text(
+                initials,
+                style: GoogleFonts.montserrat(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ),

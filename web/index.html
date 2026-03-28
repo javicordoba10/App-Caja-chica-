@@ -18,7 +18,8 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Petty Cash SaaS v30.5 - Marca Blanca">
+  <meta name="app-version" content="v30.5-ULTRA">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -29,7 +30,7 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>petty_cash_app</title>
+  <title>Petty Cash SaaS v30.5</title>
   <link rel="manifest" href="manifest.json">
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@2.12.313/build/pdf.js"></script>
   <script type="text/javascript">
@@ -94,6 +95,18 @@
   </script>
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (let registration of registrations) {
+            registration.unregister();
+            console.log('ServiceWorker aniquilado para Cache Busting.');
+          }
+        });
+      });
+    }
+  </script>
+  <script src="flutter_bootstrap.js?v=ULTRA" async></script>
 </body>
 </html>

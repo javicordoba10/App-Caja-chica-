@@ -29,12 +29,8 @@ class MovementRepository {
   }
 
   Stream<List<MovementModel>> getMovements(String userId, String role, String companyId) {
-    Query query = _movements;
-    
-    // SaaS Isolation Level 1: Company Isolation
-    if (role != 'superadmin') {
-      query = query.where('companyId', isEqualTo: companyId);
-    }
+    // STRICT SaaS Isolation Level 1: Absolute Company Isolation for ALL roles
+    Query query = _movements.where('companyId', isEqualTo: companyId);
     
     // SaaS Isolation Level 2: User Role Isolation (only for non-admins)
     if (role == 'user') {
