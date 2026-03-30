@@ -196,7 +196,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     '${DateFormat('dd MMM').format(m.date)} • ${m.establishment} • ${m.paymentMethod}',
                     style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11, fontWeight: FontWeight.w500),
                   ),
-                  if (ref.watch(adminViewAllProvider) && m.userName != null)
+                  if (ref.watch(adminViewAllProvider) && m.userName != null && 
+                      (ref.watch(currentUserProvider).value?.role == 'admin' || ref.watch(currentUserProvider).value?.role == 'superadmin'))
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(

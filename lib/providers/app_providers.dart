@@ -9,6 +9,7 @@ import 'package:petty_cash_app/repositories/user_repository.dart';
 import 'package:petty_cash_app/repositories/movement_repository.dart';
 
 import 'package:petty_cash_app/services/ocr_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 // Provider to check the low-level socket connectivity to Firestore
 final connectivityStatusProvider = StreamProvider<bool>((ref) async* {
@@ -44,12 +45,22 @@ final targetCompanyIdProvider = StateProvider<String?>((ref) => null);
 final superAdminInspectTenantProvider = StateProvider<String?>((ref) => null);
 
 // Streams the current user's profile and live balance
-final currentUserProvider = StreamProvider<UserModel?>((ref) {
+final currentUserProvider = StreamProvider<UserModel?>((ref) async* {
   final userId = ref.watch(currentUserIdProvider);
-  if (userId == null) return const Stream.empty();
+  if (userId == null) { yield null; return; }
   
   final userRepository = ref.watch(userRepositoryProvider);
-  return userRepository.streamUser(userId);
+  await for (final user in userRepository.streamUser(userId)) {
+    if (user != null) {
+      final targetId = ref.read(targetCompanyIdProvider);
+      if (targetId != null && user.companyId != targetId && user.role != 'superadmin') {
+         FirebaseAuth.instance.signOut();
+         yield null;
+         return;
+      }
+    }
+    yield user;
+  }
 });
 
 // Selector for Dashboard Chart (Daily, Weekly, Monthly, Yearly)
@@ -71,9 +82,14 @@ final movementsProvider = StreamProvider<List<MovementModel>>((ref) {
   
   final movementRepository = ref.watch(movementRepositoryProvider);
   
-  final effectiveRole = (role == 'superadmin' && inspectTenant != null) 
-      ? 'admin' // Impersonate admin
-      : (role == 'admin' && viewAll) ? 'admin' : (role == 'superadmin' ? 'superadmin' : 'user');
+  String effectiveRole = 'user';
+  if (viewAll) {
+    if (role == 'superadmin' && inspectTenant != null) {
+       effectiveRole = 'admin'; // Impersonate admin
+    } else if (role == 'superadmin' || role == 'admin') {
+       effectiveRole = role;
+    }
+  }
       
   final effectiveCompanyId = (role == 'superadmin' && inspectTenant != null)
       ? inspectTenant
