@@ -13,7 +13,7 @@ class MovementModel {
   final String invoiceType;
   final String? invoiceNumber;
   final String description;
-  final CostCenter costCenter;
+  final String establishment;
   final String paymentMethod;
   final DateTime date;
   final DateTime? invoiceDate; // v17: Fecha del comprobante (del OCR o manual)
@@ -33,7 +33,7 @@ class MovementModel {
     required this.invoiceType,
     this.invoiceNumber,
     required this.description,
-    required this.costCenter,
+    required this.establishment,
     required this.paymentMethod,
     required this.date,
     this.invoiceDate,
@@ -54,7 +54,9 @@ class MovementModel {
       'invoiceType': invoiceType,
       'invoiceNumber': invoiceNumber,
       'description': description,
-      'costCenter': costCenter.name,
+      // Keep 'costCenter' key for backwards compatibility if wanted, but saving as 'establishment' is cleaner.
+      // We will save as 'establishment' and read both.
+      'establishment': establishment,
       'paymentMethod': paymentMethod,
       'date': Timestamp.fromDate(date),
       'invoiceDate': invoiceDate != null ? Timestamp.fromDate(invoiceDate!) : null,
@@ -77,7 +79,7 @@ class MovementModel {
       invoiceType: map['invoiceType'] ?? '',
       invoiceNumber: map['invoiceNumber'],
       description: map['description'] ?? '',
-      costCenter: CostCenter.values.firstWhere((e) => e.name == map['costCenter'], orElse: () => CostCenter.Administracion),
+      establishment: (map['establishment'] ?? map['costCenter'] ?? 'ADMINISTRACIÓN').toString().toUpperCase(),
       paymentMethod: map['paymentMethod'] ?? 'Efectivo',
       date: (map['date'] as Timestamp).toDate(),
       invoiceDate: map['invoiceDate'] != null ? (map['invoiceDate'] as Timestamp).toDate() : null,
@@ -101,7 +103,7 @@ class MovementModel {
     String? invoiceType,
     String? invoiceNumber,
     String? description,
-    CostCenter? costCenter,
+    String? establishment,
     String? paymentMethod,
     DateTime? date,
     String? imageUrl,
@@ -120,10 +122,10 @@ class MovementModel {
       invoiceType: invoiceType ?? this.invoiceType,
       invoiceNumber: invoiceNumber ?? this.invoiceNumber,
       description: description ?? this.description,
-      costCenter: costCenter ?? this.costCenter,
+      establishment: establishment ?? this.establishment,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       date: date ?? this.date,
-      invoiceDate: invoiceDate ?? this.invoiceDate,
+      invoiceDate: invoiceDate ?? invoiceDate,
       imageUrl: imageUrl ?? this.imageUrl,
       userName: userName ?? this.userName,
       userEmail: userEmail ?? this.userEmail,

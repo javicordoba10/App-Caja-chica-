@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:petty_cash_app/models/user_model.dart';
 import 'package:petty_cash_app/models/movement_model.dart';
 
@@ -94,7 +93,7 @@ class UserRepository {
       
       await Future.wait([p1, p2]);
     } catch (e) {
-      throw e;
+      rethrow;
     }
   }
 
@@ -114,7 +113,7 @@ class UserRepository {
       
       await Future.wait([p1, p2]);
     } catch (e) {
-      throw e;
+      rethrow;
     }
   }
 
@@ -144,13 +143,14 @@ class UserRepository {
     });
   }
 
-  Future<void> updateUserProfile(String userId, {String? name, String? phone, List<CostCenter>? establishments, List<String>? paymentMethods}) async {
+  Future<void> updateUserProfile(String userId, {String? name, String? phone, String? jobRole, List<String>? establishments, List<String>? paymentMethods}) async {
     final Map<String, dynamic> updates = {};
     if (name != null) updates['name'] = name;
     if (phone != null) updates['phone'] = phone;
     if (paymentMethods != null) updates['paymentMethods'] = paymentMethods;
+    if (jobRole != null) updates['jobRole'] = jobRole;
     if (establishments != null) {
-      updates['establishments'] = establishments.map((e) => e.name).toList();
+      updates['establishments'] = establishments.map((e) => e.toUpperCase()).toList();
     }
     
     if (updates.isNotEmpty) {

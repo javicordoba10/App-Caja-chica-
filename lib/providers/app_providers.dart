@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:async';
 import 'package:petty_cash_app/models/user_model.dart';
 import 'package:petty_cash_app/models/movement_model.dart';

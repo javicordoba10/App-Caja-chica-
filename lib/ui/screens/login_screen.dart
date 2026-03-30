@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
-import '../../models/movement_model.dart';
 import '../../providers/app_providers.dart';
 import '../theme/app_theme.dart';
 import '../widgets/main_layout.dart';
@@ -78,7 +77,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           email: firebaseUser.email ?? email,
           balances: {'Efectivo': 0.0, 'Tarjeta / Débito': 0.0},
           paymentMethods: const ['Efectivo', 'Tarjeta / Débito'],
-          establishments: const [CostCenter.Administracion],
+          establishments: const ['ADMINISTRACIÓN'],
           role: 'user',
           isActive: true, 
           companyId: targetId,

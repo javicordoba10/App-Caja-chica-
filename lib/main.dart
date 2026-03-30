@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'ui/screens/login_screen.dart';
 import 'ui/theme/app_theme.dart';
 import 'providers/app_providers.dart';
-import 'models/company_config_model.dart';
 import 'services/platform_service.dart';
 
 void main() async {

@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -115,7 +114,7 @@ class PDFService {
                   DateFormat('dd/MM/yy').format(m.date),
                   m.type == MovementType.income ? 'Ingreso' : 'Egreso',
                   m.description,
-                  m.costCenter.name,
+                  m.establishment,
                   format.format(m.grossAmount)
                 ]).toList(),
                 headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
@@ -189,7 +188,7 @@ class PDFService {
               data: expenses.map((m) => [
                 DateFormat('dd/MM/yy').format(m.date),
                 m.description,
-                m.costCenter.name,
+                m.establishment,
                 m.paymentMethod,
                 format.format(m.grossAmount)
               ]).toList(),

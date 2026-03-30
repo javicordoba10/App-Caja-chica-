@@ -7,7 +7,6 @@ import 'package:petty_cash_app/models/movement_model.dart';
 import 'package:petty_cash_app/models/user_model.dart';
 import 'package:petty_cash_app/ui/screens/validation_form_screen.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:petty_cash_app/services/ocr_service.dart';
 
 class UserHistoryScreen extends ConsumerStatefulWidget {
@@ -189,7 +188,7 @@ class _UserHistoryScreenState extends ConsumerState<UserHistoryScreen> {
                 Text(m.description, 
                   style: GoogleFonts.montserrat(fontWeight: FontWeight.w700, fontSize: 14),
                   maxLines: 1, overflow: TextOverflow.ellipsis),
-                Text('${DateFormat('dd MMM yyyy').format(m.date)} • ${m.costCenter.name}', 
+                Text('${DateFormat('dd MMM yyyy').format(m.date)} • ${m.establishment}', 
                   style: const TextStyle(color: Colors.grey, fontSize: 11)),
                 if (m.category != null)
                   Padding(

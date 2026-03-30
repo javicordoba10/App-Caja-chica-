@@ -1,7 +1,5 @@
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
-import 'package:petty_cash_app/models/movement_model.dart';
 import 'package:petty_cash_app/services/pdf_converter_stub.dart' if (dart.library.io) 'package:petty_cash_app/services/pdf_converter_mobile.dart';
 import 'dart:convert';
 import 'package:petty_cash_app/services/ocr_stub.dart' if (dart.library.html) 'package:petty_cash_app/services/ocr_web.dart';
@@ -95,8 +93,9 @@ class OCRService {
     }
     // Fallback por letra aislada si no se detectó arriba
     if (type == 'Ticket') {
-      if (text.contains(RegExp(r'[\[|]\s*A\s*[\]|]')) || text.contains(RegExp(r'\bA\b'))) type = 'Factura A';
-      else if (text.contains(RegExp(r'[\[|]\s*B\s*[\]|]')) || text.contains(RegExp(r'\bB\b'))) type = 'Factura B';
+      if (text.contains(RegExp(r'[\[|]\s*A\s*[\]|]')) || text.contains(RegExp(r'\bA\b'))) {
+        type = 'Factura A';
+      } else if (text.contains(RegExp(r'[\[|]\s*B\s*[\]|]')) || text.contains(RegExp(r'\bB\b'))) type = 'Factura B';
       else if (text.contains(RegExp(r'[\[|]\s*C\s*[\]|]')) || text.contains(RegExp(r'\bC\b'))) type = 'Factura C';
     }
 

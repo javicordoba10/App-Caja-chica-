@@ -1,4 +1,3 @@
-import 'package:petty_cash_app/models/enums.dart';
 
 class UserModel {
   final String id;
@@ -7,8 +6,9 @@ class UserModel {
   final String? phone;
   final Map<String, double> balances; // v27: Dynamic balances map
   final List<String> paymentMethods; // v27: Custom payment methods
-  final List<CostCenter> establishments; // v25: Multiple establishments support
+  final List<String> establishments; // v25: Multiple establishments support
   final String role;
+  final String jobRole; // v30: User descriptive job role
   final bool isActive;
   final String companyId; // v29: SaaS multi-tenancy support
 
@@ -20,7 +20,8 @@ class UserModel {
     required this.balances,
     required this.paymentMethods,
     this.role = 'user',
-    this.establishments = const [CostCenter.Administracion],
+    this.jobRole = 'Sin Rol',
+    this.establishments = const ['ADMINISTRACIÓN'],
     this.isActive = true,
     this.companyId = 'alm_agro',
   });
@@ -33,7 +34,8 @@ class UserModel {
     Map<String, double>? balances,
     List<String>? paymentMethods,
     String? role,
-    List<CostCenter>? establishments,
+    String? jobRole,
+    List<String>? establishments,
     bool? isActive,
     String? companyId,
   }) {
@@ -45,6 +47,7 @@ class UserModel {
       balances: balances ?? this.balances,
       paymentMethods: paymentMethods ?? this.paymentMethods,
       role: role ?? this.role,
+      jobRole: jobRole ?? this.jobRole,
       establishments: establishments ?? this.establishments,
       isActive: isActive ?? this.isActive,
       companyId: companyId ?? this.companyId,
@@ -59,7 +62,8 @@ class UserModel {
       'balances': balances,
       'paymentMethods': paymentMethods,
       'role': role,
-      'establishments': establishments.map((e) => e.name).toList(),
+      'jobRole': jobRole,
+      'establishments': establishments,
       'isActive': isActive,
       'companyId': companyId,
     };
@@ -104,19 +108,17 @@ class UserModel {
     if (!methods.contains('Tarjeta / Débito')) methods.add('Tarjeta / Débito');
 
     // Compatibility logic for single vs multiple establishments
-    List<CostCenter> establishmentsList = [];
+    List<String> establishmentsList = [];
     if (map.containsKey('establishments') && map['establishments'] is List) {
       establishmentsList = (map['establishments'] as List)
-          .map((e) => CostCenter.values.firstWhere((v) => v.name == e, orElse: () => CostCenter.Administracion))
+          .map((e) => e.toString().toUpperCase())
           .toList();
     } else {
       final oldEst = map['establishment'] ?? map['area'];
       if (oldEst != null) {
-        establishmentsList = [
-          CostCenter.values.firstWhere((e) => e.name == oldEst, orElse: () => CostCenter.Administracion)
-        ];
+        establishmentsList = [oldEst.toString().toUpperCase()];
       } else {
-        establishmentsList = [CostCenter.Administracion];
+        establishmentsList = ['ADMINISTRACIÓN'];
       }
     }
 
@@ -128,6 +130,7 @@ class UserModel {
       balances: balancesMap,
       paymentMethods: methods,
       role: map['role'] ?? 'user',
+      jobRole: map['jobRole'] ?? 'Sin Rol',
       isActive: map['isActive'] ?? true,
       establishments: establishmentsList,
       companyId: map['companyId'] ?? 'alm_agro',

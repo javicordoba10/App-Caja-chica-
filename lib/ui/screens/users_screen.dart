@@ -133,7 +133,7 @@ class _UserCard extends ConsumerWidget {
                     value: 'delete',
                     child: Row(children: [
                       Icon(Icons.delete_forever_outlined, size: 18, color: Colors.red),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Text('Eliminar Definitivo', style: TextStyle(color: Colors.red)),
                     ]),
                   ),

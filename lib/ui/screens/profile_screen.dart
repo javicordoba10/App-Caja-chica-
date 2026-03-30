@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
 import 'package:petty_cash_app/models/user_model.dart';
-import 'package:petty_cash_app/models/movement_model.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -18,22 +17,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isEditing = false;
   late TextEditingController _nameCtrl;
   late TextEditingController _phoneCtrl;
-  List<CostCenter> _selectedEstablishments = [];
+  late TextEditingController _jobRoleCtrl;
+  List<String> _selectedEstablishments = [];
   List<String> _selectedPaymentMethods = [];
   final _newMethodCtrl = TextEditingController();
+  final _newEstablishmentCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController();
     _phoneCtrl = TextEditingController();
+    _jobRoleCtrl = TextEditingController();
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
+    _jobRoleCtrl.dispose();
     _newMethodCtrl.dispose();
+    _newEstablishmentCtrl.dispose();
     super.dispose();
   }
 
@@ -46,6 +50,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           if (!_isEditing) {
             _nameCtrl.text = user?.name ?? '';
             _phoneCtrl.text = user?.phone ?? '';
+            _jobRoleCtrl.text = user?.jobRole ?? 'Sin Rol';
             _selectedEstablishments = List.from(user?.establishments ?? []);
             _selectedPaymentMethods = List.from(user?.paymentMethods ?? []);
           }
@@ -72,7 +77,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _buildInfoCard(
                   title: 'GESTIÓN DE FORMAS DE PAGO',
                   children: [
-                    _buildPaymentMethodsList(user, enabled: _isEditing),
+                    _buildDynamicList(
+                      items: _selectedPaymentMethods,
+                      controller: _newMethodCtrl,
+                      hint: 'Ej: Mercado Pago',
+                      enabled: _isEditing,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -80,24 +90,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _buildInfoCard(
                   title: 'CONFIGURACIÓN DE TRABAJO',
                   children: [
-                    _buildMultiSelectTile(
-                      Icons.business_outlined, 
-                      'Establecimientos a Cargo', 
-                      _selectedEstablishments,
+                    _buildEditableTile(Icons.work_outline, 'Rol', _jobRoleCtrl, enabled: _isEditing),
+                    const SizedBox(height: 12),
+                    Text('Establecimientos a Cargo', style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 10, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    _buildDynamicList(
+                      items: _selectedEstablishments,
+                      controller: _newEstablishmentCtrl,
+                      hint: 'Ej: Sede Principal',
                       enabled: _isEditing,
-                      onToggle: (val) {
-                        setState(() {
-                          if (_selectedEstablishments.contains(val)) {
-                            if (_selectedEstablishments.length > 1) {
-                              _selectedEstablishments.remove(val);
-                            }
-                          } else {
-                            _selectedEstablishments.add(val!);
-                          }
-                        });
-                      },
+                      isEstablishment: true,
                     ),
-                    _buildInfoTile(Icons.badge_outlined, 'Rol de Usuario', user?.role ?? 'Usuario'),
+                    const SizedBox(height: 12),
+                    _buildInfoTile(Icons.security_outlined, 'Permisos (Sistema)', user?.role ?? 'Usuario'),
                   ],
                 ),
                 const SizedBox(height: 32),
@@ -214,7 +219,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ),
         Text(
-          user?.establishments.map((e) => _getEstablishmentName(e)).join(' • ') ?? 'General',
+          user?.jobRole ?? 'Sin Rol',
           textAlign: TextAlign.center,
           style: GoogleFonts.montserrat(
             fontSize: 14,
@@ -301,63 +306,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildMultiSelectTile(IconData icon, String label, List<CostCenter> current, {required bool enabled, required ValueChanged<CostCenter?> onToggle}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 20, color: enabled ? AppTheme.primaryOrange : AppTheme.textGrey.withOpacity(0.5)),
-              const SizedBox(width: 16),
-              Text(label, style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 10, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: CostCenter.values.map((c) {
-              final isSelected = current.contains(c);
-              if (!enabled && !isSelected) return const SizedBox.shrink();
-              
-              return FilterChip(
-                label: Text(_getEstablishmentName(c), style: GoogleFonts.montserrat(
-                  fontSize: 12, 
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? Colors.white : AppTheme.textDark,
-                )),
-                selected: isSelected,
-                onSelected: enabled ? (selected) => onToggle(c) : null,
-                selectedColor: AppTheme.pureBlack,
-                checkmarkColor: Colors.white,
-                backgroundColor: Colors.black12,
-                showCheckmark: false,
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPaymentMethodsList(UserModel? user, {required bool enabled}) {
+  Widget _buildDynamicList({
+    required List<String> items,
+    required TextEditingController controller,
+    required String hint,
+    required bool enabled,
+    bool isEstablishment = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: _selectedPaymentMethods.map((m) {
+          children: items.map((m) {
             return Chip(
               label: Text(m, style: GoogleFonts.montserrat(fontSize: 12, fontWeight: FontWeight.w600)),
               onDeleted: enabled ? () {
                 setState(() {
-                  if (_selectedPaymentMethods.length > 1) {
-                    _selectedPaymentMethods.remove(m);
+                  if (items.length > 1) {
+                    items.remove(m);
                   }
                 });
               } : null,
@@ -373,9 +341,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             children: [
               Expanded(
                 child: TextField(
-                  controller: _newMethodCtrl,
+                  controller: controller,
                   decoration: InputDecoration(
-                    hintText: 'Ej: Mercado Pago',
+                    hintText: hint,
                     hintStyle: GoogleFonts.montserrat(fontSize: 12, color: AppTheme.textGrey),
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(vertical: 8),
@@ -384,11 +352,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               IconButton(
                 onPressed: () {
-                  final text = _newMethodCtrl.text.trim();
-                  if (text.isNotEmpty && !_selectedPaymentMethods.contains(text)) {
+                  final text = controller.text.trim();
+                  if (text.isNotEmpty && !items.contains(isEstablishment ? text.toUpperCase() : text)) {
                     setState(() {
-                      _selectedPaymentMethods.add(text);
-                      _newMethodCtrl.clear();
+                      items.add(isEstablishment ? text.toUpperCase() : text);
+                      controller.clear();
                     });
                   }
                 },
@@ -401,26 +369,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  String _getEstablishmentName(CostCenter c) {
-    switch (c) {
-      case CostCenter.Administracion: return 'Administración';
-      case CostCenter.PuestoDeLuna: return 'Puesto de Luna';
-      case CostCenter.FeedLot: return 'FeedLot';
-      case CostCenter.SanIsidro: return 'San Isidro';
-      case CostCenter.LaCarlota: return 'La Carlota';
-      case CostCenter.LaHuella: return 'La Huella';
-      case CostCenter.ElSiete: return 'El Siete';
-      case CostCenter.ElMoro: return 'El Moro';
-      default: return 'Otro';
-    }
-  }
-
   void _saveProfile(String userId) async {
     try {
       await ref.read(userRepositoryProvider).updateUserProfile(
         userId,
         name: _nameCtrl.text,
         phone: _phoneCtrl.text,
+        jobRole: _jobRoleCtrl.text,
         establishments: _selectedEstablishments,
         paymentMethods: _selectedPaymentMethods,
       );

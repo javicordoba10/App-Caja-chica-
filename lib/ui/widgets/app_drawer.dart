@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
-import 'package:petty_cash_app/models/movement_model.dart';
 
 class AppDrawer extends ConsumerWidget {
   final String currentRoute;
@@ -57,7 +56,7 @@ class AppDrawer extends ConsumerWidget {
                     ),
                   ),
                   Text(
-                    user?.establishments.map((e) => e.name).join(' • ') ?? 'General',
+                    (user?.jobRole ?? 'Sin Rol').toUpperCase(),
                     style: GoogleFonts.montserrat(
                       color: Colors.white60,
                       fontSize: 12,

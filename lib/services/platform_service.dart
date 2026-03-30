@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:petty_cash_app/services/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import 'package:petty_cash_app/services/html_stub.dart' if (dart.library.io) 'dart:io' as io;

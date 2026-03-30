@@ -1,5 +1,4 @@
 import 'dart:io' as io;
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,23 +8,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:petty_cash_app/models/movement_model.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
 import 'package:petty_cash_app/repositories/movement_repository.dart';
-import 'package:petty_cash_app/repositories/user_repository.dart';
 import 'package:petty_cash_app/services/ocr_service.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:petty_cash_app/ui/widgets/responsive_layout.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-// ─── Full-name labels for cost centers ──────────────────────────────
-const Map<CostCenter, String> _costCenterNames = {
-  CostCenter.Administracion: 'Administración',
-  CostCenter.PuestoDeLuna:   'Puesto de Luna',
-  CostCenter.FeedLot:        'Feed Lot',
-  CostCenter.SanIsidro:      'San Isidro',
-  CostCenter.LaCarlota:      'La Carlota',
-  CostCenter.LaHuella:       'La Huella',
-  CostCenter.ElSiete:        'El Siete',
-  CostCenter.ElMoro:         'El Moro',
-};
+
 
 const Map<MovementCategory, String> _categoryNames = {
   MovementCategory.combustible: 'Combustible',
@@ -75,7 +63,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
   final List<_VatSlot> _vatSlots = [];
 
   late MovementType _selectedType;
-  CostCenter _selectedCostCenter = CostCenter.Administracion;
+  String _selectedEstablishment = 'ADMINISTRACIÓN';
   String _selectedPayment = 'Efectivo';
   String _selectedInvoiceType = 'Ticket';
   bool _isLoading = false;
@@ -102,7 +90,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
 
     _selectedType = em?.type ?? widget.initialType;
     _selectedInvoiceType = em?.invoiceType ?? d.invoiceType;
-    _selectedCostCenter = em?.costCenter ?? CostCenter.Administracion;
+    _selectedEstablishment = em?.establishment ?? (ref.read(currentUserProvider).value?.establishments.isNotEmpty == true ? ref.read(currentUserProvider).value!.establishments.first : 'ADMINISTRACIÓN');
     _selectedPayment = em?.paymentMethod ?? 'Efectivo';
     _selectedCategory = em?.category ?? MovementCategory.otros;
 
@@ -160,8 +148,9 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
   double _guessVatRate(double net, double vat) {
     if (net <= 0 || vat <= 0) return 0.21;
     final r = vat / net;
-    if      (r > 0.24) return 0.27;
-    else if (r > 0.15) return 0.21;
+    if      (r > 0.24) {
+      return 0.27;
+    } else if (r > 0.15) return 0.21;
     else if (r > 0.05) return 0.105;
     else               return 0.0;
   }
@@ -272,7 +261,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
       invoiceType:   _selectedInvoiceType,
       invoiceNumber: _invoiceNumberCtrl.text.isNotEmpty ? _invoiceNumberCtrl.text : null,
       description:   _descCtrl.text,
-      costCenter:    _selectedCostCenter,
+      establishment: _selectedEstablishment,
       paymentMethod: _selectedPayment,
       date:          DateTime.now(),
       invoiceDate:   _selectedDate,
@@ -375,6 +364,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
   @override
   Widget build(BuildContext context) {
     final userMethods = ref.watch(currentUserProvider).value?.paymentMethods ?? ['Efectivo', 'Tarjeta / Débito'];
+    final userEstablishments = ref.watch(currentUserProvider).value?.establishments ?? ['ADMINISTRACIÓN'];
     return Scaffold(
       backgroundColor: AppTheme.backgroundWhite,
       body: Stack(
@@ -452,15 +442,15 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                         const SizedBox(height: 20),
 
                         _section('ASIGNACIÓN', Icons.business_outlined),
-                        _dropdown<CostCenter>(
-                          value: _selectedCostCenter,
+                        _dropdown<String>(
+                          value: userEstablishments.contains(_selectedEstablishment) ? _selectedEstablishment : userEstablishments.first,
                           label: 'Establecimiento',
                           icon: Icons.location_city_outlined,
-                          items: CostCenter.values.map((c) => DropdownMenuItem(
+                          items: userEstablishments.map((c) => DropdownMenuItem(
                             value: c,
-                            child: Text(_costCenterNames[c] ?? c.name),
+                            child: Text(c),
                           )).toList(),
-                          onChanged: widget.isReadOnly ? null : (CostCenter? v) => setState(() => _selectedCostCenter = v ?? CostCenter.Administracion),
+                          onChanged: widget.isReadOnly ? null : (String? v) => setState(() => _selectedEstablishment = v ?? userEstablishments.first),
                         ),
                         const SizedBox(height: 16),
                         _dropdown<String>(

@@ -18,7 +18,7 @@ class HistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
-  String _searchQuery = '';
+  final String _searchQuery = '';
   String _selectedFilter = 'Todos';
 
   @override
@@ -193,7 +193,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    '${DateFormat('dd MMM').format(m.date)} • ${_getEstablishmentCode(m.costCenter)} • ${m.paymentMethod}',
+                    '${DateFormat('dd MMM').format(m.date)} • ${m.establishment} • ${m.paymentMethod}',
                     style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11, fontWeight: FontWeight.w500),
                   ),
                   if (ref.watch(adminViewAllProvider) && m.userName != null)
@@ -371,19 +371,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     }).toList();
   }
 
-  String _getEstablishmentCode(CostCenter c) {
-    switch (c) {
-      case CostCenter.Administracion: return 'ADM';
-      case CostCenter.PuestoDeLuna: return 'PL';
-      case CostCenter.FeedLot: return 'FL';
-      case CostCenter.SanIsidro: return 'SI';
-      case CostCenter.LaCarlota: return 'LC';
-      case CostCenter.LaHuella: return 'LH';
-      case CostCenter.ElSiete: return 'E7';
-      case CostCenter.ElMoro: return 'EM';
-      default: return 'OTR';
-    }
-  }
+
 
   void _confirmDelete(MovementModel movement) {
     showDialog(

@@ -13,7 +13,6 @@ import 'package:petty_cash_app/services/ocr_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:excel/excel.dart' as excel_lib;
 import 'package:petty_cash_app/services/platform_service.dart';
-import 'package:petty_cash_app/ui/screens/history_screen.dart';
 import 'package:petty_cash_app/ui/screens/validation_form_screen.dart';
 import 'package:petty_cash_app/ui/widgets/main_layout.dart';
 import 'package:petty_cash_app/ui/widgets/responsive_layout.dart';
@@ -105,7 +104,7 @@ class DashboardScreen extends ConsumerWidget {
                                      : [Colors.teal, Colors.tealAccent.shade700]),
                              ),
                            );
-                         }).toList(),
+                         }),
                        ],
                      ),
                      desktop: Column(
@@ -473,7 +472,7 @@ class DashboardScreen extends ConsumerWidget {
     for (final m in movements) {
       sheet.appendRow([excel_lib.TextCellValue(DateFormat('dd/MM/yyyy').format(m.date)),
         excel_lib.TextCellValue(m.description), excel_lib.TextCellValue(m.type == MovementType.income ? 'Ingreso' : 'Egreso'),
-        excel_lib.TextCellValue(m.costCenter.name), excel_lib.DoubleCellValue(m.grossAmount),
+        excel_lib.TextCellValue(m.establishment), excel_lib.DoubleCellValue(m.grossAmount),
         excel_lib.DoubleCellValue(m.netAmount), excel_lib.DoubleCellValue(m.vat),
         excel_lib.TextCellValue(m.paymentMethod),
         excel_lib.TextCellValue(m.category?.displayName ?? 'Otros')]);
@@ -515,10 +514,7 @@ class DashboardScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           movementsAsync.when(
             data: (movements) {
-              final establishments = ['ADM', 'PL', 'FL', 'SI', 'LC', 'LH', 'E7', 'EM'];
-              final dataMap = { for (var e in establishments) e : 0.0 };
-              
-              final now = DateTime.now();
+               final now = DateTime.now();
               final filteredMovements = movements.where((m) {
                 if (m.type != MovementType.expense) return false;
                 
@@ -534,10 +530,14 @@ class DashboardScreen extends ConsumerWidget {
                   default:
                     return true;
                 }
-              });
+              }).toList();
+
+              final establishments = filteredMovements.map((m) => m.establishment).toSet().toList();
+              establishments.sort();
+              final dataMap = { for (var e in establishments) e : 0.0 };
 
               for (var m in filteredMovements) {
-                final code = _getEstablishmentCode(m.costCenter);
+                final code = m.establishment;
                 if (dataMap.containsKey(code)) {
                   dataMap[code] = dataMap[code]! + m.grossAmount;
                 }
@@ -573,11 +573,13 @@ class DashboardScreen extends ConsumerWidget {
                           getTitlesWidget: (value, meta) {
                             final index = value.toInt();
                             if (index < 0 || index >= establishments.length) return const SizedBox.shrink();
+                            String label = establishments[index];
+                            if (label.length > 5) label = '${label.substring(0, 4)}.';
                             return SideTitleWidget(
                               meta: meta,
                               child: Text(
-                                establishments[index],
-                                style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 9, fontWeight: FontWeight.bold),
+                                label,
+                                style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 8, fontWeight: FontWeight.bold),
                               ),
                             );
                           },
@@ -715,7 +717,7 @@ class DashboardScreen extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    '${DateFormat('dd MMM').format(m.date)} • ${_getEstablishmentCode(m.costCenter)} • ${m.paymentMethod}', 
+                    '${DateFormat('dd MMM').format(m.date)} • ${m.establishment} • ${m.paymentMethod}', 
                     style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11, fontWeight: FontWeight.w500),
                   ),
                   if (ref.watch(adminViewAllProvider) && m.userName != null && ref.watch(superAdminInspectTenantProvider) == null)
@@ -800,19 +802,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  String _getEstablishmentCode(CostCenter c) {
-    switch (c) {
-      case CostCenter.Administracion: return 'ADM';
-      case CostCenter.PuestoDeLuna: return 'PL';
-      case CostCenter.FeedLot: return 'FL';
-      case CostCenter.SanIsidro: return 'SI';
-      case CostCenter.LaCarlota: return 'LC';
-      case CostCenter.LaHuella: return 'LH';
-      case CostCenter.ElSiete: return 'E7';
-      case CostCenter.ElMoro: return 'EM';
-      default: return 'OTR';
-    }
-  }
+
 
   Widget _buildViewToggle(WidgetRef ref, bool viewAll) {
     return Container(
@@ -989,7 +979,7 @@ class DashboardScreen extends ConsumerWidget {
                             final index = value.toInt();
                             if (index < 0 || index >= categories.length) return const SizedBox.shrink();
                             String label = categories[index].displayName;
-                            if (label.length > 5) label = label.substring(0, 4) + '.';
+                            if (label.length > 5) label = '${label.substring(0, 4)}.';
                             return SideTitleWidget(
                               meta: meta,
                               child: Text(
