@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'ui/screens/login_screen.dart';
+import 'ui/widgets/main_layout.dart';
 import 'ui/theme/app_theme.dart';
 import 'providers/app_providers.dart';
 import 'services/platform_service.dart';
@@ -60,7 +62,25 @@ class _HomeRouter extends ConsumerWidget {
       return const SplashScreen();
     }
     
-    return const LoginScreen();
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SplashScreen();
+        }
+        
+        if (snapshot.hasData && snapshot.data != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (ref.read(currentUserIdProvider) != snapshot.data!.uid) {
+              ref.read(currentUserIdProvider.notifier).state = snapshot.data!.uid;
+            }
+          });
+          return const MainLayout();
+        }
+        
+        return const LoginScreen();
+      },
+    );
   }
 }
 
