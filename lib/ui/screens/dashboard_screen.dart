@@ -529,7 +529,7 @@ class DashboardScreen extends ConsumerWidget {
           ],
         );
       },
-      loading: () => const SizedBox(height: 60, child: Center(child: CircularProgressIndicator())),
+      loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
     );
   }
