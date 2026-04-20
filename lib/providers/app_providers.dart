@@ -104,7 +104,7 @@ final movementsProvider = StreamProvider<List<MovementModel>>((ref) {
 // Streams the current user's active recharge requests
 final userRechargeRequestsProvider = StreamProvider<List<RechargeRequestModel>>((ref) {
   final userId = ref.watch(currentUserIdProvider);
-  if (userId == null) return const Stream.empty();
+  if (userId == null) return Stream.value([]);
   
   final repo = ref.read(rechargeRepositoryProvider);
   return repo.getUserRechargeRequests(userId).map((list) {
@@ -118,7 +118,7 @@ final allRechargeRequestsProvider = StreamProvider<List<RechargeRequestModel>>((
   final user = ref.watch(currentUserProvider).value;
   final inspectTenant = ref.watch(superAdminInspectTenantProvider);
   
-  if (user == null || user.role == 'user') return const Stream.empty();
+  if (user == null || user.role == 'user') return Stream.value([]);
   
   final effectiveCompanyId = (user.role == 'superadmin' && inspectTenant != null)
       ? inspectTenant

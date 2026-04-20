@@ -93,14 +93,54 @@ class AdminRechargesScreen extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          req.userName,
-                          style: GoogleFonts.montserrat(fontWeight: FontWeight.w800, fontSize: 16),
+                        Expanded(
+                          child: Text(
+                            req.userName,
+                            style: GoogleFonts.montserrat(fontWeight: FontWeight.w800, fontSize: 16),
+                          ),
                         ),
                         Text(
                           '\$ ${NumberFormat('#,##0').format(req.amount)}',
                           style: GoogleFonts.montserrat(color: AppTheme.incomeGreen, fontWeight: FontWeight.w800, fontSize: 16),
                         ),
+                        if (req.status == RechargeStatus.denegado || req.status == RechargeStatus.acreditado)
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, color: AppTheme.expenseRed, size: 22),
+                            tooltip: 'Eliminar solicitud',
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: Text('¿Eliminar solicitud?', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+                                  content: const Text('Esta acción es permanente y no se puede deshacer.'),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCELAR')),
+                                    ElevatedButton(
+                                      onPressed: () async {
+                                        Navigator.pop(ctx);
+                                        try {
+                                          await ref.read(rechargeRepositoryProvider).deleteRequest(req.id);
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('Solicitud eliminada'), backgroundColor: AppTheme.incomeGreen),
+                                            );
+                                          }
+                                        } catch (e) {
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.expenseRed),
+                                            );
+                                          }
+                                        }
+                                      },
+                                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.expenseRed),
+                                      child: const Text('ELIMINAR', style: TextStyle(color: Colors.white)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -131,6 +171,7 @@ class AdminRechargesScreen extends ConsumerWidget {
       ),
     );
   }
+
 
   Widget _buildStatusButton(BuildContext context, WidgetRef ref, RechargeRequestModel req, RechargeStatus targetStatus, String label, Color color) {
     final isSelected = req.status == targetStatus;

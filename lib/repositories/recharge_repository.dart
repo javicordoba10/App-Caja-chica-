@@ -37,4 +37,8 @@ class RechargeRepository {
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
+
+  Future<void> deleteRequest(String requestId) async {
+    await _firestore.collection('recharge_requests').doc(requestId).delete();
+  }
 }
