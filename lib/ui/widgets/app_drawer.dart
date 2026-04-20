@@ -100,11 +100,21 @@ class AppDrawer extends ConsumerWidget {
           // Solo para Administradores de Inquilino
           userAsync.when(
             data: (user) => (user?.role == 'admin' || user?.role == 'superadmin')
-              ? _DrawerItem(
-                  icon: Icons.admin_panel_settings_outlined,
-                  label: 'Gestión Usuarios',
-                  isSelected: currentRoute == 'users',
-                  onTap: () => onItemSelected('users'),
+              ? Column(
+                  children: [
+                    _DrawerItem(
+                      icon: Icons.admin_panel_settings_outlined,
+                      label: 'Gestión Usuarios',
+                      isSelected: currentRoute == 'users',
+                      onTap: () => onItemSelected('users'),
+                    ),
+                    _DrawerItem(
+                      icon: Icons.request_quote_outlined,
+                      label: 'Gestión Reintegros',
+                      isSelected: currentRoute == 'recharges',
+                      onTap: () => onItemSelected('recharges'),
+                    ),
+                  ],
                 )
               : const SizedBox.shrink(),
             loading: () => const SizedBox.shrink(),

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
 import 'package:petty_cash_app/models/movement_model.dart';
+import 'package:petty_cash_app/models/recharge_request_model.dart';
 import 'package:petty_cash_app/services/ocr_service.dart';
 import 'package:petty_cash_app/ui/screens/validation_form_screen.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
@@ -24,6 +25,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final movementsAsync = ref.watch(movementsProvider);
+    final rechargesAsync = ref.watch(userRechargeRequestsProvider);
 
     return Column(
         children: [
@@ -34,11 +36,29 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             child: movementsAsync.when(
               data: (movements) {
                 final filtered = _applyFilters(movements);
-                if (filtered.isEmpty) {
+                
+                // Get recharges and merge them for UI, only if "Todos" filter is used
+                // or if we add a specific filter for it. To keep it simple, show them in "Todos".
+                List<dynamic> combinedHistory = [...filtered];
+                
+                final rechargesResult = rechargesAsync.value;
+                if (rechargesResult != null) {
+                   final rFiltered = _applyFiltersRecharges(rechargesResult);
+                   combinedHistory.addAll(rFiltered);
+                }
+                
+                // Sort by date (descending)
+                combinedHistory.sort((a, b) {
+                  final dateA = a is MovementModel ? a.date : (a as RechargeRequestModel).createdAt;
+                  final dateB = b is MovementModel ? b.date : (b as RechargeRequestModel).createdAt;
+                  return dateB.compareTo(dateA);
+                });
+
+                if (combinedHistory.isEmpty) {
                   return _buildEmptyState();
                 }
 
-                // Summary
+                // Summary only counts ACTUAL movements, not requests
                 final totalExp = filtered.where((m) => m.type == MovementType.expense).fold(0.0, (sum, m) => sum + m.grossAmount);
                 final totalInc = filtered.where((m) => m.type == MovementType.income).fold(0.0, (sum, m) => sum + m.grossAmount);
 
@@ -55,8 +75,15 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       sliver: SliverList(
                         delegate: SliverChildBuilderDelegate(
-                          (context, index) => _buildHistoryCard(filtered[index]),
-                          childCount: filtered.length,
+                          (context, index) {
+                            final item = combinedHistory[index];
+                            if (item is MovementModel) {
+                              return _buildHistoryCard(item);
+                            } else {
+                              return _buildRechargeHistoryCard(item as RechargeRequestModel);
+                            }
+                          },
+                          childCount: combinedHistory.length,
                         ),
                       ),
                     ),
@@ -71,6 +98,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         ],
       );
   }
+
 
   Widget _buildFilterHeader() {
     return Container(
@@ -371,6 +399,110 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       return true;
     }).toList();
   }
+
+  List<RechargeRequestModel> _applyFiltersRecharges(List<RechargeRequestModel> recharges) {
+    return recharges.where((m) {
+      // Si estamos pidiendo estrictamente Egresos o Ingresos puros, tal vez no las mostramos
+      // Pero como es un módulo híbrido, si elige "Todos", mostramos; si elige Ingresos, mostramos; Egresos, no.
+      if (_selectedFilter == 'Egresos') return false;
+
+      // Time Filter
+      final now = DateTime.now();
+      if (_selectedFilter == 'Día') {
+        return m.createdAt.day == now.day && m.createdAt.month == now.month && m.createdAt.year == now.year;
+      }
+      if (_selectedFilter == 'Semana') {
+        final weekAgo = now.subtract(const Duration(days: 7));
+        return m.createdAt.isAfter(weekAgo);
+      }
+      if (_selectedFilter == 'Mes') {
+        return m.createdAt.month == now.month && m.createdAt.year == now.year;
+      }
+      return true;
+    }).toList();
+  }
+
+  Widget _buildRechargeHistoryCard(RechargeRequestModel m) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE3F2FD),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF64B5F6), width: 1),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1976D2).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.sync,
+              color: Color(0xFF1976D2),
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Solicitud de Recarga', 
+                  style: GoogleFonts.montserrat(fontWeight: FontWeight.w700, fontSize: 14),
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  '${DateFormat('dd MMM').format(m.createdAt)} • ${m.paymentMethod}',
+                  style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11, fontWeight: FontWeight.w500),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: m.status == RechargeStatus.pedido 
+                          ? const Color(0xFFFFA000) 
+                          : (m.status == RechargeStatus.denegado 
+                              ? AppTheme.expenseRed 
+                              : const Color(0xFF1976D2)),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      m.status.name.toUpperCase(),
+                      style: GoogleFonts.montserrat(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                "+\$ ${NumberFormat('#,##0').format(m.amount)}",
+                style: GoogleFonts.montserrat(
+                  color: AppTheme.incomeGreen,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
 
 
 

@@ -8,6 +8,7 @@ import 'package:petty_cash_app/ui/screens/profile_screen.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:petty_cash_app/ui/screens/users_screen.dart';
 import 'package:petty_cash_app/ui/screens/superadmin_screen.dart';
+import 'package:petty_cash_app/ui/screens/admin_recharges_screen.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
 
 // State for navigation
@@ -79,6 +80,8 @@ class MainLayout extends ConsumerWidget {
         return 'Mi Perfil';
       case 'users':
         return 'Gestión de Usuarios';
+      case 'recharges':
+        return 'Solicitudes de Recarga';
       case 'superadmin':
         return 'Consola SaaS';
       default:
@@ -98,6 +101,8 @@ class MainLayout extends ConsumerWidget {
         return ProfileScreen();
       case 'users':
         return const UsersScreen();
+      case 'recharges':
+        return const AdminRechargesScreen();
       case 'superadmin':
         return const SuperadminScreen();
       default:

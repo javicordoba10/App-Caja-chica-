@@ -7,6 +7,8 @@ import 'package:petty_cash_app/models/movement_model.dart';
 import 'package:petty_cash_app/models/company_config_model.dart';
 import 'package:petty_cash_app/repositories/user_repository.dart';
 import 'package:petty_cash_app/repositories/movement_repository.dart';
+import 'package:petty_cash_app/models/recharge_request_model.dart';
+import 'package:petty_cash_app/repositories/recharge_repository.dart';
 
 import 'package:petty_cash_app/services/ocr_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -32,6 +34,7 @@ final connectivityStatusProvider = StreamProvider<bool>((ref) async* {
 final firestoreProvider = Provider<FirebaseFirestore>((ref) => FirebaseFirestore.instance);
 final userRepositoryProvider = Provider<UserRepository>((ref) => UserRepository(ref.watch(firestoreProvider)));
 final movementRepositoryProvider = Provider<MovementRepository>((ref) => MovementRepository(ref.watch(firestoreProvider)));
+final rechargeRepositoryProvider = Provider<RechargeRepository>((ref) => RechargeRepository());
 final ocrServiceProvider = Provider<OCRService>((ref) => OCRService());
 
 
@@ -97,6 +100,37 @@ final movementsProvider = StreamProvider<List<MovementModel>>((ref) {
   
   return movementRepository.getMovements(userId, effectiveRole, effectiveCompanyId);
 });
+
+// Streams the current user's active recharge requests
+final userRechargeRequestsProvider = StreamProvider<List<RechargeRequestModel>>((ref) {
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) return const Stream.empty();
+  
+  final repo = ref.read(rechargeRepositoryProvider);
+  return repo.getUserRechargeRequests(userId).map((list) {
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  });
+});
+
+// Streams all recharge requests for admin/superadmin
+final allRechargeRequestsProvider = StreamProvider<List<RechargeRequestModel>>((ref) {
+  final user = ref.watch(currentUserProvider).value;
+  final inspectTenant = ref.watch(superAdminInspectTenantProvider);
+  
+  if (user == null || user.role == 'user') return const Stream.empty();
+  
+  final effectiveCompanyId = (user.role == 'superadmin' && inspectTenant != null)
+      ? inspectTenant
+      : user.companyId ?? 'alm_agro';
+      
+  final repo = ref.read(rechargeRepositoryProvider);
+  return repo.getCompanyRechargeRequests(effectiveCompanyId).map((list) {
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  });
+});
+
 
 // Provider to store which user is being supervised by the admin
 final adminSelectedUserIdProvider = StateProvider<String?>((ref) => null);

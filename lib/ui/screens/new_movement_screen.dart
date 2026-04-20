@@ -7,6 +7,7 @@ import 'package:petty_cash_app/models/movement_model.dart';
 import 'package:petty_cash_app/services/ocr_service.dart';
 import 'package:petty_cash_app/ui/screens/validation_form_screen.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
+import 'package:petty_cash_app/ui/screens/recharge_request_form.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 
@@ -153,9 +154,22 @@ class _NewMovementScreenState extends ConsumerState<NewMovementScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 16),
+        _buildActionButton(
+          icon: Icons.account_balance,
+          label: 'Solicitar Recarga',
+          description: 'Pedir fondos al administrador',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const RechargeRequestForm()),
+            );
+          },
+        ),
       ],
     );
   }
+
 
   Widget _buildActionButton({
     required IconData icon,

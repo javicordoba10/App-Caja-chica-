@@ -16,6 +16,7 @@ import 'package:petty_cash_app/services/platform_service.dart';
 import 'package:petty_cash_app/ui/screens/validation_form_screen.dart';
 import 'package:petty_cash_app/ui/widgets/main_layout.dart';
 import 'package:petty_cash_app/ui/widgets/responsive_layout.dart';
+import 'package:petty_cash_app/models/recharge_request_model.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -52,6 +53,9 @@ class DashboardScreen extends ConsumerWidget {
                 loading: () => _buildGreeting('...', 'user', true),
                 error: (err, stack) => _buildGreeting('Error Fatal: $err', 'user', true),
               ),
+              const SizedBox(height: 24),
+
+              _buildActiveRechargesSection(ref),
               const SizedBox(height: 24),
               
               userAsync.when(
@@ -487,6 +491,109 @@ class DashboardScreen extends ConsumerWidget {
     }
   }
 
+
+  Widget _buildActiveRechargesSection(WidgetRef ref) {
+    final rechargesAsync = ref.watch(userRechargeRequestsProvider);
+    final isInspecting = ref.watch(superAdminInspectTenantProvider) != null;
+    final viewAll = ref.watch(adminViewAllProvider) || isInspecting;
+    
+    // Si somos admin viendo todo, usamos el provider de allRecharges y filtramos
+    final targetAsync = viewAll ? ref.watch(allRechargeRequestsProvider) : rechargesAsync;
+    
+    return targetAsync.when(
+      data: (allRecharges) {
+        // Filtrar solicitudes que NO estén acreditadas y NO estén denegadas
+        final active = allRecharges.where((r) => r.status != RechargeStatus.acreditado && r.status != RechargeStatus.denegado).toList();
+        if (active.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Solicitudes en Trámite',
+              style: GoogleFonts.montserrat(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                color: AppTheme.textDark,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 130, // Aumentado para evitar overflow
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: active.length,
+                itemBuilder: (context, index) => _buildRechargeBubble(active[index], context),
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const SizedBox(height: 60, child: Center(child: CircularProgressIndicator())),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildRechargeBubble(RechargeRequestModel request, BuildContext context) {
+    return Container(
+      width: 220,
+      margin: const EdgeInsets.only(right: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE3F2FD),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF64B5F6), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: request.status == RechargeStatus.pedido 
+                      ? const Color(0xFFFFA000) 
+                      : (request.status == RechargeStatus.denegado 
+                          ? AppTheme.expenseRed 
+                          : const Color(0xFF1976D2)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  request.status.name.toUpperCase(),
+                  style: GoogleFonts.montserrat(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Icon(Icons.sync, color: AppTheme.textGrey, size: 14),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '\$ ${NumberFormat('#,##0').format(request.amount)}',
+            style: GoogleFonts.montserrat(
+              color: AppTheme.textDark,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          Text(
+            '${request.paymentMethod} • ${DateFormat('dd MMM').format(request.createdAt)}',
+            style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11, fontWeight: FontWeight.w600),
+          ),
+          if (request.userName != 'Desconocido')
+            Text(
+              request.userName,
+              style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 9, fontWeight: FontWeight.w500, fontStyle: FontStyle.italic),
+            ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildMainChartSection(WidgetRef ref, AsyncValue<List<MovementModel>> movementsAsync) {
     final selectedRange = ref.watch(dashboardChartRangeProvider);
