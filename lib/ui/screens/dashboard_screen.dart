@@ -502,8 +502,8 @@ class DashboardScreen extends ConsumerWidget {
     
     return targetAsync.when(
       data: (allRecharges) {
-        // Filtrar solicitudes que NO estén acreditadas y NO estén denegadas
-        final active = allRecharges.where((r) => r.status != RechargeStatus.acreditado && r.status != RechargeStatus.denegado).toList();
+        // Filtrar solicitudes que NO estén acreditadas (queremos mostrar las denegadas para que el usuario vea el aviso)
+        final active = allRecharges.where((r) => r.status != RechargeStatus.acreditado).toList();
         if (active.isEmpty) return const SizedBox.shrink();
 
         return Column(
