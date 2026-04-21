@@ -532,7 +532,7 @@ class DashboardScreen extends ConsumerWidget {
         );
       },
       loading: () => const SizedBox.shrink(),
-      error: (err, __) => Text('Error: $err', style: TextStyle(color: Colors.red, fontSize: 10)),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 

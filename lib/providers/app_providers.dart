@@ -191,13 +191,9 @@ final companyConfigProvider = StreamProvider<CompanyConfigModel?>((ref) {
   
   final firestore = ref.watch(firestoreProvider);
   return firestore.collection('companies_config').doc(companyId).snapshots().map((doc) {
-    debugPrint('Provider: Intentando leer doc "$companyId". ¿Existe? ${doc.exists}');
     if (doc.exists) {
-      final config = CompanyConfigModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
-      debugPrint('Provider: Marca cargada: ${config.name}');
-      return config;
+      return CompanyConfigModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
     }
-    debugPrint('Provider: Marca "$companyId" no encontrada en Firestore.');
     return null;
   });
 });
