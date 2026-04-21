@@ -494,10 +494,12 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildActiveRechargesSection(WidgetRef ref) {
     final rechargesAsync = ref.watch(userRechargeRequestsProvider);
+    final user = ref.watch(currentUserProvider).value;
+    final isAdmin = user?.role == 'admin' || user?.role == 'superadmin';
     final isInspecting = ref.watch(superAdminInspectTenantProvider) != null;
-    final viewAll = ref.watch(adminViewAllProvider) || isInspecting;
+    final viewAll = (ref.watch(adminViewAllProvider) || isInspecting) && isAdmin;
     
-    // Si somos admin viendo todo, usamos el provider de allRecharges y filtramos
+    // Solo usamos el provider global si somos Admin (o superadmin inspeccionando) y tenemos el toggle activado
     final targetAsync = viewAll ? ref.watch(allRechargeRequestsProvider) : rechargesAsync;
     
     return targetAsync.when(
@@ -530,7 +532,7 @@ class DashboardScreen extends ConsumerWidget {
         );
       },
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (err, __) => Text('Error: $err', style: TextStyle(color: Colors.red, fontSize: 10)),
     );
   }
 
