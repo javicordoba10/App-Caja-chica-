@@ -729,7 +729,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
       icon: const Icon(Icons.expand_more, color: Colors.black26, size: 18),
       style: GoogleFonts.montserrat(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textDark),
       decoration: _inputDeco('Tipo Comprobante', Icons.receipt_outlined, readOnly: !enabled),
-      items: ['Ticket', 'Factura A', 'Factura B', 'Factura C'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+      items: ['Ticket', 'Factura A', 'Factura B', 'Factura C', 'Recibo'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
     );
   }
 
