@@ -49,7 +49,7 @@ class MainLayout extends ConsumerWidget {
                    onPressed: () => ref.read(superAdminInspectTenantProvider.notifier).state = null,
                  ),
                ),
-            if (currentRoute == 'history')
+            if (currentRoute == 'history' || currentRoute == 'dashboard')
               IconButton(
                 icon: const Icon(Icons.add, color: AppTheme.primaryOrange),
                 onPressed: () => ref.read(navigationProvider.notifier).state = 'new',
