@@ -22,6 +22,8 @@ class MovementModel {
   final String? userEmail; // v24: Attribution for admin view
   final MovementCategory? category; // v28: Classification
   final String companyId; // v29: SaaS multi-tenancy support
+  final double otherTaxes; // Monto acumulado de otros impuestos / percepciones
+  final List<Map<String, dynamic>>? otherTaxesDetails; // Desglose individual (nombre y monto)
 
   MovementModel({
     required this.id,
@@ -42,6 +44,8 @@ class MovementModel {
     this.userEmail,
     this.category,
     this.companyId = 'alm_agro',
+    this.otherTaxes = 0.0,
+    this.otherTaxesDetails,
   });
 
   Map<String, dynamic> toMap() {
@@ -65,6 +69,8 @@ class MovementModel {
       'userEmail': userEmail,
       'category': category?.name,
       'companyId': companyId,
+      'otherTaxes': otherTaxes,
+      'otherTaxesDetails': otherTaxesDetails,
     };
   }
 
@@ -90,6 +96,10 @@ class MovementModel {
           ? MovementCategory.values.firstWhere((e) => e.name == map['category'], orElse: () => MovementCategory.otros)
           : null,
       companyId: map['companyId'] ?? 'alm_agro',
+      otherTaxes: (map['otherTaxes'] ?? 0.0).toDouble(),
+      otherTaxesDetails: map['otherTaxesDetails'] != null
+          ? (map['otherTaxesDetails'] as List<dynamic>).map((e) => Map<String, dynamic>.from(e as Map)).toList()
+          : null,
     );
   }
 
@@ -111,6 +121,8 @@ class MovementModel {
     String? userEmail,
     MovementCategory? category,
     String? companyId,
+    double? otherTaxes,
+    List<Map<String, dynamic>>? otherTaxesDetails,
   }) {
     return MovementModel(
       id: id ?? this.id,
@@ -131,6 +143,8 @@ class MovementModel {
       userEmail: userEmail ?? this.userEmail,
       category: category ?? this.category,
       companyId: companyId ?? this.companyId,
+      otherTaxes: otherTaxes ?? this.otherTaxes,
+      otherTaxesDetails: otherTaxesDetails ?? this.otherTaxesDetails,
     );
   }
 }

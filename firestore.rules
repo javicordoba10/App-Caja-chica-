@@ -5,14 +5,14 @@ service cloud.firestore {
     function isSuperAdmin() {
       return request.auth != null && 
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'superadmin';
     }
     
     function isAdminOf(companyId) {
       return request.auth != null && 
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin' &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('companyId', '') == companyId;
     }
 
     // Users collection
@@ -24,39 +24,43 @@ service cloud.firestore {
       );
       allow write: if request.auth != null && (
         request.auth.uid == userId || 
-        isSuperAdmin()
+        isSuperAdmin() ||
+        (resource != null && isAdminOf(resource.data.companyId)) ||
+        (resource == null && isAdminOf(request.resource.data.companyId))
       );
     }
     
     // Movements collection
     match /movements/{movementId} {
       allow read, write: if request.auth != null && (
-        isSuperAdmin() ||
         (resource == null && request.resource.data.userId == request.auth.uid) || 
-        (resource != null && (resource.data.userId == request.auth.uid || isAdminOf(resource.data.companyId)))
+        (resource != null && resource.data.userId == request.auth.uid) ||
+        isSuperAdmin() ||
+        (resource != null && isAdminOf(resource.data.companyId)) ||
+        (resource == null && isAdminOf(request.resource.data.companyId))
       );
     }
 
     // Recharge requests collection
     match /recharge_requests/{requestId} {
       allow read: if request.auth != null && (
+        (resource != null && resource.data.userId == request.auth.uid) ||
         isSuperAdmin() ||
-        (resource != null && (resource.data.userId == request.auth.uid || isAdminOf(resource.data.companyId)))
+        (resource != null && isAdminOf(resource.data.companyId))
       );
       allow write: if request.auth != null && (
-        isSuperAdmin() ||
         (resource == null && request.resource.data.userId == request.auth.uid) || 
-        (resource != null && (resource.data.userId == request.auth.uid || isAdminOf(resource.data.companyId)))
+        (resource != null && resource.data.userId == request.auth.uid) ||
+        isSuperAdmin() ||
+        (resource != null && isAdminOf(resource.data.companyId)) ||
+        (resource == null && isAdminOf(request.resource.data.companyId))
       );
     }
 
     // Company Config - Public Read
     match /companies_config/{companyId} {
       allow read: if true;
-      allow write: if request.auth != null && (
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
-      );
+      allow write: if request.auth != null && isSuperAdmin();
     }
   }
 }

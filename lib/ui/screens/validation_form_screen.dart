@@ -12,8 +12,8 @@ import 'package:petty_cash_app/services/ocr_service.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:petty_cash_app/ui/widgets/responsive_layout.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 
 const Map<MovementCategory, String> _categoryNames = {
   MovementCategory.combustible: 'Combustible',
@@ -25,11 +25,17 @@ const Map<MovementCategory, String> _categoryNames = {
   MovementCategory.otros: 'Otros',
 };
 
-// ─── VAT rate data ───────────────────────────────────────────────────
+// ─── VAT & Tax slots ───────────────────────────────────────────────────
 class _VatSlot {
   final TextEditingController amountCtrl;
   double rate;
   _VatSlot({required this.amountCtrl, this.rate = 0.21});
+}
+
+class _TaxSlot {
+  final TextEditingController nameCtrl;
+  final TextEditingController amountCtrl;
+  _TaxSlot({required this.nameCtrl, required this.amountCtrl});
 }
 
 class ValidationFormScreen extends ConsumerStatefulWidget {
@@ -61,6 +67,14 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
 
   // Dual-IVA support
   final List<_VatSlot> _vatSlots = [];
+
+  // Otros / Impuestos (opcional, múltiples)
+  final List<_TaxSlot> _taxSlots = [];
+
+  // Attachment state (Image/PDF)
+  Uint8List? _selectedFileBytes;
+  String? _selectedFileName;
+  bool _selectedIsPdf = false;
 
   late MovementType _selectedType;
   String _selectedEstablishment = 'ADMINISTRACIÓN';
@@ -94,7 +108,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     _selectedPayment = em?.paymentMethod ?? 'Efectivo';
     _selectedCategory = em?.category ?? MovementCategory.otros;
 
-    // Controllers - Asegurar que si hay datos OCR se muestren aunque sean 0.0 (excepto si es manual puro)
+    // Controllers
     _descCtrl          = TextEditingController(text: em?.description ?? '');
     _grossCtrl         = TextEditingController(text: (em != null) 
         ? em.grossAmount.toStringAsFixed(2) 
@@ -132,16 +146,31 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
       rate: vatRate,
     ));
 
+    // Other taxes logic
+    if (em != null && em.otherTaxesDetails != null && em.otherTaxesDetails!.isNotEmpty) {
+      for (var t in em.otherTaxesDetails!) {
+        _taxSlots.add(_TaxSlot(
+          nameCtrl: TextEditingController(text: t['name']?.toString() ?? 'Otros Impuestos'),
+          amountCtrl: TextEditingController(text: (t['amount'] as num).toDouble().toStringAsFixed(2)),
+        ));
+      }
+    } else if (em != null && em.otherTaxes > 0) {
+      _taxSlots.add(_TaxSlot(
+        nameCtrl: TextEditingController(text: 'Otros Impuestos'),
+        amountCtrl: TextEditingController(text: em.otherTaxes.toStringAsFixed(2)),
+      ));
+    }
+
+    if (d.bytes != null) {
+      _selectedFileBytes = d.bytes;
+      _selectedIsPdf = d.isPdf;
+    }
+
     // Listener después de inicializar todo
     if (!widget.isReadOnly) {
       _grossCtrl.addListener(_recalcNet);
     }
     
-    // Si es una previsualización de algo ya guardado, intentamos detectar si es PDF por la URL
-    if (em != null && em.imageUrl != null && em.imageUrl!.toLowerCase().contains('.pdf')) {
-       // Aprovechamos que widget.data es mutable o creamos una copia lógica si fuera necesario, 
-       // pero aquí simplemente usaremos el dato de la URL en la UI.
-    }
     _isInitializing = false;
   }
 
@@ -159,20 +188,25 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
 
   void _recalcNet() {
     if (_isInitializing) return;
-    if (_selectedInvoiceType == 'Factura A') {
-      final g = _parse(_grossCtrl.text);
-      if (g > 0 && _vatSlots.isNotEmpty) {
+    final g = _parse(_grossCtrl.text);
+    double totalOtherTaxes = 0.0;
+    for (var t in _taxSlots) {
+      totalOtherTaxes += _parse(t.amountCtrl.text);
+    }
+
+    if (_selectedType == MovementType.expense && _selectedInvoiceType == 'Factura A') {
+      if (g > 0) {
+        final baseForVat = (g - totalOtherTaxes).clamp(0.0, double.infinity);
         double totalVat = 0;
         for (var s in _vatSlots) {
-          final slotVat = g * s.rate / (1 + s.rate);
+          final slotVat = baseForVat * s.rate / (1 + s.rate);
           s.amountCtrl.text = slotVat.toStringAsFixed(2);
           totalVat += slotVat;
         }
-        _netCtrl.text = (g - totalVat).toStringAsFixed(2);
+        _netCtrl.text = (g - totalVat - totalOtherTaxes).clamp(0.0, double.infinity).toStringAsFixed(2);
       }
     } else {
-      final g = _parse(_grossCtrl.text);
-      _netCtrl.text = g.toStringAsFixed(2);
+      _netCtrl.text = (g - totalOtherTaxes).clamp(0.0, double.infinity).toStringAsFixed(2);
       for (var s in _vatSlots) { s.amountCtrl.text = '0.00'; }
     }
     setState(() {});
@@ -182,21 +216,15 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     if (v.isEmpty) return 0.0;
     String clean = v.trim().replaceAll('\$', '').replaceAll(' ', '');
     
-    // Si contiene puntos y comas (ej 1.234,56)
     if (clean.contains('.') && clean.contains(',')) {
       if (clean.lastIndexOf('.') < clean.lastIndexOf(',')) {
-        // Formato ES/AR: 1.234,56 -> 1234.56
         clean = clean.replaceAll('.', '').replaceAll(',', '.');
       } else {
-        // Formato US: 1,234.56 -> 1234.56
         clean = clean.replaceAll(',', '');
       }
     } else if (clean.contains(',')) {
-      // Solo coma: 1234,56 -> 1234.56
       clean = clean.replaceAll(',', '.');
     } else if (clean.contains('.')) {
-      // Solo punto: puede ser 1.234 (mil) o 1234.56 (decimal)
-      // En Argentina, si hay 3 dígitos después del punto, suele ser mil.
       final parts = clean.split('.');
       if (parts.length > 1 && parts.last.length == 3) {
         clean = clean.replaceAll('.', '');
@@ -215,7 +243,47 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     _invoiceNumberCtrl.dispose();
     _dateCtrl.dispose();
     for (var s in _vatSlots) { s.amountCtrl.dispose(); }
+    for (var t in _taxSlots) { t.nameCtrl.dispose(); t.amountCtrl.dispose(); }
     super.dispose();
+  }
+
+  // ── pick attachment ──────────────────────────────────────────────────
+  Future<void> _pickAttachment({required bool isPdf, bool fromCamera = false}) async {
+    try {
+      if (isPdf) {
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['pdf'],
+          withData: true,
+        );
+        if (result != null && result.files.isNotEmpty) {
+          final file = result.files.first;
+          setState(() {
+            _selectedFileBytes = file.bytes;
+            _selectedIsPdf = true;
+            _selectedFileName = file.name;
+          });
+        }
+      } else {
+        final picker = ImagePicker();
+        final source = fromCamera ? ImageSource.camera : ImageSource.gallery;
+        final picked = await picker.pickImage(source: source, imageQuality: 85);
+        if (picked != null) {
+          final bytes = await picked.readAsBytes();
+          setState(() {
+            _selectedFileBytes = bytes;
+            _selectedIsPdf = false;
+            _selectedFileName = picked.name;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al seleccionar archivo: $e'), backgroundColor: AppTheme.expenseRed),
+        );
+      }
+    }
   }
 
   // ── save ─────────────────────────────────────────────────────────────
@@ -228,27 +296,62 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
 
     final userId        = ref.read(currentUserIdProvider);
     final userRepo      = ref.read(userRepositoryProvider);
-    final movementRepo  = ref.read(movementRepositoryProvider);
 
     final gross   = _parse(_grossCtrl.text);
     final net     = _parse(_netCtrl.text);
     final totalVat = _vatSlots.fold(0.0, (s, slot) => s + _parse(slot.amountCtrl.text));
-    final movId   = const Uuid().v4();
-    final currentUser = ref.read(currentUserProvider).value;
-
-    // Capturamos los bytes antes de lanzar el proceso de fondo
-    Uint8List? uploadBytes = widget.data.bytes;
-    if (uploadBytes == null && widget.data.imagePath.isNotEmpty && !kIsWeb) {
-      try {
-        uploadBytes = await io.File(widget.data.imagePath).readAsBytes();
-      } catch (e) {
-        debugPrint('Error leyendo bytes: $e');
+    
+    // Other taxes calculation
+    double totalOtherTaxes = 0.0;
+    final List<Map<String, dynamic>> taxDetails = [];
+    for (var t in _taxSlots) {
+      final amt = _parse(t.amountCtrl.text);
+      if (amt > 0) {
+        totalOtherTaxes += amt;
+        taxDetails.add({
+          'name': t.nameCtrl.text.trim().isEmpty ? 'Otros Impuestos' : t.nameCtrl.text.trim(),
+          'amount': amt,
+        });
       }
     }
 
-    // Iniciamos subida en segundo plano (fire-and-forget)
+    final movId = widget.existingMovement?.id ?? const Uuid().v4();
+    final currentUser = ref.read(currentUserProvider).value;
+
+    // Check attachment bytes to upload
+    Uint8List? uploadBytes = _selectedFileBytes ?? widget.data.bytes;
+    bool isPdf = _selectedIsPdf || widget.data.isPdf;
+
+    if (uploadBytes == null && widget.data.imagePath.isNotEmpty && !widget.data.imagePath.startsWith('http') && !kIsWeb) {
+      try {
+        uploadBytes = await io.File(widget.data.imagePath).readAsBytes();
+      } catch (e) {
+        debugPrint('Error leyendo bytes de archivo local: $e');
+      }
+    }
+
+    String? uploadedUrl = widget.existingMovement?.imageUrl;
+
+    // Subida síncrona asegurada a Firebase Storage
     if (uploadBytes != null) {
-      _startBackgroundUpload(userId ?? 'unknown', movId, uploadBytes, widget.data.isPdf, movementRepo);
+      setState(() => _loadingMessage = 'Subiendo comprobante...');
+      try {
+        final ext = isPdf ? 'pdf' : 'jpg';
+        final refStorage = FirebaseStorage.instance.ref().child('receipts/${userId ?? "unknown"}/$movId.$ext');
+        final meta = SettableMetadata(contentType: isPdf ? 'application/pdf' : 'image/jpeg');
+        final task = await refStorage.putData(uploadBytes, meta).timeout(const Duration(minutes: 1));
+        uploadedUrl = await task.ref.getDownloadURL();
+      } catch (e) {
+        debugPrint('Error subida Firebase Storage: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Error al subir comprobante: $e. Reintente por favor.'),
+            backgroundColor: AppTheme.expenseRed,
+          ));
+          setState(() => _isLoading = false);
+          return;
+        }
+      }
     }
 
     final movement = MovementModel(
@@ -263,20 +366,22 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
       description:   _descCtrl.text,
       establishment: _selectedEstablishment,
       paymentMethod: _selectedPayment,
-      date:          DateTime.now(),
+      date:          widget.existingMovement?.date ?? DateTime.now(),
       invoiceDate:   _selectedDate,
-      imageUrl:      null, // Se actualizará en segundo plano
+      imageUrl:      uploadedUrl,
       userName:      currentUser?.name,
       userEmail:     currentUser?.email,
       category:      _selectedCategory,
-      companyId:     currentUser?.companyId ?? 'alm_agro', // FIX: Inherit dynamic tenant!
+      companyId:     currentUser?.companyId ?? 'alm_agro',
+      otherTaxes:    totalOtherTaxes,
+      otherTaxesDetails: taxDetails.isNotEmpty ? taxDetails : null,
     );
 
     try {
-      await userRepo.saveMovementWithBalanceUpdate(movement).timeout(const Duration(seconds: 10));
+      await userRepo.saveMovementWithBalanceUpdate(movement).timeout(const Duration(seconds: 15));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Guardado ✓ (Subiendo archivo...)'),
+          content: Text('Guardado exitosamente ✓'),
           backgroundColor: AppTheme.incomeGreen,
         ));
         Navigator.pop(context);
@@ -380,9 +485,8 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Receipt preview (expenses with image)
-                        if (_selectedType == MovementType.expense && widget.data.imagePath.isNotEmpty)
-                          _buildReceiptPreview(),
+                        // Receipt preview & Attachment section (Both Expense and Income)
+                        _buildReceiptPreview(),
 
                         _section('DATOS DEL COMPROBANTE', Icons.receipt_long_outlined),
                         _field(_invoiceNumberCtrl, 'N° de Factura / Ticket', Icons.tag, keyboardType: TextInputType.text),
@@ -430,6 +534,33 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                                 icon: const Icon(Icons.add_circle_outline, color: AppTheme.primaryOrange),
                                 label: Text('Agregar 2° alícuota IVA',
                                     style: GoogleFonts.montserrat(color: AppTheme.primaryOrange, fontWeight: FontWeight.w600)),
+                              ),
+                            ),
+                          const SizedBox(height: 12),
+                        ],
+
+                        // Otros Impuestos (Opcional - Múltiples)
+                        if (_selectedType == MovementType.expense) ...[
+                          const SizedBox(height: 8),
+                          _section('OTROS / IMPUESTOS (OPCIONAL)', Icons.account_balance_outlined),
+                          ..._taxSlots.asMap().entries.map((e) => _taxRow(e.key, e.value, readOnly: widget.isReadOnly)),
+                          if (!widget.isReadOnly)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4, bottom: 8),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: TextButton.icon(
+                                  onPressed: () => setState(() {
+                                    _taxSlots.add(_TaxSlot(
+                                      nameCtrl: TextEditingController(text: 'Percepción / Impuesto'),
+                                      amountCtrl: TextEditingController(text: '0.00'),
+                                    ));
+                                    _recalcNet();
+                                  }),
+                                  icon: const Icon(Icons.add_circle_outline, color: AppTheme.primaryOrange),
+                                  label: Text('+ Agregar otro impuesto / percepción',
+                                      style: GoogleFonts.montserrat(color: AppTheme.primaryOrange, fontWeight: FontWeight.w600, fontSize: 12)),
+                                ),
                               ),
                             ),
                           const SizedBox(height: 12),
@@ -581,86 +712,207 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
   }
 
   Widget _buildReceiptPreview() {
-    final path = widget.data.imagePath;
-    if (path.isEmpty) return const SizedBox.shrink();
-    
-    final bool effectivelyPdf = widget.data.isPdf || path.toLowerCase().contains('.pdf') || path.toLowerCase().contains('blob:');
+    final bool hasBytes = _selectedFileBytes != null;
+    final String path = widget.data.imagePath;
+    final String? existingUrl = widget.existingMovement?.imageUrl;
+    final bool hasFile = hasBytes || path.isNotEmpty || (existingUrl != null && existingUrl.isNotEmpty);
 
-    return GestureDetector(
-      onTap: () async {
-        final url = widget.existingMovement?.imageUrl ?? widget.data.imagePath;
-        if (url.isNotEmpty) {
-          try {
-            final uri = Uri.parse(url);
-            // Intentamos abrir directamente, ya que canLaunchUrl a veces falla falsamente en Android 11+ o Web
-            final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
-            
-            if (!success && mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('No hay una aplicación para abrir este archivo: ${url.length > 20 ? url.substring(0, 20) : url}...')),
-              );
-            }
-          } catch (e) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error al procesar el enlace: $e')),
-              );
-            }
-          }
-        }
-      },
-      child: Container(
-        width: double.infinity,
-        height: 220,
-        margin: const EdgeInsets.only(bottom: 24),
-        decoration: BoxDecoration(
-          color: AppTheme.pureWhite,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Stack(children: [
-            effectivelyPdf
-                ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    const Icon(Icons.picture_as_pdf, size: 64, color: AppTheme.expenseRed),
-                    const SizedBox(height: 12),
-                    Text('DOCUMENTO PDF', style: GoogleFonts.montserrat(fontWeight: FontWeight.w800, fontSize: 12, color: AppTheme.textDark)),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryOrange,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        'VER DOCUMENTO ORIGINAL',
-                        style: GoogleFonts.montserrat(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+    final bool isPdf = _selectedIsPdf || widget.data.isPdf || path.toLowerCase().contains('.pdf') || (existingUrl?.toLowerCase().contains('.pdf') ?? false);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _section('COMPROBANTE ADJUNTO', Icons.attach_file),
+        if (hasFile)
+          GestureDetector(
+            onTap: () async {
+              final url = existingUrl ?? (path.startsWith('http') ? path : '');
+              if (url.isNotEmpty) {
+                try {
+                  final uri = Uri.parse(url);
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error al abrir enlace: $e')),
+                    );
+                  }
+                }
+              }
+            },
+            child: Container(
+              width: double.infinity,
+              height: 180,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: AppTheme.pureWhite,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4))],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Stack(
+                  children: [
+                    isPdf
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.picture_as_pdf, size: 52, color: AppTheme.expenseRed),
+                                const SizedBox(height: 8),
+                                Text(
+                                  _selectedFileName ?? 'DOCUMENTO PDF',
+                                  style: GoogleFonts.montserrat(fontWeight: FontWeight.w800, fontSize: 12, color: AppTheme.textDark),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryOrange,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    'DOCUMENTO LISTO',
+                                    style: GoogleFonts.montserrat(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : hasBytes
+                            ? Image.memory(_selectedFileBytes!, width: double.infinity, fit: BoxFit.cover)
+                            : (existingUrl != null && existingUrl.startsWith('http'))
+                                ? Image.network(existingUrl, width: double.infinity, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))
+                                : (path.startsWith('http') || kIsWeb)
+                                    ? Image.network(path, width: double.infinity, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))
+                                    : Image.file(io.File(path), width: double.infinity, fit: BoxFit.cover),
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(color: AppTheme.primaryOrange, borderRadius: BorderRadius.circular(16)),
+                        child: const Text('VISTA PREVIA', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)),
                       ),
                     ),
-                  ]))
-                : kIsWeb
-                    ? Image.network(widget.data.imagePath, width: double.infinity, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))
-                    : Image.file(io.File(widget.data.imagePath), width: double.infinity, fit: BoxFit.cover),
-            Positioned(
-              top: 10, right: 10,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(color: AppTheme.primaryOrange, borderRadius: BorderRadius.circular(16)),
-                child: const Text('VISTA PREVIA', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)),
-              ),
-            ),
-            if (!effectivelyPdf)
-              Positioned(
-                bottom: 10, right: 10,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(20)),
-                  child: const Icon(Icons.fullscreen, color: Colors.white, size: 18),
+                  ],
                 ),
               ),
-          ]),
-        ),
+            ),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.black12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.no_photography_outlined, color: AppTheme.textGrey),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Sin archivo o comprobante adjunto',
+                    style: GoogleFonts.montserrat(fontSize: 13, color: AppTheme.textGrey, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        if (!widget.isReadOnly)
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _pickAttachment(isPdf: false, fromCamera: false),
+                  icon: const Icon(Icons.photo_library_outlined, size: 16),
+                  label: Text(hasFile ? 'Cambiar' : 'Foto', style: GoogleFonts.montserrat(fontSize: 11, fontWeight: FontWeight.w700)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primaryOrange,
+                    side: const BorderSide(color: AppTheme.primaryOrange),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _pickAttachment(isPdf: false, fromCamera: true),
+                  icon: const Icon(Icons.camera_alt_outlined, size: 16),
+                  label: Text('Cámara', style: GoogleFonts.montserrat(fontSize: 11, fontWeight: FontWeight.w700)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primaryOrange,
+                    side: const BorderSide(color: AppTheme.primaryOrange),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _pickAttachment(isPdf: true),
+                  icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
+                  label: Text(hasFile ? 'PDF' : 'PDF', style: GoogleFonts.montserrat(fontSize: 11, fontWeight: FontWeight.w700)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.expenseRed,
+                    side: const BorderSide(color: AppTheme.expenseRed),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _taxRow(int index, _TaxSlot slot, {bool readOnly = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 3,
+            child: TextFormField(
+              controller: slot.nameCtrl,
+              readOnly: readOnly,
+              style: GoogleFonts.montserrat(fontWeight: FontWeight.w600, fontSize: 13),
+              decoration: _inputDeco('Concepto (ej: ITC, IIBB)', Icons.label_outlined),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 2,
+            child: TextFormField(
+              controller: slot.amountCtrl,
+              keyboardType: TextInputType.number,
+              readOnly: readOnly,
+              onChanged: (_) => _recalcNet(),
+              style: GoogleFonts.montserrat(fontWeight: FontWeight.w600, fontSize: 13),
+              decoration: _inputDeco('Monto (\$)', Icons.attach_money),
+            ),
+          ),
+          if (!readOnly)
+            IconButton(
+              onPressed: () => setState(() {
+                slot.nameCtrl.dispose();
+                slot.amountCtrl.dispose();
+                _taxSlots.removeAt(index);
+                _recalcNet();
+              }),
+              icon: const Icon(Icons.remove_circle, color: AppTheme.expenseRed, size: 20),
+            ),
+        ],
       ),
     );
   }
