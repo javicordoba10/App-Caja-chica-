@@ -332,22 +332,31 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
 
     String? uploadedUrl = widget.existingMovement?.imageUrl;
 
-    // Subida a Firebase Storage con timeout corto de 6 segundos y fallback sin bloqueo
-    if (uploadBytes != null) {
+    // Subida a Firebase Storage con timeout corto de 5 segundos y fallback sin bloqueo
+    final localPath = widget.data.imagePath;
+    final bool hasLocalFile = !kIsWeb && localPath.isNotEmpty && !localPath.startsWith('http') && io.File(localPath).existsSync();
+
+    if (uploadBytes != null || hasLocalFile) {
       setState(() => _loadingMessage = 'Subiendo comprobante...');
       try {
         final ext = isPdf ? 'pdf' : 'jpg';
         final refStorage = FirebaseStorage.instance.ref().child('receipts/${userId ?? "unknown"}/$movId.$ext');
         final meta = SettableMetadata(contentType: isPdf ? 'application/pdf' : 'image/jpeg');
         
-        final task = refStorage.putData(uploadBytes, meta);
-        final snapshot = await task.timeout(const Duration(seconds: 6));
-        uploadedUrl = await snapshot.ref.getDownloadURL().timeout(const Duration(seconds: 4));
+        UploadTask task;
+        if (hasLocalFile) {
+          task = refStorage.putFile(io.File(localPath), meta);
+        } else {
+          task = refStorage.putData(uploadBytes!, meta);
+        }
+
+        final snapshot = await task.timeout(const Duration(seconds: 5));
+        uploadedUrl = await snapshot.ref.getDownloadURL().timeout(const Duration(seconds: 3));
         debugPrint('>>> Subida de comprobante exitosa: $uploadedUrl');
       } catch (e) {
-        debugPrint('>>> Error o timeout en subida de comprobante ($e). Se reintentará en segundo plano.');
+        debugPrint('>>> Error o timeout en subida de comprobante ($e). Se procesará en segundo plano.');
         final movementRepo = ref.read(movementRepositoryProvider);
-        _startBackgroundUpload(userId ?? 'unknown', movId, uploadBytes, isPdf, movementRepo);
+        _startBackgroundUpload(userId ?? 'unknown', movId, uploadBytes, localPath, isPdf, movementRepo);
       }
     }
 
@@ -379,8 +388,8 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     try {
       await userRepo.saveMovementWithBalanceUpdate(movement).timeout(const Duration(seconds: 10));
       if (mounted) {
-        final message = (uploadBytes != null && uploadedUrl == null)
-            ? 'Guardado ✓ (Comprobante enviándose en segundo plano...)'
+        final message = ((uploadBytes != null || hasLocalFile) && uploadedUrl == null)
+            ? 'Guardado ✓ (Procesando imagen...)'
             : 'Guardado exitosamente ✓';
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(message),
@@ -429,16 +438,24 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     );
   }
 
-  void _startBackgroundUpload(String uid, String mid, Uint8List bytes, bool isPdf, MovementRepository repo) async {
+  void _startBackgroundUpload(String uid, String mid, Uint8List? bytes, String imagePath, bool isPdf, MovementRepository repo) async {
     try {
       final ext = isPdf ? 'pdf' : 'jpg';
-      final ref = FirebaseStorage.instance.ref().child('receipts/$uid/$mid.$ext');
+      final refStorage = FirebaseStorage.instance.ref().child('receipts/$uid/$mid.$ext');
       final meta = SettableMetadata(contentType: isPdf ? 'application/pdf' : 'image/jpeg');
       
-      final task = await ref.putData(bytes, meta).timeout(const Duration(minutes: 2));
-      final url = await task.ref.getDownloadURL();
+      TaskSnapshot snapshot;
+      if (!kIsWeb && imagePath.isNotEmpty && !imagePath.startsWith('http') && io.File(imagePath).existsSync()) {
+        snapshot = await refStorage.putFile(io.File(imagePath), meta);
+      } else if (bytes != null && bytes.isNotEmpty) {
+        snapshot = await refStorage.putData(bytes, meta);
+      } else {
+        return;
+      }
+
+      final url = await snapshot.ref.getDownloadURL();
       await repo.updateImageUrl(mid, url);
-      debugPrint('>>> Subida en segundo plano exitosa: $mid');
+      debugPrint('>>> Subida en segundo plano exitosa: $mid -> $url');
     } catch (e) {
       debugPrint('>>> ERROR en subida silenciosa ($mid): $e');
     }
