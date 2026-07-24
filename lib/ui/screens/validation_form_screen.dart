@@ -332,27 +332,26 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
 
     String? uploadedUrl = widget.existingMovement?.imageUrl;
 
-    // Subida síncrona asegurada a Firebase Storage
+    // Subida a Firebase Storage con timeout corto de 6 segundos y fallback sin bloqueo
     if (uploadBytes != null) {
       setState(() => _loadingMessage = 'Subiendo comprobante...');
       try {
         final ext = isPdf ? 'pdf' : 'jpg';
         final refStorage = FirebaseStorage.instance.ref().child('receipts/${userId ?? "unknown"}/$movId.$ext');
         final meta = SettableMetadata(contentType: isPdf ? 'application/pdf' : 'image/jpeg');
-        final task = await refStorage.putData(uploadBytes, meta).timeout(const Duration(minutes: 1));
-        uploadedUrl = await task.ref.getDownloadURL();
+        
+        final task = refStorage.putData(uploadBytes, meta);
+        final snapshot = await task.timeout(const Duration(seconds: 6));
+        uploadedUrl = await snapshot.ref.getDownloadURL().timeout(const Duration(seconds: 4));
+        debugPrint('>>> Subida de comprobante exitosa: $uploadedUrl');
       } catch (e) {
-        debugPrint('Error subida Firebase Storage: $e');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Error al subir comprobante: $e. Reintente por favor.'),
-            backgroundColor: AppTheme.expenseRed,
-          ));
-          setState(() => _isLoading = false);
-          return;
-        }
+        debugPrint('>>> Error o timeout en subida de comprobante ($e). Se reintentará en segundo plano.');
+        final movementRepo = ref.read(movementRepositoryProvider);
+        _startBackgroundUpload(userId ?? 'unknown', movId, uploadBytes, isPdf, movementRepo);
       }
     }
+
+    setState(() => _loadingMessage = 'Guardando registro...');
 
     final movement = MovementModel(
       id:            movId,
@@ -378,10 +377,13 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     );
 
     try {
-      await userRepo.saveMovementWithBalanceUpdate(movement).timeout(const Duration(seconds: 15));
+      await userRepo.saveMovementWithBalanceUpdate(movement).timeout(const Duration(seconds: 10));
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Guardado exitosamente ✓'),
+        final message = (uploadBytes != null && uploadedUrl == null)
+            ? 'Guardado ✓ (Comprobante enviándose en segundo plano...)'
+            : 'Guardado exitosamente ✓';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(message),
           backgroundColor: AppTheme.incomeGreen,
         ));
         Navigator.pop(context);
@@ -392,6 +394,9 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
           content: Text('Error al guardar: $e'),
           backgroundColor: AppTheme.expenseRed,
         ));
+      }
+    } finally {
+      if (mounted) {
         setState(() => _isLoading = false);
       }
     }
