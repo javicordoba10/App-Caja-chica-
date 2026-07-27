@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -705,12 +706,57 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   Future<void> _openReceipt(String url) async {
+    final bool isPdf = url.startsWith('data:application/pdf') || url.toLowerCase().contains('.pdf');
+
+    if (!isPdf && (url.startsWith('data:image') || url.startsWith('http') || url.startsWith('blob:'))) {
+      showDialog(
+        context: context,
+        builder: (dialogCtx) => Dialog(
+          backgroundColor: Colors.black,
+          insetPadding: const EdgeInsets.all(10),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Stack(
+            alignment: Alignment.topRight,
+            children: [
+              InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Center(
+                  child: url.startsWith('data:image')
+                      ? Image.memory(
+                          base64Decode(url.split(',').last),
+                          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white, size: 64),
+                        )
+                      : Image.network(
+                          url,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white, size: 64),
+                        ),
+                ),
+              ),
+              Positioned(
+                top: 10,
+                right: 10,
+                child: Container(
+                  decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                  child: IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white, size: 26),
+                    onPressed: () => Navigator.pop(dialogCtx),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      return;
+    }
+
     try {
       final uri = Uri.parse(url);
       final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No hay una aplicación para abrir este archivo: ${url.length > 20 ? url.substring(0, 20) : url}...')),
+          SnackBar(content: Text('No hay una aplicación para abrir este archivo.')),
         );
       }
     } catch (e) {

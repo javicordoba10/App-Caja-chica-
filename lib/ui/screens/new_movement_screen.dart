@@ -105,9 +105,9 @@ class _NewMovementScreenState extends ConsumerState<NewMovementScreen> {
         const SizedBox(height: 16),
         _buildActionButton(
           icon: Icons.camera_alt_outlined,
-          label: 'Tomar Foto (OCR)',
-          description: 'Cámara con detección de datos',
-          onTap: () => _pickImage(ImageSource.camera),
+          label: 'Foto / Galería (OCR)',
+          description: 'Tomar foto con cámara o elegir de galería',
+          onTap: _showPhotoSourceDialog,
         ),
         const SizedBox(height: 16),
         _buildActionButton(
@@ -229,12 +229,63 @@ class _NewMovementScreenState extends ConsumerState<NewMovementScreen> {
     );
   }
 
+  void _showPhotoSourceDialog() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Seleccionar Origen del Comprobante',
+              style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: AppTheme.primaryOrange),
+              title: Text('Tomar Foto con Cámara', style: GoogleFonts.montserrat(fontWeight: FontWeight.w600, fontSize: 14)),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: AppTheme.primaryOrange),
+              title: Text('Elegir de la Galería', style: GoogleFonts.montserrat(fontWeight: FontWeight.w600, fontSize: 14)),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _pickImage(ImageSource source) async {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(source: source, imageQuality: 80);
-    if (image != null) {
-      final bytes = await image.readAsBytes();
-      _processOCR(image.path, false, bytes: bytes);
+    try {
+      final picker = ImagePicker();
+      final image = await picker.pickImage(source: source, imageQuality: 80);
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        _processOCR(image.path, false, bytes: bytes);
+      }
+    } catch (e) {
+      debugPrint('Error en _pickImage: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No se pudo acceder a la imagen: $e'),
+            backgroundColor: AppTheme.expenseRed,
+          ),
+        );
+      }
     }
   }
 

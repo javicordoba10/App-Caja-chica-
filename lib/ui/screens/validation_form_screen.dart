@@ -758,15 +758,83 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
           GestureDetector(
             onTap: () async {
               final url = existingUrl ?? (path.startsWith('http') || path.startsWith('data:') ? path : '');
-              if (url.isNotEmpty) {
-                try {
-                  final uri = Uri.parse(url);
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error al abrir enlace: $e')),
-                    );
+              if (_selectedFileBytes != null && !isPdf) {
+                showDialog(
+                  context: context,
+                  builder: (dialogCtx) => Dialog(
+                    backgroundColor: Colors.black,
+                    insetPadding: const EdgeInsets.all(10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    child: Stack(
+                      alignment: Alignment.topRight,
+                      children: [
+                        InteractiveViewer(
+                          minScale: 0.5,
+                          maxScale: 4.0,
+                          child: Center(
+                            child: Image.memory(_selectedFileBytes!),
+                          ),
+                        ),
+                        Positioned(
+                          top: 10,
+                          right: 10,
+                          child: Container(
+                            decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                            child: IconButton(
+                              icon: const Icon(Icons.close, color: Colors.white, size: 26),
+                              onPressed: () => Navigator.pop(dialogCtx),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              } else if (url.isNotEmpty) {
+                if (!isPdf && (url.startsWith('data:image') || url.startsWith('http') || url.startsWith('blob:'))) {
+                  showDialog(
+                    context: context,
+                    builder: (dialogCtx) => Dialog(
+                      backgroundColor: Colors.black,
+                      insetPadding: const EdgeInsets.all(10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      child: Stack(
+                        alignment: Alignment.topRight,
+                        children: [
+                          InteractiveViewer(
+                            minScale: 0.5,
+                            maxScale: 4.0,
+                            child: Center(
+                              child: url.startsWith('data:image')
+                                  ? Image.memory(base64Decode(url.split(',').last))
+                                  : Image.network(url, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white, size: 64)),
+                            ),
+                          ),
+                          Positioned(
+                            top: 10,
+                            right: 10,
+                            child: Container(
+                              decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                              child: IconButton(
+                                icon: const Icon(Icons.close, color: Colors.white, size: 26),
+                                onPressed: () => Navigator.pop(dialogCtx),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                } else {
+                  try {
+                    final uri = Uri.parse(url);
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error al abrir enlace: $e')),
+                      );
+                    }
                   }
                 }
               }
