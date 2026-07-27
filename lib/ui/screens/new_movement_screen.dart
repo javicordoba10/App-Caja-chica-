@@ -1,3 +1,4 @@
+import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -245,8 +246,16 @@ class _NewMovementScreenState extends ConsumerState<NewMovementScreen> {
     );
     if (result != null && result.files.isNotEmpty) {
       final file = result.files.first;
+      Uint8List? bytes = file.bytes;
+      if (bytes == null && file.path != null && !kIsWeb) {
+        try {
+          bytes = await io.File(file.path!).readAsBytes();
+        } catch (e) {
+          debugPrint('Error reading pickFile bytes: $e');
+        }
+      }
       final filePath = file.path ?? file.name;
-      _processOCR(filePath, isPdf, bytes: file.bytes);
+      _processOCR(filePath, isPdf, bytes: bytes);
     }
   }
 

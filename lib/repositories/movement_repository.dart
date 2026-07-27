@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -36,37 +37,59 @@ class MovementRepository {
     required String filePath,
     required bool isPdf,
   }) async {
+    // 1. Resolve raw bytes
+    Uint8List? fileBytes = bytes;
+    if ((fileBytes == null || fileBytes.isEmpty) && filePath.isNotEmpty) {
+      if (kIsWeb && filePath.startsWith('blob:')) {
+        try {
+          final res = await http.get(Uri.parse(filePath)).timeout(const Duration(seconds: 10));
+          if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
+            fileBytes = res.bodyBytes;
+          }
+        } catch (e) {
+          print('Error fetching blob bytes: $e');
+        }
+      } else if (!kIsWeb && !filePath.startsWith('http')) {
+        try {
+          final file = io.File(filePath);
+          if (await file.exists()) {
+            fileBytes = await file.readAsBytes();
+          }
+        } catch (e) {
+          print('Error reading file path bytes: $e');
+        }
+      }
+    }
+
+    if (fileBytes == null || fileBytes.isEmpty) {
+      print('>>> ERROR: No file bytes available to upload.');
+      return null;
+    }
+
+    // 2. Try Firebase Storage upload first
     try {
       final ext = isPdf ? 'pdf' : 'jpg';
       final refStorage = FirebaseStorage.instance.ref().child('receipts/$userId/$movementId.$ext');
       final meta = SettableMetadata(contentType: isPdf ? 'application/pdf' : 'image/jpeg');
-      
-      TaskSnapshot snapshot;
-      if (bytes != null && bytes.isNotEmpty) {
-        snapshot = await refStorage.putData(bytes, meta).timeout(const Duration(seconds: 45));
-      } else if (kIsWeb && filePath.startsWith('blob:')) {
-        final res = await http.get(Uri.parse(filePath)).timeout(const Duration(seconds: 15));
-        if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
-          snapshot = await refStorage.putData(res.bodyBytes, meta).timeout(const Duration(seconds: 45));
-        } else {
-          return null;
-        }
-      } else if (!kIsWeb && filePath.isNotEmpty && !filePath.startsWith('http')) {
-        final file = io.File(filePath);
-        if (await file.exists()) {
-          snapshot = await refStorage.putFile(file, meta).timeout(const Duration(seconds: 45));
-        } else {
-          return null;
-        }
-      } else {
-        return null;
-      }
 
-      final downloadUrl = await snapshot.ref.getDownloadURL().timeout(const Duration(seconds: 15));
-      print('>>> Attachment upload successful: $downloadUrl');
+      final task = refStorage.putData(fileBytes, meta);
+      final snapshot = await task.timeout(const Duration(seconds: 15));
+      final downloadUrl = await snapshot.ref.getDownloadURL().timeout(const Duration(seconds: 5));
+      print('>>> Firebase Storage upload successful: $downloadUrl');
       return downloadUrl;
     } catch (e) {
-      print('>>> ERROR uploading receipt file: $e');
+      print('>>> Firebase Storage upload failed/timed out ($e). Using Base64 fail-safe fallback.');
+    }
+
+    // 3. FAIL-SAFE FALLBACK: Store as Base64 Data URI directly in Firestore
+    try {
+      final mime = isPdf ? 'application/pdf' : 'image/jpeg';
+      final base64Str = base64Encode(fileBytes);
+      final dataUri = 'data:$mime;base64,$base64Str';
+      print('>>> Base64 fail-safe fallback created successfully (length: ${dataUri.length}).');
+      return dataUri;
+    } catch (e) {
+      print('>>> Base64 fallback error: $e');
       return null;
     }
   }

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -743,7 +744,11 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     final String? existingUrl = widget.existingMovement?.imageUrl;
     final bool hasFile = hasBytes || path.isNotEmpty || (existingUrl != null && existingUrl.isNotEmpty);
 
-    final bool isPdf = _selectedIsPdf || widget.data.isPdf || path.toLowerCase().contains('.pdf') || (existingUrl?.toLowerCase().contains('.pdf') ?? false);
+    final bool isPdf = _selectedIsPdf 
+        || widget.data.isPdf 
+        || path.toLowerCase().contains('.pdf') 
+        || (existingUrl?.toLowerCase().contains('.pdf') ?? false)
+        || (existingUrl?.startsWith('data:application/pdf') ?? false);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -752,7 +757,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
         if (hasFile)
           GestureDetector(
             onTap: () async {
-              final url = existingUrl ?? (path.startsWith('http') ? path : '');
+              final url = existingUrl ?? (path.startsWith('http') || path.startsWith('data:') ? path : '');
               if (url.isNotEmpty) {
                 try {
                   final uri = Uri.parse(url);
@@ -799,7 +804,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Text(
-                                    'DOCUMENTO LISTO',
+                                    'VER DOCUMENTO ORIGINAL',
                                     style: GoogleFonts.montserrat(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
                                   ),
                                 ),
@@ -808,11 +813,13 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                           )
                         : hasBytes
                             ? Image.memory(_selectedFileBytes!, width: double.infinity, fit: BoxFit.cover)
-                            : (existingUrl != null && existingUrl.startsWith('http'))
-                                ? Image.network(existingUrl, width: double.infinity, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))
-                                : (path.startsWith('http') || kIsWeb)
-                                    ? Image.network(path, width: double.infinity, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))
-                                    : Image.file(io.File(path), width: double.infinity, fit: BoxFit.cover),
+                            : (existingUrl != null && existingUrl.startsWith('data:image'))
+                                ? Image.memory(base64Decode(existingUrl.split(',').last), width: double.infinity, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))
+                                : (existingUrl != null && existingUrl.startsWith('http'))
+                                    ? Image.network(existingUrl, width: double.infinity, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))
+                                    : (path.startsWith('http') || path.startsWith('data:') || kIsWeb)
+                                        ? Image.network(path, width: double.infinity, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))
+                                        : Image.file(io.File(path), width: double.infinity, fit: BoxFit.cover),
                     Positioned(
                       top: 10,
                       right: 10,
