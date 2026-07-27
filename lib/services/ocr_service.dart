@@ -66,7 +66,14 @@ class OCRService {
     
     final text = recognizedText.text;
     
-    final fileBytes = await io.File(filePath).readAsBytes();
+    Uint8List? fileBytes = bytes;
+    if (fileBytes == null && filePath.isNotEmpty && !filePath.startsWith('http')) {
+      try {
+        fileBytes = await io.File(filePath).readAsBytes();
+      } catch (e) {
+        if (kDebugMode) print('Error reading file bytes in OCRService: $e');
+      }
+    }
     return _parseText(text, filePath, isPdf: isPdfFile, bytes: fileBytes);
   }
 

@@ -1,7 +1,8 @@
+import 'dart:io' as io;
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:petty_cash_app/models/movement_model.dart';
-
 
 class MovementRepository {
   final FirebaseFirestore _firestore;
@@ -25,6 +26,36 @@ class MovementRepository {
 
   Future<void> updateImageUrl(String id, String url) async {
     await _movements.doc(id).update({'imageUrl': url});
+  }
+
+  Future<String?> uploadReceiptFile({
+    required String userId,
+    required String movementId,
+    required Uint8List? bytes,
+    required String filePath,
+    required bool isPdf,
+  }) async {
+    try {
+      final ext = isPdf ? 'pdf' : 'jpg';
+      final refStorage = FirebaseStorage.instance.ref().child('receipts/$userId/$movementId.$ext');
+      final meta = SettableMetadata(contentType: isPdf ? 'application/pdf' : 'image/jpeg');
+      
+      TaskSnapshot snapshot;
+      if (bytes != null && bytes.isNotEmpty) {
+        snapshot = await refStorage.putData(bytes, meta).timeout(const Duration(seconds: 35));
+      } else if (!kIsWeb && filePath.isNotEmpty && !filePath.startsWith('http') && io.File(filePath).existsSync()) {
+        snapshot = await refStorage.putFile(io.File(filePath), meta).timeout(const Duration(seconds: 35));
+      } else {
+        return null;
+      }
+
+      final downloadUrl = await snapshot.ref.getDownloadURL().timeout(const Duration(seconds: 15));
+      print('>>> Attachment upload successful: $downloadUrl');
+      return downloadUrl;
+    } catch (e) {
+      print('>>> ERROR uploading receipt file: $e');
+      return null;
+    }
   }
 
   Stream<List<MovementModel>> getMovements(String userId, String role, String companyId) {

@@ -247,8 +247,10 @@ class _NewMovementScreenState extends ConsumerState<NewMovementScreen> {
       allowedExtensions: isPdf ? ['pdf'] : null,
       withData: true,
     );
-    if (result != null && result.files.single.path != null) {
-      _processOCR(result.files.single.path!, isPdf, bytes: result.files.single.bytes);
+    if (result != null && result.files.isNotEmpty) {
+      final file = result.files.first;
+      final filePath = file.path ?? file.name;
+      _processOCR(filePath, isPdf, bytes: file.bytes);
     }
   }
 

@@ -258,8 +258,16 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
         );
         if (result != null && result.files.isNotEmpty) {
           final file = result.files.first;
+          Uint8List? bytes = file.bytes;
+          if (bytes == null && file.path != null && !kIsWeb) {
+            try {
+              bytes = await io.File(file.path!).readAsBytes();
+            } catch (e) {
+              debugPrint('Error reading PDF bytes: $e');
+            }
+          }
           setState(() {
-            _selectedFileBytes = file.bytes;
+            _selectedFileBytes = bytes;
             _selectedIsPdf = true;
             _selectedFileName = file.name;
           });
@@ -318,46 +326,33 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     final movId = widget.existingMovement?.id ?? const Uuid().v4();
     final currentUser = ref.read(currentUserProvider).value;
 
-    // Check attachment bytes to upload
-    Uint8List? uploadBytes = _selectedFileBytes ?? widget.data.bytes;
-    bool isPdf = _selectedIsPdf || widget.data.isPdf;
+    final movementRepo  = ref.read(movementRepositoryProvider);
 
-    if (uploadBytes == null && widget.data.imagePath.isNotEmpty && !widget.data.imagePath.startsWith('http') && !kIsWeb) {
+    // Check attachment bytes or local file to upload
+    Uint8List? uploadBytes = _selectedFileBytes ?? widget.data.bytes;
+    String localPath = widget.data.imagePath;
+    bool isPdf = _selectedIsPdf || widget.data.isPdf || localPath.toLowerCase().contains('.pdf');
+
+    if (uploadBytes == null && localPath.isNotEmpty && !localPath.startsWith('http') && !kIsWeb) {
       try {
-        uploadBytes = await io.File(widget.data.imagePath).readAsBytes();
+        uploadBytes = await io.File(localPath).readAsBytes();
       } catch (e) {
         debugPrint('Error leyendo bytes de archivo local: $e');
       }
     }
 
     String? uploadedUrl = widget.existingMovement?.imageUrl;
+    final bool hasFileToUpload = uploadBytes != null || (localPath.isNotEmpty && !localPath.startsWith('http'));
 
-    // Subida a Firebase Storage con timeout corto de 5 segundos y fallback sin bloqueo
-    final localPath = widget.data.imagePath;
-    final bool hasLocalFile = !kIsWeb && localPath.isNotEmpty && !localPath.startsWith('http') && io.File(localPath).existsSync();
-
-    if (uploadBytes != null || hasLocalFile) {
-      setState(() => _loadingMessage = 'Subiendo comprobante...');
-      try {
-        final ext = isPdf ? 'pdf' : 'jpg';
-        final refStorage = FirebaseStorage.instance.ref().child('receipts/${userId ?? "unknown"}/$movId.$ext');
-        final meta = SettableMetadata(contentType: isPdf ? 'application/pdf' : 'image/jpeg');
-        
-        UploadTask task;
-        if (hasLocalFile) {
-          task = refStorage.putFile(io.File(localPath), meta);
-        } else {
-          task = refStorage.putData(uploadBytes!, meta);
-        }
-
-        final snapshot = await task.timeout(const Duration(seconds: 5));
-        uploadedUrl = await snapshot.ref.getDownloadURL().timeout(const Duration(seconds: 3));
-        debugPrint('>>> Subida de comprobante exitosa: $uploadedUrl');
-      } catch (e) {
-        debugPrint('>>> Error o timeout en subida de comprobante ($e). Se procesará en segundo plano.');
-        final movementRepo = ref.read(movementRepositoryProvider);
-        _startBackgroundUpload(userId ?? 'unknown', movId, uploadBytes, localPath, isPdf, movementRepo);
-      }
+    if (hasFileToUpload) {
+      setState(() => _loadingMessage = 'Subiendo comprobante (PDF/Imagen)...');
+      uploadedUrl = await movementRepo.uploadReceiptFile(
+        userId: userId ?? 'unknown',
+        movementId: movId,
+        bytes: uploadBytes,
+        filePath: localPath,
+        isPdf: isPdf,
+      );
     }
 
     setState(() => _loadingMessage = 'Guardando registro...');
@@ -386,10 +381,10 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     );
 
     try {
-      await userRepo.saveMovementWithBalanceUpdate(movement).timeout(const Duration(seconds: 10));
+      await userRepo.saveMovementWithBalanceUpdate(movement).timeout(const Duration(seconds: 15));
       if (mounted) {
-        final message = ((uploadBytes != null || hasLocalFile) && uploadedUrl == null)
-            ? 'Guardado ✓ (Procesando imagen...)'
+        final message = (hasFileToUpload && uploadedUrl == null)
+            ? 'Guardado ✓ (Nota: No se pudo subir el comprobante por conexión)'
             : 'Guardado exitosamente ✓';
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(message),
