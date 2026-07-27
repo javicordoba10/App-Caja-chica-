@@ -232,12 +232,8 @@ class _NewMovementScreenState extends ConsumerState<NewMovementScreen> {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: source, imageQuality: 80);
     if (image != null) {
-      if (kIsWeb) {
-        final bytes = await image.readAsBytes();
-        _processOCR(image.path, false, bytes: bytes);
-      } else {
-        _processOCR(image.path, false);
-      }
+      final bytes = await image.readAsBytes();
+      _processOCR(image.path, false, bytes: bytes);
     }
   }
 

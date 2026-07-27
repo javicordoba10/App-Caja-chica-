@@ -353,6 +353,18 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
         filePath: localPath,
         isPdf: isPdf,
       );
+
+      if (uploadedUrl == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('No se pudo subir el comprobante. Por favor verifique su conexión e intente nuevamente.'),
+            backgroundColor: AppTheme.expenseRed,
+            duration: Duration(seconds: 5),
+          ));
+        }
+        setState(() => _isLoading = false);
+        return; // Detener guardado para evitar movimientos sin comprobante
+      }
     }
 
     setState(() => _loadingMessage = 'Guardando registro...');
@@ -383,11 +395,8 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     try {
       await userRepo.saveMovementWithBalanceUpdate(movement).timeout(const Duration(seconds: 15));
       if (mounted) {
-        final message = (hasFileToUpload && uploadedUrl == null)
-            ? 'Guardado ✓ (Nota: No se pudo subir el comprobante por conexión)'
-            : 'Guardado exitosamente ✓';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(message),
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Guardado exitosamente con comprobante ✓'),
           backgroundColor: AppTheme.incomeGreen,
         ));
         Navigator.pop(context);

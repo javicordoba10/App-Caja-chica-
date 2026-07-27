@@ -2,6 +2,7 @@ import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:http/http.dart' as http;
 import 'package:petty_cash_app/models/movement_model.dart';
 
 class MovementRepository {
@@ -42,9 +43,21 @@ class MovementRepository {
       
       TaskSnapshot snapshot;
       if (bytes != null && bytes.isNotEmpty) {
-        snapshot = await refStorage.putData(bytes, meta).timeout(const Duration(seconds: 35));
-      } else if (!kIsWeb && filePath.isNotEmpty && !filePath.startsWith('http') && io.File(filePath).existsSync()) {
-        snapshot = await refStorage.putFile(io.File(filePath), meta).timeout(const Duration(seconds: 35));
+        snapshot = await refStorage.putData(bytes, meta).timeout(const Duration(seconds: 45));
+      } else if (kIsWeb && filePath.startsWith('blob:')) {
+        final res = await http.get(Uri.parse(filePath)).timeout(const Duration(seconds: 15));
+        if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
+          snapshot = await refStorage.putData(res.bodyBytes, meta).timeout(const Duration(seconds: 45));
+        } else {
+          return null;
+        }
+      } else if (!kIsWeb && filePath.isNotEmpty && !filePath.startsWith('http')) {
+        final file = io.File(filePath);
+        if (await file.exists()) {
+          snapshot = await refStorage.putFile(file, meta).timeout(const Duration(seconds: 45));
+        } else {
+          return null;
+        }
       } else {
         return null;
       }
