@@ -230,4 +230,116 @@ class PDFService {
 
     await Printing.layoutPdf(onLayout: (PdfPageFormat form) async => pdf.save());
   }
+
+  static Future<void> generateSelectedExpensesReport({
+    required List<MovementModel> movements,
+    required String userName,
+    String? title,
+  }) async {
+    final pdf = pw.Document();
+    final format = NumberFormat.currency(locale: 'es_AR', symbol: '\$');
+
+    final expenses = movements.where((m) => m.type == MovementType.expense).toList();
+    final incomes  = movements.where((m) => m.type == MovementType.income).toList();
+
+    final totalExpenses = expenses.fold(0.0, (sum, m) => sum + m.grossAmount);
+    final totalIncomes  = incomes.fold(0.0, (sum, m) => sum + m.grossAmount);
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        build: (pw.Context context) {
+          return [
+            pw.Header(
+              level: 0,
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(title ?? 'Rendición de Gastos Seleccionados', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                  pw.Text('Solicitante: $userName', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 6),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('Fecha de Emisión: ${DateFormat("dd/MM/yyyy HH:mm").format(DateTime.now())}', style: const pw.TextStyle(fontSize: 10)),
+                pw.Text('Total de comprobantes: ${movements.length}', style: const pw.TextStyle(fontSize: 10)),
+              ],
+            ),
+            pw.Divider(),
+            pw.SizedBox(height: 12),
+
+            pw.Table.fromTextArray(
+              headers: ['Fecha', 'Tipo', 'Comprobante', 'Descripción', 'C. Costo', 'Forma Pago', 'Monto'],
+              data: movements.map((m) => [
+                DateFormat('dd/MM/yy').format(m.invoiceDate ?? m.date),
+                m.type == MovementType.income ? 'Ingreso' : 'Egreso',
+                m.invoiceType,
+                m.description,
+                m.establishment,
+                m.paymentMethod,
+                format.format(m.grossAmount)
+              ]).toList(),
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white, fontSize: 10),
+              headerDecoration: const pw.BoxDecoration(color: PdfColors.black),
+              cellStyle: const pw.TextStyle(fontSize: 9),
+              rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5))),
+              cellAlignments: {
+                0: pw.Alignment.centerLeft,
+                1: pw.Alignment.center,
+                2: pw.Alignment.centerLeft,
+                3: pw.Alignment.centerLeft,
+                4: pw.Alignment.centerLeft,
+                5: pw.Alignment.centerLeft,
+                6: pw.Alignment.centerRight,
+              }
+            ),
+
+            pw.SizedBox(height: 16),
+            pw.Divider(color: PdfColors.grey400),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                if (totalIncomes > 0)
+                  pw.Text('Ingresos: ${format.format(totalIncomes)}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.green)),
+                pw.Text('TOTAL RENDICIÓN: ${format.format(totalExpenses)}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12, color: PdfColors.black)),
+              ],
+            ),
+
+            pw.SizedBox(height: 48),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Container(
+                  width: 180,
+                  height: 50,
+                  decoration: const pw.BoxDecoration(
+                    border: pw.Border(top: pw.BorderSide(color: PdfColors.black, width: 1.0)),
+                  ),
+                  alignment: pw.Alignment.topLeft,
+                  padding: const pw.EdgeInsets.only(top: 4),
+                  child: pw.Text('Firma del Empleado / Rendidor', style: const pw.TextStyle(fontSize: 9)),
+                ),
+                pw.Container(
+                  width: 180,
+                  height: 50,
+                  decoration: const pw.BoxDecoration(
+                    border: pw.Border(top: pw.BorderSide(color: PdfColors.black, width: 1.0)),
+                  ),
+                  alignment: pw.Alignment.topLeft,
+                  padding: const pw.EdgeInsets.only(top: 4),
+                  child: pw.Text('Aprobado por Administración', style: const pw.TextStyle(fontSize: 9)),
+                ),
+              ],
+            ),
+          ];
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(onLayout: (PdfPageFormat form) async => pdf.save());
+  }
 }

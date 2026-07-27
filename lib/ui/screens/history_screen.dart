@@ -6,6 +6,7 @@ import 'package:petty_cash_app/providers/app_providers.dart';
 import 'package:petty_cash_app/models/movement_model.dart';
 import 'package:petty_cash_app/models/recharge_request_model.dart';
 import 'package:petty_cash_app/services/ocr_service.dart';
+import 'package:petty_cash_app/services/pdf_service.dart';
 import 'package:petty_cash_app/ui/screens/validation_form_screen.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -21,6 +22,8 @@ class HistoryScreen extends ConsumerStatefulWidget {
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   final String _searchQuery = '';
   String _selectedFilter = 'Todos';
+  bool _isSelectionMode = false;
+  final Set<String> _selectedIds = {};
 
   @override
   Widget build(BuildContext context) {
@@ -29,16 +32,20 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
     return Column(
         children: [
-          // Filter Section
-          _buildFilterHeader(),
+          movementsAsync.when(
+            data: (movements) {
+              final filtered = _applyFilters(movements);
+              return _buildFilterHeader(filtered);
+            },
+            loading: () => _buildFilterHeader([]),
+            error: (_, __) => _buildFilterHeader([]),
+          ),
           
           Expanded(
             child: movementsAsync.when(
               data: (movements) {
                 final filtered = _applyFilters(movements);
                 
-                // Get recharges and merge them for UI, only if "Todos" filter is used
-                // or if we add a specific filter for it. To keep it simple, show them in "Todos".
                 List<dynamic> combinedHistory = [...filtered];
                 
                 final rechargesResult = rechargesAsync.value;
@@ -47,7 +54,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                    combinedHistory.addAll(rFiltered);
                 }
                 
-                // Sort by date (descending)
                 combinedHistory.sort((a, b) {
                   final dateA = a is MovementModel ? a.date : (a as RechargeRequestModel).createdAt;
                   final dateB = b is MovementModel ? b.date : (b as RechargeRequestModel).createdAt;
@@ -58,36 +64,42 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   return _buildEmptyState();
                 }
 
-                // Summary only counts ACTUAL movements, not requests
                 final totalExp = filtered.where((m) => m.type == MovementType.expense).fold(0.0, (sum, m) => sum + m.grossAmount);
                 final totalInc = filtered.where((m) => m.type == MovementType.income).fold(0.0, (sum, m) => sum + m.grossAmount);
 
-                return CustomScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-                        child: _buildSummaryRow(totalInc, totalExp),
+                return Column(
+                  children: [
+                    if (_isSelectionMode) _buildSelectionActionBar(filtered),
+                    Expanded(
+                      child: CustomScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        slivers: [
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                              child: _buildSummaryRow(totalInc, totalExp),
+                            ),
+                          ),
+                          SliverPadding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            sliver: SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  final item = combinedHistory[index];
+                                  if (item is MovementModel) {
+                                    return _buildHistoryCard(item);
+                                  } else {
+                                    return _buildRechargeHistoryCard(item as RechargeRequestModel);
+                                  }
+                                },
+                                childCount: combinedHistory.length,
+                              ),
+                            ),
+                          ),
+                          const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                        ],
                       ),
                     ),
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final item = combinedHistory[index];
-                            if (item is MovementModel) {
-                              return _buildHistoryCard(item);
-                            } else {
-                              return _buildRechargeHistoryCard(item as RechargeRequestModel);
-                            }
-                          },
-                          childCount: combinedHistory.length,
-                        ),
-                      ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 40)),
                   ],
                 );
               },
@@ -99,32 +111,151 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       );
   }
 
+  Widget _buildSelectionActionBar(List<MovementModel> filteredMovements) {
+    final selectedMovements = filteredMovements.where((m) => _selectedIds.contains(m.id)).toList();
+    final totalSelectedAmount = selectedMovements.fold(0.0, (sum, m) => sum + m.grossAmount);
+    final expenseList = filteredMovements.where((m) => m.type == MovementType.expense).toList();
+    final isAllSelected = expenseList.isNotEmpty && selectedMovements.length >= expenseList.length;
 
-  Widget _buildFilterHeader() {
     return Container(
-      color: AppTheme.pureWhite,
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+      color: AppTheme.pureBlack,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildFilterChip('Todo', 'Todos'),
-                const SizedBox(width: 8),
-                _buildFilterChip('Hoy', 'Día'),
-                const SizedBox(width: 8),
-                _buildFilterChip('Semana', 'Semana'),
-                const SizedBox(width: 8),
-                _buildFilterChip('Mes', 'Mes'),
-                const SizedBox(width: 16),
-                Container(height: 24, width: 1, color: Colors.black12),
-                const SizedBox(width: 16),
-                _buildFilterChip('Ingresos', 'Ingresos'),
-                const SizedBox(width: 8),
-                _buildFilterChip('Egresos', 'Egresos'),
-              ],
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                onPressed: () => setState(() {
+                  _isSelectionMode = false;
+                  _selectedIds.clear();
+                }),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${_selectedIds.length} comprobantes marcados',
+                      style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    Text(
+                      'Total rendición: \$ ${NumberFormat('#,##0.00').format(totalSelectedAmount)}',
+                      style: GoogleFonts.montserrat(color: AppTheme.primaryOrange, fontWeight: FontWeight.w700, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    if (isAllSelected) {
+                      _selectedIds.clear();
+                    } else {
+                      for (var m in expenseList) {
+                        _selectedIds.add(m.id);
+                      }
+                    }
+                  });
+                },
+                child: Text(
+                  isAllSelected ? 'Desmarcar Todos' : 'Marcar Todos',
+                  style: GoogleFonts.montserrat(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryOrange,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.print, color: Colors.white, size: 18),
+              label: Text(
+                'IMPRIMIR RENDICIÓN (${_selectedIds.length})',
+                style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12),
+              ),
+              onPressed: _selectedIds.isEmpty
+                  ? null
+                  : () {
+                      final currentUser = ref.read(currentUserProvider).value;
+                      PDFService.generateSelectedExpensesReport(
+                        movements: selectedMovements,
+                        userName: currentUser?.name ?? 'Empleado',
+                      );
+                    },
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterHeader(List<MovementModel> filteredMovements) {
+    return Container(
+      color: AppTheme.pureWhite,
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 15),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildFilterChip('Todo', 'Todos'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('Hoy', 'Día'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('Semana', 'Semana'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('Mes', 'Mes'),
+                      const SizedBox(width: 12),
+                      Container(height: 20, width: 1, color: Colors.black12),
+                      const SizedBox(width: 12),
+                      _buildFilterChip('Ingresos', 'Ingresos'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('Egresos', 'Egresos'),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isSelectionMode ? Colors.black87 : AppTheme.primaryOrange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                icon: Icon(_isSelectionMode ? Icons.close : Icons.print_outlined, size: 16),
+                label: Text(
+                  _isSelectionMode ? 'Salir' : 'Imprimir Gastos',
+                  style: GoogleFonts.montserrat(fontSize: 11, fontWeight: FontWeight.w700),
+                ),
+                onPressed: () {
+                  setState(() {
+                    _isSelectionMode = !_isSelectionMode;
+                    _selectedIds.clear();
+                    if (_isSelectionMode) {
+                      for (var m in filteredMovements) {
+                        if (m.type == MovementType.expense) {
+                          _selectedIds.add(m.id);
+                        }
+                      }
+                    }
+                  });
+                },
+              ),
+            ],
           ),
         ],
       ),
@@ -193,22 +324,58 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   Widget _buildHistoryCard(MovementModel m) {
     final isIncome = m.type == MovementType.income;
+    final isSelected = _selectedIds.contains(m.id);
+
     return InkWell(
-      onTap: () => Navigator.push(
-        context, 
-        MaterialPageRoute(builder: (_) => ValidationFormScreen(
-          data: ExtractedReceiptData(imagePath: m.imageUrl ?? ''), 
-          existingMovement: m,
-          isReadOnly: true,
-        ))
-      ),
+      onTap: () {
+        if (_isSelectionMode) {
+          setState(() {
+            if (isSelected) {
+              _selectedIds.remove(m.id);
+            } else {
+              _selectedIds.add(m.id);
+            }
+          });
+        } else {
+          Navigator.push(
+            context, 
+            MaterialPageRoute(builder: (_) => ValidationFormScreen(
+              data: ExtractedReceiptData(imagePath: m.imageUrl ?? ''), 
+              existingMovement: m,
+              isReadOnly: true,
+            ))
+          );
+        }
+      },
       borderRadius: BorderRadius.circular(16),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
-        decoration: AppTheme.whiteCardDecoration,
+        decoration: isSelected && _isSelectionMode
+            ? BoxDecoration(
+                color: AppTheme.primaryOrange.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.primaryOrange, width: 1.5),
+              )
+            : AppTheme.whiteCardDecoration,
         child: Row(
           children: [
+            if (_isSelectionMode) ...[
+              Checkbox(
+                value: isSelected,
+                activeColor: AppTheme.primaryOrange,
+                onChanged: (val) {
+                  setState(() {
+                    if (val == true) {
+                      _selectedIds.add(m.id);
+                    } else {
+                      _selectedIds.remove(m.id);
+                    }
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
+            ],
             _buildTypeIndicator(isIncome),
             const SizedBox(width: 16),
             Expanded(
