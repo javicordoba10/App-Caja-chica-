@@ -271,7 +271,12 @@ class _NewMovementScreenState extends ConsumerState<NewMovementScreen> {
   Future<void> _pickImage(ImageSource source) async {
     try {
       final picker = ImagePicker();
-      final image = await picker.pickImage(source: source, imageQuality: 80);
+      final image = await picker.pickImage(
+        source: source, 
+        maxWidth: 1024, 
+        maxHeight: 1024, 
+        imageQuality: 70,
+      );
       if (image != null) {
         final bytes = await image.readAsBytes();
         _processOCR(image.path, false, bytes: bytes);

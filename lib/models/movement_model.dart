@@ -48,18 +48,18 @@ class MovementModel {
     this.otherTaxesDetails,
   });
 
+  static double _safeDouble(double val) => (val.isNaN || val.isInfinite) ? 0.0 : val;
+
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
       'type': type.name,
-      'netAmount': netAmount,
-      'grossAmount': grossAmount,
-      'vat': vat,
+      'netAmount': _safeDouble(netAmount),
+      'grossAmount': _safeDouble(grossAmount),
+      'vat': _safeDouble(vat),
       'invoiceType': invoiceType,
       'invoiceNumber': invoiceNumber,
       'description': description,
-      // Keep 'costCenter' key for backwards compatibility if wanted, but saving as 'establishment' is cleaner.
-      // We will save as 'establishment' and read both.
       'establishment': establishment,
       'paymentMethod': paymentMethod,
       'date': Timestamp.fromDate(date),
@@ -69,7 +69,7 @@ class MovementModel {
       'userEmail': userEmail,
       'category': category?.name,
       'companyId': companyId,
-      'otherTaxes': otherTaxes,
+      'otherTaxes': _safeDouble(otherTaxes),
       'otherTaxesDetails': otherTaxesDetails,
     };
   }

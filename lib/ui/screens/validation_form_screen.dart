@@ -276,7 +276,12 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
       } else {
         final picker = ImagePicker();
         final source = fromCamera ? ImageSource.camera : ImageSource.gallery;
-        final picked = await picker.pickImage(source: source, imageQuality: 85);
+        final picked = await picker.pickImage(
+          source: source, 
+          maxWidth: 1024, 
+          maxHeight: 1024, 
+          imageQuality: 70,
+        );
         if (picked != null) {
           final bytes = await picked.readAsBytes();
           setState(() {

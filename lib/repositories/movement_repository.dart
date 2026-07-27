@@ -86,6 +86,10 @@ class MovementRepository {
       final mime = isPdf ? 'application/pdf' : 'image/jpeg';
       final base64Str = base64Encode(fileBytes);
       final dataUri = 'data:$mime;base64,$base64Str';
+      if (dataUri.length > 800000) {
+        print('>>> WARNING: Base64 data URI (${dataUri.length} chars) exceeds 800KB. Skipping Base64 fallback to prevent Firestore 1MB limit crash.');
+        return null;
+      }
       print('>>> Base64 fail-safe fallback created successfully (length: ${dataUri.length}).');
       return dataUri;
     } catch (e) {
