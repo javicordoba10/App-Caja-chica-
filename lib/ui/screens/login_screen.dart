@@ -58,12 +58,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           });
         }
 
-        ref.read(currentUserIdProvider.notifier).state = user.id;
         if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const MainLayout()),
-          );
+          _showTwoFactorModal(user);
         }
       } else {
         final displayName = firebaseUser.displayName ?? 
@@ -84,12 +80,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
         await userRepo.createUser(newUser);
 
-        ref.read(currentUserIdProvider.notifier).state = firebaseUser.uid;
         if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const MainLayout()),
-          );
+          _showTwoFactorModal(newUser);
         }
       }
     } on FirebaseAuthException catch (e) {
@@ -99,6 +91,96 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showTwoFactorModal(UserModel userModel) {
+    final pinCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.security, color: AppTheme.primaryOrange, size: 24),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Verificación de 2 Pasos',
+                style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Por seguridad, ingresá tu Código de Verificación de 2 Pasos para acceder a la Caja Chica:',
+              style: GoogleFonts.montserrat(fontSize: 12, color: AppTheme.textGrey),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: pinCtrl,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              obscureText: true,
+              textAlign: TextAlign.center,
+              autofocus: true,
+              style: GoogleFonts.montserrat(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 8),
+              decoration: InputDecoration(
+                hintText: '• • • • • •',
+                counterText: '',
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppTheme.primaryOrange, width: 2),
+                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              FirebaseAuth.instance.signOut();
+              Navigator.pop(dialogCtx);
+            },
+            child: const Text('CANCELAR'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryOrange,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () {
+              final pin = pinCtrl.text.trim();
+              if (pin.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Por favor, ingresá el código de seguridad de 2 pasos.')),
+                );
+                return;
+              }
+              Navigator.pop(dialogCtx);
+              _completeLogin(userModel);
+            },
+            child: const Text('VERIFICAR Y ENTRAR'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _completeLogin(UserModel userModel) {
+    ref.read(currentUserIdProvider.notifier).state = userModel.id;
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainLayout()),
+      );
     }
   }
 
