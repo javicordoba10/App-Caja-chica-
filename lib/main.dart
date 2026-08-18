@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'ui/screens/login_screen.dart';
+import 'ui/screens/unverified_email_screen.dart';
 import 'ui/widgets/main_layout.dart';
 import 'ui/theme/app_theme.dart';
 import 'providers/app_providers.dart';
@@ -14,8 +15,6 @@ void main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   
   debugPrint('v30.5-ULTRA: MARCA BLANCA ACTIVA');
-
-
 
   final initialCompId = PlatformService.getUriParameter('comp');
   if (initialCompId != null) {
@@ -38,8 +37,6 @@ class InitializerWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Usar el proveedor de forma reactiva pero SIN destruir el MaterialApp
-    // Si está cargando una nueva marca, mantenemos la anterior temporalmente.
     final companyConfigAsync = ref.watch(companyConfigProvider);
     final config = companyConfigAsync.valueOrNull;
 
@@ -70,9 +67,14 @@ class _HomeRouter extends ConsumerWidget {
         }
         
         if (snapshot.hasData && snapshot.data != null) {
+          final user = snapshot.data!;
+          if (!user.emailVerified) {
+            return UnverifiedEmailScreen(user: user);
+          }
+
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (ref.read(currentUserIdProvider) != snapshot.data!.uid) {
-              ref.read(currentUserIdProvider.notifier).state = snapshot.data!.uid;
+            if (ref.read(currentUserIdProvider) != user.uid) {
+              ref.read(currentUserIdProvider.notifier).state = user.uid;
             }
           });
           return const MainLayout();

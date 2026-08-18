@@ -42,31 +42,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final firebaseUser = credential.user;
       if (firebaseUser == null) throw Exception('No se pudo autenticar el usuario.');
 
+      await firebaseUser.reload();
+      if (!firebaseUser.emailVerified) {
+        // StreamBuilder in main.dart will display UnverifiedEmailScreen
+        return;
+      }
+
       final userRepo = ref.read(userRepositoryProvider);
       final user = await userRepo.getUser(firebaseUser.uid);
 
       if (user != null) {
         if (!user.isActive) {
+          await FirebaseAuth.instance.signOut();
           throw Exception('Tu cuenta ha sido bloqueada por un administrador.');
         }
 
         final targetId = ref.read(targetCompanyIdProvider) ?? 'alm_agro';
         final rawDoc = await FirebaseFirestore.instance.collection('users').doc(user.id).get();
-        if (!rawDoc.data()!.containsKey('companyId')) {
+        if (rawDoc.exists && rawDoc.data() != null && !rawDoc.data()!.containsKey('companyId')) {
           await FirebaseFirestore.instance.collection('users').doc(user.id).update({
             'companyId': targetId,
           });
         }
 
         if (mounted) {
-          _showTwoFactorModal(user);
+          _completeLogin(user);
         }
       } else {
         final displayName = firebaseUser.displayName ?? 
             firebaseUser.email?.split('@').first ?? 'Usuario';
         
         final targetId = ref.read(targetCompanyIdProvider) ?? 'alm_agro';
-        final userRepo = ref.read(userRepositoryProvider);
         final newUser = UserModel(
           id: firebaseUser.uid,
           name: displayName,
@@ -81,13 +87,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         await userRepo.createUser(newUser);
 
         if (mounted) {
-          _showTwoFactorModal(newUser);
+          _completeLogin(newUser);
         }
       }
     } on FirebaseAuthException catch (e) {
       String message = 'Error de autenticación: ${e.message}';
+      if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        message = 'Usuario o contraseña incorrectos.';
+      }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: AppTheme.expenseRed));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: AppTheme.expenseRed));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -180,86 +193,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               }
             },
             child: const Text('ENVIAR MAIL'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showTwoFactorModal(UserModel userModel) {
-    final pinCtrl = TextEditingController();
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            const Icon(Icons.security, color: AppTheme.primaryOrange, size: 24),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Verificación de 2 Pasos',
-                style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Por seguridad, ingresá tu Código de Verificación de 2 Pasos para acceder a la Caja Chica:',
-              style: GoogleFonts.montserrat(fontSize: 12, color: AppTheme.textGrey),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: pinCtrl,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              obscureText: true,
-              textAlign: TextAlign.center,
-              autofocus: true,
-              style: GoogleFonts.montserrat(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 8),
-              decoration: InputDecoration(
-                hintText: '• • • • • •',
-                counterText: '',
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppTheme.primaryOrange, width: 2),
-                ),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              FirebaseAuth.instance.signOut();
-              Navigator.pop(dialogCtx);
-            },
-            child: const Text('CANCELAR'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryOrange,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: () {
-              final pin = pinCtrl.text.trim();
-              if (pin.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Por favor, ingresá el código de seguridad de 2 pasos.')),
-                );
-                return;
-              }
-              Navigator.pop(dialogCtx);
-              _completeLogin(userModel);
-            },
-            child: const Text('VERIFICAR Y ENTRAR'),
           ),
         ],
       ),
