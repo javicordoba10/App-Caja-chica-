@@ -33,6 +33,7 @@ class _UnverifiedEmailScreenState extends ConsumerState<UnverifiedEmailScreen> {
               backgroundColor: AppTheme.incomeGreen,
             ),
           );
+          setState(() {});
         }
       } else {
         if (mounted) {

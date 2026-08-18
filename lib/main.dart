@@ -67,14 +67,14 @@ class _HomeRouter extends ConsumerWidget {
         }
         
         if (snapshot.hasData && snapshot.data != null) {
-          final user = snapshot.data!;
-          if (!user.emailVerified) {
-            return UnverifiedEmailScreen(user: user);
+          final currentUser = FirebaseAuth.instance.currentUser ?? snapshot.data!;
+          if (!currentUser.emailVerified) {
+            return UnverifiedEmailScreen(user: currentUser);
           }
 
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (ref.read(currentUserIdProvider) != user.uid) {
-              ref.read(currentUserIdProvider.notifier).state = user.uid;
+            if (ref.read(currentUserIdProvider) != currentUser.uid) {
+              ref.read(currentUserIdProvider.notifier).state = currentUser.uid;
             }
           });
           return const MainLayout();
