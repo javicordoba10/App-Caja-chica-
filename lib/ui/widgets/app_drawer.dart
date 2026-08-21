@@ -17,6 +17,7 @@ class AppDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userAsync = ref.watch(currentUserProvider);
+    final companyConfig = ref.watch(companyConfigProvider).value;
     
     return Drawer(
       backgroundColor: AppTheme.pureWhite,
@@ -25,41 +26,66 @@ class AppDrawer extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          // Header: User Profile
+          // Header: User Profile with Company Logo (Circulo 2)
           userAsync.when(
             data: (user) => Container(
-              padding: const EdgeInsets.only(top: 60, left: 24, right: 24, bottom: 30),
+              padding: const EdgeInsets.only(top: 50, left: 24, right: 24, bottom: 24),
               width: double.infinity,
               color: AppTheme.pureBlack,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: AppTheme.primaryOrange,
-                    child: Text(
-                      _getInitials(user?.name ?? 'U'),
-                      style: GoogleFonts.montserrat(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        radius: 28,
+                        backgroundColor: AppTheme.primaryOrange,
+                        child: Text(
+                          _getInitials(user?.name ?? 'U'),
+                          style: GoogleFonts.montserrat(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
                       ),
-                    ),
+                      if (companyConfig?.logoUrl != null && companyConfig!.logoUrl!.trim().isNotEmpty)
+                        Container(
+                          height: 46,
+                          width: 46,
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6)],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              companyConfig!.logoUrl!.trim(),
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const Icon(Icons.business, color: Colors.grey, size: 24),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   Text(
                     user?.name ?? 'Usuario',
                     style: GoogleFonts.montserrat(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: 17,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   Text(
-                    (user?.jobRole ?? 'Sin Rol').toUpperCase(),
+                    '${(user?.jobRole ?? 'Sin Rol').toUpperCase()} (${companyConfig?.name ?? 'ALM'})',
                     style: GoogleFonts.montserrat(
                       color: Colors.white60,
-                      fontSize: 12,
+                      fontSize: 11,
                     ),
                   ),
                 ],
@@ -137,33 +163,34 @@ class AppDrawer extends ConsumerWidget {
           
           const Spacer(),
           
-          // Footer
+          // Footer with Company Logo (Circulo 3)
           Padding(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
             child: Column(
               children: [
-                Text(
-                  'AGROPECUARIA',
-                  style: GoogleFonts.montserrat(
-                    color: Colors.black26,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 2,
+                if (companyConfig?.logoUrl != null && companyConfig!.logoUrl!.trim().isNotEmpty) ...[
+                  Image.network(
+                    companyConfig!.logoUrl!.trim(),
+                    height: 48,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                   ),
-                ),
+                  const SizedBox(height: 10),
+                ],
                 Text(
-                  'LAS MARÍAS',
+                  (companyConfig?.name ?? 'AGROPECUARIA LAS MARÍAS').toUpperCase(),
+                  textAlign: TextAlign.center,
                   style: GoogleFonts.montserrat(
-                    color: Colors.black45,
-                    fontSize: 14,
+                    color: Colors.black54,
+                    fontSize: 12,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 1,
+                    letterSpacing: 1.2,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
         ],
       ),
     );

@@ -49,6 +49,31 @@ class MainLayout extends ConsumerWidget {
                    onPressed: () => ref.read(superAdminInspectTenantProvider.notifier).state = null,
                  ),
                ),
+            // Circulo 1: Logo de la empresa al lado del signo "+"
+            if (companyConfig?.logoUrl != null && companyConfig!.logoUrl!.trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(right: 6.0),
+                child: Center(
+                  child: Container(
+                    height: 32,
+                    width: 32,
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: Image.network(
+                        companyConfig!.logoUrl!.trim(),
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             if (currentRoute == 'history' || currentRoute == 'dashboard')
               IconButton(
                 icon: const Icon(Icons.add, color: AppTheme.primaryOrange),
