@@ -247,9 +247,15 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     _isSelectionMode = !_isSelectionMode;
                     _selectedIds.clear();
                     if (_isSelectionMode) {
+                      final now = DateTime.now();
                       for (var m in filteredMovements) {
                         if (m.type == MovementType.expense) {
-                          _selectedIds.add(m.id);
+                          final isToday = m.date.year == now.year &&
+                              m.date.month == now.month &&
+                              m.date.day == now.day;
+                          if (isToday) {
+                            _selectedIds.add(m.id);
+                          }
                         }
                       }
                     }
