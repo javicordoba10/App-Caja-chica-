@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
 import '../../providers/app_providers.dart';
 import '../theme/app_theme.dart';
@@ -25,6 +26,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _obscureConfirmPassword = true;
 
   Future<void> _register() async {
+    final targetId = ref.read(targetCompanyIdProvider);
+    if (targetId == null || targetId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Para registrarte debes acceder desde el enlace provisto por tu empresa (ej: ?comp=nombre_empresa).'),
+          backgroundColor: AppTheme.expenseRed,
+          duration: Duration(seconds: 5),
+        ),
+      );
+      return;
+    }
+
     if (_nameCtrl.text.isEmpty || _emailCtrl.text.isEmpty || _passCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Por favor, completa todos los campos.')),
@@ -49,6 +62,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     setState(() => _isLoading = true);
     
     try {
+      // Validar que la empresa exista y esté activa
+      final compDoc = await FirebaseFirestore.instance.collection('companies_config').doc(targetId).get();
+      if (!compDoc.exists) {
+        throw Exception('El enlace de la empresa "$targetId" no es válido.');
+      }
+      if (compDoc.data()?['isActive'] == false) {
+        throw Exception('El registro para la empresa "$targetId" se encuentra deshabilitado.');
+      }
+
       final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailCtrl.text.trim(),
         password: _passCtrl.text.trim(),
@@ -59,7 +81,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
       await firebaseUser.sendEmailVerification();
 
-      final targetId = ref.read(targetCompanyIdProvider) ?? 'alm_agro';
       final userRepo = ref.read(userRepositoryProvider);
       final newUser = UserModel(
         id: firebaseUser.uid,
@@ -104,7 +125,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error inesperado: ${e.toString()}'), backgroundColor: AppTheme.expenseRed, duration: const Duration(seconds: 6)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: AppTheme.expenseRed, duration: const Duration(seconds: 6)));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -129,16 +150,48 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      CustomPaint(
-                        size: const Size(100, 100),
-                        painter: SurgicalLogoPainter(
-                          color: theme.colorScheme.secondary,
-                          shadowColor: theme.primaryColor,
+                      if (companyConfig?.logoUrl != null && companyConfig!.logoUrl!.trim().isNotEmpty) ...[
+                        Container(
+                          height: 90,
+                          width: 90,
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: Image.network(
+                              companyConfig!.logoUrl!.trim(),
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const Icon(Icons.business, size: 45, color: Colors.grey),
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
+                      ] else if (companyConfig != null) ...[
+                        CustomPaint(
+                          size: const Size(90, 90),
+                          painter: SurgicalLogoPainter(
+                            color: theme.colorScheme.secondary,
+                            shadowColor: theme.primaryColor,
+                          ),
+                        ),
+                      ] else ...[
+                        Container(
+                          height: 80,
+                          width: 80,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white24, width: 2),
+                          ),
+                          child: const Icon(Icons.account_balance_wallet_outlined, size: 42, color: Colors.white),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
                       Text(
-                        (companyConfig?.name ?? 'REGISTRO DE\nCAJA CHICA').toUpperCase(),
+                        (companyConfig?.name ?? 'REGISTRO DE\nUSUARIO').toUpperCase(),
                         textAlign: TextAlign.center,
                         style: GoogleFonts.montserrat(
                           color: Colors.white,
@@ -221,8 +274,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                              Text('SISTEMA GESTIONADO POR', style: GoogleFonts.montserrat(color: Colors.black45, fontSize: 11, letterSpacing: 2)),
                              Text(companyConfig.name.toUpperCase(), textAlign: TextAlign.center, style: GoogleFonts.montserrat(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
                           ] else ...[
-                             Text('AGROPECUARIA', style: GoogleFonts.montserrat(color: Colors.black45, fontSize: 13, letterSpacing: 3)),
-                             Text('LAS MARÍAS', style: GoogleFonts.montserrat(color: Colors.black87, fontSize: 19, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                             Text('PLATAFORMA MULTI-EMPRESA', style: GoogleFonts.montserrat(color: Colors.black45, fontSize: 11, letterSpacing: 2)),
+                             Text('PETTY CASH SAAS', style: GoogleFonts.montserrat(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
                           ]
                         ],
                       ),

@@ -68,7 +68,10 @@ class _TenantMetricsCard extends ConsumerWidget {
     return StreamBuilder<QuerySnapshot>(
       stream: firestore.collection('users').where('companyId', isEqualTo: comp.id).snapshots(),
       builder: (context, usersSnapshot) {
-        final usersCount = usersSnapshot.data?.docs.length ?? 0;
+        final usersCount = usersSnapshot.data?.docs.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return data['role'] != 'superadmin';
+        }).length ?? 0;
 
         return StreamBuilder<QuerySnapshot>(
           stream: firestore.collection('movements').where('companyId', isEqualTo: comp.id).snapshots(),
@@ -193,15 +196,6 @@ class _TenantMetricsCard extends ConsumerWidget {
                             icon: const Icon(Icons.edit, size: 20, color: Colors.black54),
                             onPressed: () {
                               showDialog(context: context, builder: (_) => TenantDialog(company: comp));
-                            },
-                          ),
-                          IconButton(
-                            tooltip: 'Auditar Empresa',
-                            icon: const Icon(Icons.remove_red_eye, size: 20, color: AppTheme.primaryOrange),
-                            onPressed: () {
-                              ref.read(superAdminInspectTenantProvider.notifier).state = comp.id;
-                              ref.read(navigationProvider.notifier).state = 'dashboard';
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ingresando como auditor a ${comp.name}...'), backgroundColor: AppTheme.incomeGreen));
                             },
                           ),
                           IconButton(

@@ -1,4 +1,4 @@
-﻿import 'dart:typed_data';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -71,8 +71,8 @@ class _TenantDialogState extends State<TenantDialog> {
     });
 
     try {
-      final ref = FirebaseStorage.instance.ref('logos/.');
-      final uploadTask = ref.putData(bytes, SettableMetadata(contentType: 'image/'));
+      final ref = FirebaseStorage.instance.ref('logos/$companyId.$ext');
+      final uploadTask = ref.putData(bytes, SettableMetadata(contentType: 'image/$ext'));
 
       uploadTask.snapshotEvents.listen((snap) {
         if (mounted) {
@@ -92,14 +92,14 @@ class _TenantDialogState extends State<TenantDialog> {
           _uploadProgress = 1;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Logo subido correctamente'), backgroundColor: AppTheme.incomeGreen),
+          const SnackBar(content: Text('✅ Logo subido correctamente'), backgroundColor: AppTheme.incomeGreen),
         );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isUploadingLogo = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al subir logo: '), backgroundColor: AppTheme.expenseRed),
+          SnackBar(content: Text('Error al subir logo: $e'), backgroundColor: AppTheme.expenseRed),
         );
       }
     }

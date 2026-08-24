@@ -25,7 +25,6 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final userAsync = ref.watch(currentUserProvider);
     final movementsAsync = ref.watch(movementsProvider);
-    final isInspecting = ref.watch(superAdminInspectTenantProvider) != null;
 
     return RefreshIndicator(
         onRefresh: () async => ref.refresh(movementsProvider),
@@ -38,12 +37,12 @@ class DashboardScreen extends ConsumerWidget {
               // Greeting Section
               userAsync.when(
                 data: (user) {
-                  final viewAll = ref.watch(adminViewAllProvider) || isInspecting;
+                  final viewAll = ref.watch(adminViewAllProvider);
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildGreeting(user?.name ?? 'Usuario', user?.role ?? 'user', viewAll),
-                      if (user?.role != 'user' && !isInspecting) ...[
+                      if (user?.role != 'user') ...[
                         const SizedBox(height: 16),
                         _buildViewToggle(ref, viewAll),
                       ],
@@ -61,7 +60,7 @@ class DashboardScreen extends ConsumerWidget {
               userAsync.when(
                 data: (user) {
                   final globalAsync = ref.watch(globalBalancesProvider);
-                  final viewAll = ref.watch(adminViewAllProvider) || isInspecting;
+                  final viewAll = ref.watch(adminViewAllProvider);
                   
                    final balanceEntries = user?.balances.entries.toList() ?? [];
                    final totalBalance = balanceEntries.fold(0.0, (sum, e) => sum + e.value);
@@ -496,10 +495,9 @@ class DashboardScreen extends ConsumerWidget {
     final rechargesAsync = ref.watch(userRechargeRequestsProvider);
     final user = ref.watch(currentUserProvider).value;
     final isAdmin = user?.role == 'admin' || user?.role == 'superadmin';
-    final isInspecting = ref.watch(superAdminInspectTenantProvider) != null;
-    final viewAll = (ref.watch(adminViewAllProvider) || isInspecting) && isAdmin;
+    final viewAll = ref.watch(adminViewAllProvider) && isAdmin;
     
-    // Solo usamos el provider global si somos Admin (o superadmin inspeccionando) y tenemos el toggle activado
+    // Solo usamos el provider global si somos Admin y tenemos el toggle activado
     final targetAsync = viewAll ? ref.watch(allRechargeRequestsProvider) : rechargesAsync;
     
     return targetAsync.when(
@@ -829,7 +827,7 @@ class DashboardScreen extends ConsumerWidget {
                     '${DateFormat('dd MMM').format(m.date)} • ${m.establishment} • ${m.paymentMethod}', 
                     style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11, fontWeight: FontWeight.w500),
                   ),
-                  if (ref.watch(adminViewAllProvider) && m.userName != null && ref.watch(superAdminInspectTenantProvider) == null &&
+                  if (ref.watch(adminViewAllProvider) && m.userName != null &&
                       (ref.watch(currentUserProvider).value?.role == 'admin' || ref.watch(currentUserProvider).value?.role == 'superadmin'))
                     Padding(
                       padding: const EdgeInsets.only(top: 2),

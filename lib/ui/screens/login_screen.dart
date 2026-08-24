@@ -8,6 +8,7 @@ import '../../providers/app_providers.dart';
 import '../theme/app_theme.dart';
 import '../widgets/main_layout.dart';
 import 'register_screen.dart';
+import 'superadmin_home_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -26,7 +27,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final email = _emailCtrl.text.trim();
     if (email.isEmpty || _passCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, ingresa tus credenciales.')),
+        const SnackBar(content: Text('Por favor, completa todos los campos.')),
       );
       return;
     }
@@ -50,6 +51,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       final userRepo = ref.read(userRepositoryProvider);
       final user = await userRepo.getUser(firebaseUser.uid);
+      final targetId = ref.read(targetCompanyIdProvider);
 
       if (user != null) {
         if (!user.isActive) {
@@ -57,22 +59,49 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           throw Exception('Tu cuenta ha sido bloqueada por un administrador.');
         }
 
-        final targetId = ref.read(targetCompanyIdProvider) ?? 'alm_agro';
-        final rawDoc = await FirebaseFirestore.instance.collection('users').doc(user.id).get();
-        if (rawDoc.exists && rawDoc.data() != null && !rawDoc.data()!.containsKey('companyId')) {
-          await FirebaseFirestore.instance.collection('users').doc(user.id).update({
-            'companyId': targetId,
-          });
+        // Si el usuario es SuperAdmin, acceso global permitido
+        if (user.role == 'superadmin') {
+          if (mounted) {
+            _completeLogin(user);
+          }
+          return;
+        }
+
+        // Si es usuario regular / admin:
+        if (targetId == null || targetId.isEmpty) {
+          await FirebaseAuth.instance.signOut();
+          final userComp = user.companyId.isNotEmpty ? user.companyId : 'su_empresa';
+          throw Exception(
+            'Para ingresar debes acceder desde el enlace oficial de tu empresa:\nhttps://pettycashapp-80f5e.web.app/?comp=$userComp',
+          );
+        }
+
+        if (user.companyId != targetId) {
+          await FirebaseAuth.instance.signOut();
+          throw Exception(
+            'Este usuario no pertenece a la empresa "$targetId". Ingrese desde el enlace provisto por su empresa.',
+          );
+        }
+
+        // Verificar si la empresa está activa
+        final compDoc = await FirebaseFirestore.instance.collection('companies_config').doc(targetId).get();
+        if (compDoc.exists && compDoc.data()?['isActive'] == false) {
+          await FirebaseAuth.instance.signOut();
+          throw Exception('El acceso para esta empresa se encuentra temporalmente suspendido.');
         }
 
         if (mounted) {
           _completeLogin(user);
         }
       } else {
+        if (targetId == null || targetId.isEmpty) {
+          await FirebaseAuth.instance.signOut();
+          throw Exception('Para iniciar sesión debes ingresar desde el enlace provisto por tu empresa.');
+        }
+
         final displayName = firebaseUser.displayName ?? 
             firebaseUser.email?.split('@').first ?? 'Usuario';
         
-        final targetId = ref.read(targetCompanyIdProvider) ?? 'alm_agro';
         final newUser = UserModel(
           id: firebaseUser.uid,
           name: displayName,
@@ -202,10 +231,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _completeLogin(UserModel userModel) {
     ref.read(currentUserIdProvider.notifier).state = userModel.id;
     if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MainLayout()),
-      );
+      if (userModel.role == 'superadmin') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const SuperAdminHomeScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainLayout()),
+        );
+      }
     }
   }
 
@@ -227,23 +263,54 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // V28 Original Logo with parameterized dynamic color
-                      CustomPaint(
-                        size: const Size(100, 100),
-                        painter: SurgicalLogoPainter(
-                          color: theme.colorScheme.secondary,
-                          shadowColor: theme.primaryColor,
+                      if (companyConfig?.logoUrl != null && companyConfig!.logoUrl!.trim().isNotEmpty) ...[
+                        Container(
+                          height: 90,
+                          width: 90,
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: Image.network(
+                              companyConfig!.logoUrl!.trim(),
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const Icon(Icons.business, size: 45, color: Colors.grey),
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
+                      ] else if (companyConfig != null) ...[
+                        CustomPaint(
+                          size: const Size(90, 90),
+                          painter: SurgicalLogoPainter(
+                            color: theme.colorScheme.secondary,
+                            shadowColor: theme.primaryColor,
+                          ),
+                        ),
+                      ] else ...[
+                        Container(
+                          height: 80,
+                          width: 80,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white24, width: 2),
+                          ),
+                          child: const Icon(Icons.account_balance_wallet_outlined, size: 42, color: Colors.white),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
                       Text(
-                        (companyConfig?.name ?? 'REGISTRO DE\nCAJA CHICA').toUpperCase(),
+                        (companyConfig?.name ?? 'CONTROL DE\nCAJA CHICA').toUpperCase(),
                         textAlign: TextAlign.center,
                         style: GoogleFonts.montserrat(
                           color: Colors.white,
-                          fontSize: 28,
+                          fontSize: 26,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: 4.5,
+                          letterSpacing: 3.5,
                           height: 1.1,
                         ),
                       ),
@@ -290,7 +357,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         height: 55,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
-                          // V28 original explicitly dynamic using primary/secondary colors
                           gradient: LinearGradient(colors: [theme.primaryColor, theme.colorScheme.secondary]),
                           boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
                         ),
@@ -313,7 +379,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const Text("¿No tienes cuenta? ", style: TextStyle(color: Colors.grey, fontSize: 14)),
                           GestureDetector(
                             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen())),
-                            // Dynamic color matching tenant or ALM primary orange
                             child: Text("Registrarse", style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.bold, fontSize: 14)),
                           ),
                         ],
@@ -325,8 +390,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                              Text('SISTEMA GESTIONADO POR', style: GoogleFonts.montserrat(color: Colors.black45, fontSize: 11, letterSpacing: 2)),
                              Text(companyConfig.name.toUpperCase(), textAlign: TextAlign.center, style: GoogleFonts.montserrat(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
                           ] else ...[
-                             Text('AGROPECUARIA', style: GoogleFonts.montserrat(color: Colors.black45, fontSize: 13, letterSpacing: 3)),
-                             Text('LAS MARÍAS', style: GoogleFonts.montserrat(color: Colors.black87, fontSize: 19, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                             Text('PLATAFORMA MULTI-EMPRESA', style: GoogleFonts.montserrat(color: Colors.black45, fontSize: 11, letterSpacing: 2)),
+                             Text('PETTY CASH SAAS', style: GoogleFonts.montserrat(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
                           ]
                         ],
                       ),

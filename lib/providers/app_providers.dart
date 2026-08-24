@@ -79,26 +79,13 @@ final movementsProvider = StreamProvider<List<MovementModel>>((ref) {
 
   final currentUser = ref.watch(currentUserProvider).value;
   final role = currentUser?.role ?? 'user';
-  final companyId = currentUser?.companyId ?? 'alm_agro';
+  final companyId = currentUser?.companyId ?? '';
   final viewAll = ref.watch(adminViewAllProvider);
-  final inspectTenant = ref.watch(superAdminInspectTenantProvider);
   
   final movementRepository = ref.watch(movementRepositoryProvider);
   
-  String effectiveRole = 'user';
-  if (viewAll) {
-    if (role == 'superadmin' && inspectTenant != null) {
-       effectiveRole = 'admin'; // Impersonate admin
-    } else if (role == 'superadmin' || role == 'admin') {
-       effectiveRole = role;
-    }
-  }
-      
-  final effectiveCompanyId = (role == 'superadmin' && inspectTenant != null)
-      ? inspectTenant
-      : companyId;
-  
-  return movementRepository.getMovements(userId, effectiveRole, effectiveCompanyId);
+  final effectiveRole = (viewAll && (role == 'admin' || role == 'superadmin')) ? role : 'user';
+  return movementRepository.getMovements(userId, effectiveRole, companyId);
 });
 
 // Streams the current user's active recharge requests
@@ -116,14 +103,9 @@ final userRechargeRequestsProvider = StreamProvider<List<RechargeRequestModel>>(
 // Streams all recharge requests for admin/superadmin
 final allRechargeRequestsProvider = StreamProvider<List<RechargeRequestModel>>((ref) {
   final user = ref.watch(currentUserProvider).value;
-  final inspectTenant = ref.watch(superAdminInspectTenantProvider);
-  
   if (user == null || user.role == 'user') return Stream.value([]);
   
-  final effectiveCompanyId = (user.role == 'superadmin' && inspectTenant != null)
-      ? inspectTenant
-      : user.companyId ?? 'alm_agro';
-      
+  final effectiveCompanyId = user.companyId;
   final repo = ref.read(rechargeRepositoryProvider);
   return repo.getCompanyRechargeRequests(effectiveCompanyId).map((list) {
     list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -139,15 +121,9 @@ final adminSelectedUserIdProvider = StateProvider<String?>((ref) => null);
 final selectedUserMovementsProvider = StreamProvider.family<List<MovementModel>, String>((ref, userId) {
   final movementRepository = ref.watch(movementRepositoryProvider);
   final currentUser = ref.watch(currentUserProvider).value;
-  final companyId = currentUser?.companyId ?? 'alm_agro';
-  final role = currentUser?.role ?? 'user';
-  final inspectTenant = ref.watch(superAdminInspectTenantProvider);
-  
-  final effectiveCompanyId = (role == 'superadmin' && inspectTenant != null)
-      ? inspectTenant
-      : companyId;
+  final companyId = currentUser?.companyId ?? '';
 
-  return movementRepository.getMovements(userId, 'user', effectiveCompanyId); 
+  return movementRepository.getMovements(userId, 'user', companyId); 
 });
 
 // Streams all users for admin management
@@ -157,13 +133,8 @@ final allUsersProvider = StreamProvider<List<UserModel>>((ref) {
     return const Stream.empty();
   }
   
-  final inspectTenant = ref.watch(superAdminInspectTenantProvider);
-  final effectiveCompanyId = (user.role == 'superadmin' && inspectTenant != null)
-      ? inspectTenant
-      : user.companyId;
-      
   final userRepository = ref.watch(userRepositoryProvider);
-  return userRepository.streamAllUsers(user.role, effectiveCompanyId);
+  return userRepository.streamAllUsers(user.role, user.companyId);
 });
 
 // Provides the sum of balances of ALL users (Consolidated Corporate Balance)
@@ -184,15 +155,20 @@ final globalBalancesProvider = Provider<AsyncValue<Map<String, double>>>((ref) {
 final companyConfigProvider = StreamProvider<CompanyConfigModel?>((ref) {
   final user = ref.watch(currentUserProvider).value;
   final targetId = ref.watch(targetCompanyIdProvider);
-  final inspectTenant = ref.watch(superAdminInspectTenantProvider);
   
-  // Priority: SuperAdmin Inspect > Logged In User > URL Param > Default ALM
-  final companyId = inspectTenant ?? user?.companyId ?? targetId ?? 'alm_agro';
+  // Priority: Logged In User (if not superadmin) > URL Param (?comp=)
+  final companyId = (user != null && user.role != 'superadmin' && user.companyId.isNotEmpty)
+      ? user.companyId
+      : targetId;
+      
+  if (companyId == null || companyId.isEmpty) {
+    return Stream.value(null);
+  }
   
   final firestore = ref.watch(firestoreProvider);
   return firestore.collection('companies_config').doc(companyId).snapshots().map((doc) {
-    if (doc.exists) {
-      return CompanyConfigModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+    if (doc.exists && doc.data() != null) {
+      return CompanyConfigModel.fromMap(doc.data()!, doc.id);
     }
     return null;
   });

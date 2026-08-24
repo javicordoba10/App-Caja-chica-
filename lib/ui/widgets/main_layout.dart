@@ -25,8 +25,6 @@ class MainLayout extends ConsumerWidget {
     final companyConfig = ref.watch(companyConfigProvider).value;
     final scaffoldKey = GlobalKey<ScaffoldState>();
 
-    final inspectId = ref.watch(superAdminInspectTenantProvider);
-    final isInspecting = inspectId != null;
     final currentUser = ref.watch(currentUserProvider).value;
 
     // Pantalla neutra si el usuario normal no tiene empresa asignada
@@ -71,28 +69,17 @@ class MainLayout extends ConsumerWidget {
 
     return Theme(
       data: AppTheme.buildDynamicTheme(companyConfig),
-
       child: Scaffold(
         key: scaffoldKey,
         appBar: AppBar(
-          title: Text(isInspecting ? '👁️ AUDITANDO: ${companyConfig?.name ?? inspectId}' : _getTitle(currentRoute), style: TextStyle(color: isInspecting ? AppTheme.expenseRed : AppTheme.textDark, fontWeight: isInspecting ? FontWeight.bold : FontWeight.normal, fontSize: isInspecting ? 14 : 18)),
-          backgroundColor: isInspecting ? AppTheme.expenseRed.withOpacity(0.1) : AppTheme.pureWhite,
-          surfaceTintColor: isInspecting ? AppTheme.expenseRed.withOpacity(0.1) : AppTheme.pureWhite,
+          title: Text(_getTitle(currentRoute), style: const TextStyle(color: AppTheme.textDark, fontSize: 18)),
+          backgroundColor: AppTheme.pureWhite,
+          surfaceTintColor: AppTheme.pureWhite,
           leading: IconButton(
-            icon: Icon(Icons.menu, color: isInspecting ? AppTheme.expenseRed : AppTheme.pureBlack),
+            icon: const Icon(Icons.menu, color: AppTheme.pureBlack),
             onPressed: () => scaffoldKey.currentState?.openDrawer(),
           ),
           actions: [
-            if (isInspecting)
-               Padding(
-                 padding: const EdgeInsets.only(right: 8.0),
-                 child: OutlinedButton.icon(
-                   icon: const Icon(Icons.close, size: 16, color: AppTheme.expenseRed),
-                   label: const Text('SALIR', style: TextStyle(color: AppTheme.expenseRed, fontWeight: FontWeight.bold)),
-                   style: OutlinedButton.styleFrom(side: const BorderSide(color: AppTheme.expenseRed)),
-                   onPressed: () => ref.read(superAdminInspectTenantProvider.notifier).state = null,
-                 ),
-               ),
             // Circulo 1: Logo de la empresa al lado del signo "+"
             if (companyConfig?.logoUrl != null && companyConfig!.logoUrl!.trim().isNotEmpty)
               Padding(

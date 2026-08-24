@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -37,12 +37,6 @@ class _SuperAdminHomeScreenState extends ConsumerState<SuperAdminHomeScreen>
   @override
   Widget build(BuildContext context) {
     final firestore = ref.watch(firestoreProvider);
-    final inspectId = ref.watch(superAdminInspectTenantProvider);
-
-    // Si esta auditando una empresa, mostrar el layout normal
-    if (inspectId != null) {
-      return const MainLayout();
-    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
@@ -103,7 +97,7 @@ class _SuperAdminHomeScreenState extends ConsumerState<SuperAdminHomeScreen>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Drawer del SuperAdmin (con todas las opciones + Demo)
+// Drawer del SuperAdmin
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SuperAdminDrawer extends ConsumerWidget {
@@ -154,11 +148,10 @@ class _SuperAdminDrawer extends ConsumerWidget {
               padding: EdgeInsets.zero,
               children: [
                 const SizedBox(height: 8),
-                // Panel SaaS
                 ListTile(
                   leading: const Icon(Icons.dashboard_customize_outlined, color: AppTheme.primaryOrange),
                   title: const Text('Panel SaaS'),
-                  subtitle: const Text('Empresas y usuarios'),
+                  subtitle: const Text('Empresas y métricas'),
                   onTap: () {
                     Navigator.pop(context);
                     tabController.animateTo(0);
@@ -167,25 +160,13 @@ class _SuperAdminDrawer extends ConsumerWidget {
                 ListTile(
                   leading: const Icon(Icons.people_outline, color: Colors.blue),
                   title: const Text('Gestión de Usuarios'),
+                  subtitle: const Text('Control de roles por empresa'),
                   onTap: () {
                     Navigator.pop(context);
                     tabController.animateTo(1);
                   },
                 ),
                 const Divider(),
-                // Demo
-                ListTile(
-                  leading: const Icon(Icons.play_circle_outline, color: Colors.green),
-                  title: const Text('Ver Demo de la App'),
-                  subtitle: const Text('Empresa de ejemplo ficticio'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    // Cargar la empresa demo ficticia
-                    ref.read(superAdminInspectTenantProvider.notifier).state = 'demo';
-                  },
-                ),
-                const Divider(),
-                // Perfil
                 ListTile(
                   leading: const Icon(Icons.person_outline),
                   title: const Text('Mi Perfil'),
