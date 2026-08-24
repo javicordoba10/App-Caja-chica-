@@ -22,38 +22,38 @@ class SuperadminScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final listAsync = ref.watch(saasListProvider);
 
-    return Scaffold(
-      backgroundColor: AppTheme.backgroundWhite,
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppTheme.pureBlack,
-        icon: const Icon(Icons.domain_add, color: Colors.white),
-        label: Text('Nueva Empresa', style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.bold)),
-        onPressed: () {
-          showDialog(context: context, builder: (_) => const TenantDialog());
-        },
-      ),
-      body: listAsync.when(
-        data: (companies) {
-          if (companies.isEmpty) {
-            return const Center(child: Text("No hay inquilinos configurados."));
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(20),
-            itemCount: companies.length,
-            itemBuilder: (context, index) {
-              final comp = companies[index];
-              final link = 'https://pettycashapp-80f5e.web.app/?comp=${comp.id}';
-              
-              return _TenantMetricsCard(comp: comp, link: link);
-            },
+    return listAsync.when(
+      data: (companies) {
+        if (companies.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.business_outlined, size: 60, color: Colors.grey),
+                SizedBox(height: 16),
+                Text("No hay empresas configuradas.", style: TextStyle(color: Colors.grey)),
+                SizedBox(height: 8),
+                Text("Usá el botón + para crear la primera.", style: TextStyle(color: Colors.grey, fontSize: 12)),
+              ],
+            ),
           );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text("Error: $err")),
-      ),
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(20),
+          itemCount: companies.length,
+          itemBuilder: (context, index) {
+            final comp = companies[index];
+            final link = 'https://pettycashapp-80f5e.web.app/?comp=${comp.id}';
+            return _TenantMetricsCard(comp: comp, link: link);
+          },
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Center(child: Text("Error: $err")),
     );
   }
 }
+
 
 class _TenantMetricsCard extends ConsumerWidget {
   final CompanyConfigModel comp;

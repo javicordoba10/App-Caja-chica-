@@ -5,10 +5,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'ui/screens/login_screen.dart';
 import 'ui/screens/unverified_email_screen.dart';
+import 'ui/screens/superadmin_home_screen.dart';
 import 'ui/widgets/main_layout.dart';
 import 'ui/theme/app_theme.dart';
 import 'providers/app_providers.dart';
 import 'services/platform_service.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -77,7 +79,19 @@ class _HomeRouter extends ConsumerWidget {
               ref.read(currentUserIdProvider.notifier).state = currentUser.uid;
             }
           });
-          return const MainLayout();
+
+          // Detectar rol para decidir pantalla principal
+          final userAsync = ref.watch(currentUserProvider);
+          return userAsync.when(
+            data: (user) {
+              if (user?.role == 'superadmin') {
+                return const SuperAdminHomeScreen();
+              }
+              return const MainLayout();
+            },
+            loading: () => const SplashScreen(),
+            error: (_, __) => const MainLayout(),
+          );
         }
         
         return const LoginScreen();
@@ -85,6 +99,7 @@ class _HomeRouter extends ConsumerWidget {
     );
   }
 }
+
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});

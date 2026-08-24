@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:petty_cash_app/ui/widgets/app_drawer.dart';
 import 'package:petty_cash_app/ui/screens/dashboard_screen.dart';
 import 'package:petty_cash_app/ui/screens/history_screen.dart';
@@ -10,6 +11,7 @@ import 'package:petty_cash_app/ui/screens/users_screen.dart';
 import 'package:petty_cash_app/ui/screens/superadmin_screen.dart';
 import 'package:petty_cash_app/ui/screens/admin_recharges_screen.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
+
 
 // State for navigation
 final navigationProvider = StateProvider<String>((ref) => 'dashboard');
@@ -25,9 +27,51 @@ class MainLayout extends ConsumerWidget {
 
     final inspectId = ref.watch(superAdminInspectTenantProvider);
     final isInspecting = inspectId != null;
+    final currentUser = ref.watch(currentUserProvider).value;
+
+    // Pantalla neutra si el usuario normal no tiene empresa asignada
+    final hasNoCompany = companyConfig == null && currentUser != null
+        && currentUser.role != 'superadmin'
+        && (currentUser.companyId == null || currentUser.companyId!.isEmpty);
+
+    if (hasNoCompany) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.business_outlined, size: 72, color: Colors.grey),
+                const SizedBox(height: 24),
+                Text('Bienvenido',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.grey[800])),
+                const SizedBox(height: 12),
+                Text(
+                  'Tu cuenta aún no está asociada a ninguna empresa.\nPor favor accedé desde el link que te proporcionó tu empresa o contactá al administrador.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600], height: 1.5),
+                ),
+                const SizedBox(height: 32),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Cerrar Sesión'),
+                  onPressed: () async {
+                    await FirebaseAuth.instance.signOut();
+                    ref.read(currentUserIdProvider.notifier).state = null;
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Theme(
       data: AppTheme.buildDynamicTheme(companyConfig),
+
       child: Scaffold(
         key: scaffoldKey,
         appBar: AppBar(
