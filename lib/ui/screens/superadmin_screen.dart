@@ -77,13 +77,26 @@ class _TenantMetricsCard extends ConsumerWidget {
           stream: firestore.collection('movements').where('companyId', isEqualTo: comp.id).snapshots(),
           builder: (context, movementsSnapshot) {
             final movementsCount = movementsSnapshot.data?.docs.length ?? 0;
-            final estimatedMB = (movementsCount * 0.12).toStringAsFixed(1);
-            final estimatedOcrTokens = (movementsCount * 1.5).toInt();
+            final double mbUsed = movementsCount * 0.15;
+            final String estimatedMB = mbUsed.toStringAsFixed(2);
+            final String storageGB = (mbUsed / 1024).toStringAsFixed(3);
+            final int estimatedOcrTokens = (movementsCount * 1.5).toInt();
+            final int estReads = movementsCount * 10;
+            final int estWrites = movementsCount * 2;
+
+            // Calculo de sobreconsumo / costo extra Firebase
+            final double overOcr = movementsCount > 1000 ? (movementsCount - 1000) * 0.0015 : 0.0;
+            final double overStorage = mbUsed > 5000 ? ((mbUsed - 5000) / 1024) * 0.026 : 0.0;
+            final double totalOverCostUSD = overOcr + overStorage;
+            final bool hasOverages = totalOverCostUSD > 0.0;
 
             return Card(
               elevation: 0,
-              margin: const EdgeInsets.only(bottom: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              margin: const EdgeInsets.only(bottom: 18),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: comp.isActive ? Colors.grey.shade200 : Colors.red.shade200, width: 1.5),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -96,8 +109,8 @@ class _TenantMetricsCard extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(8),
                             child: Image.network(
                               comp.logoUrl!.trim(),
-                              height: 36,
-                              width: 36,
+                              height: 38,
+                              width: 38,
                               fit: BoxFit.contain,
                               errorBuilder: (_, __, ___) => const Icon(Icons.business, size: 28),
                             ),
@@ -105,12 +118,12 @@ class _TenantMetricsCard extends ConsumerWidget {
                           const SizedBox(width: 10),
                         ],
                         Container(
-                          width: 20, height: 20,
+                          width: 18, height: 18,
                           decoration: BoxDecoration(shape: BoxShape.circle, color: comp.primaryColor),
                         ),
                         const SizedBox(width: 6),
                         Container(
-                          width: 20, height: 20,
+                          width: 18, height: 18,
                           decoration: BoxDecoration(shape: BoxShape.circle, color: comp.secondaryColor),
                         ),
                         const Spacer(),
@@ -121,7 +134,7 @@ class _TenantMetricsCard extends ConsumerWidget {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(newStatus ? 'Empresa ${comp.name} Activada' : 'Empresa ${comp.name} Suspendida'),
+                                  content: Text(newStatus ? 'Empresa "${comp.name}" Habilitada' : 'Empresa "${comp.name}" Suspendida'),
                                   backgroundColor: newStatus ? AppTheme.incomeGreen : AppTheme.expenseRed,
                                 ),
                               );
@@ -178,7 +191,81 @@ class _TenantMetricsCard extends ConsumerWidget {
                           _MetricItem(label: 'Usuarios', value: '$usersCount', icon: Icons.people_outline, color: Colors.blue),
                           _MetricItem(label: 'Movimientos', value: '$movementsCount', icon: Icons.receipt_long_outlined, color: AppTheme.primaryOrange),
                           _MetricItem(label: 'Disco Estim.', value: '$estimatedMB MB', icon: Icons.sd_storage_outlined, color: Colors.purple),
-                          _MetricItem(label: 'Tokens OCR', value: '$estimatedOcrTokens', icon: Icons.auto_awesome, color: Colors.teal),
+                          _MetricItem(label: 'Créditos OCR', value: '$estimatedOcrTokens', icon: Icons.auto_awesome, color: Colors.teal),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Detailed Firebase Resource & Billing panel
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: hasOverages ? Colors.amber.shade50 : const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: hasOverages ? Colors.amber.shade300 : Colors.grey.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.cloud_done_outlined, size: 16, color: hasOverages ? Colors.amber.shade800 : Colors.blueGrey),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Consumo de Recursos Firebase (Hosting & Backend)',
+                                style: GoogleFonts.montserrat(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('📁 Almacenamiento comprobantes:', style: TextStyle(fontSize: 11, color: Colors.grey[700])),
+                              Text('$estimatedMB MB ($storageGB GB)', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('⚡ Escaneos IA (OCR):', style: TextStyle(fontSize: 11, color: Colors.grey[700])),
+                              Text('$estimatedOcrTokens créditos ($movementsCount comprobantes)', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('📊 Operaciones Firestore est.:', style: TextStyle(fontSize: 11, color: Colors.grey[700])),
+                              Text('~$estReads lecturas / ~$estWrites escrituras', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          const Divider(height: 14),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('💳 Estado de Facturación / Excesos:', style: TextStyle(fontSize: 11, color: Colors.grey[800], fontWeight: FontWeight.w600)),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: hasOverages ? Colors.amber.shade100 : Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: hasOverages ? Colors.amber.shade700 : Colors.green.shade300),
+                                ),
+                                child: Text(
+                                  hasOverages ? '⚠️ Exceso: \$${totalOverCostUSD.toStringAsFixed(2)} USD' : '✅ Cuota Base (Sin costo excedente)',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: hasOverages ? Colors.amber.shade900 : Colors.green.shade800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),

@@ -5,41 +5,24 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 
-class SuperAdminUsersTab extends ConsumerStatefulWidget {
+class SuperAdminUsersTab extends ConsumerWidget {
   const SuperAdminUsersTab({super.key});
 
   @override
-  ConsumerState<SuperAdminUsersTab> createState() => _SuperAdminUsersTabState();
-}
-
-class _SuperAdminUsersTabState extends ConsumerState<SuperAdminUsersTab> {
-  String _selectedCompanyFilter = 'all';
-  String _searchQuery = '';
-  final TextEditingController _searchCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final firestore = ref.watch(firestoreProvider);
 
     return StreamBuilder<QuerySnapshot>(
       stream: firestore.collection('companies_config').snapshots(),
       builder: (context, companiesSnap) {
-        final Map<String, String> companyNames = {};
-        final List<Map<String, String>> companiesList = [];
+        if (companiesSnap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-        if (companiesSnap.hasData) {
-          for (var doc in companiesSnap.data!.docs) {
-            final data = doc.data() as Map<String, dynamic>;
-            final name = data['name']?.toString() ?? doc.id;
-            companyNames[doc.id] = name;
-            companiesList.add({'id': doc.id, 'name': name});
-          }
+        final companiesDocs = companiesSnap.data?.docs ?? [];
+        final Map<String, Map<String, dynamic>> companiesMap = {};
+        for (var doc in companiesDocs) {
+          companiesMap[doc.id] = doc.data() as Map<String, dynamic>;
         }
 
         return StreamBuilder<QuerySnapshot>(
@@ -49,233 +32,244 @@ class _SuperAdminUsersTabState extends ConsumerState<SuperAdminUsersTab> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            final allDocs = usersSnap.data?.docs ?? [];
-            var filteredDocs = allDocs.where((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              final role = data['role']?.toString() ?? 'user';
-              final compId = data['companyId']?.toString() ?? '';
-              final name = data['name']?.toString().toLowerCase() ?? '';
-              final email = data['email']?.toString().toLowerCase() ?? '';
+            final userDocs = usersSnap.data?.docs ?? [];
 
-              // Filter by company
-              if (_selectedCompanyFilter != 'all') {
-                if (_selectedCompanyFilter == 'superadmin_only') {
-                  if (role != 'superadmin') return false;
-                } else {
-                  if (compId != _selectedCompanyFilter) return false;
-                }
+            // Group users by companyId (and isolate superadmins)
+            final List<DocumentSnapshot> superAdmins = [];
+            final Map<String, List<DocumentSnapshot>> usersByCompany = {};
+
+            // Initialize all registered companies
+            for (var compId in companiesMap.keys) {
+              usersByCompany[compId] = [];
+            }
+            usersByCompany['unassigned'] = [];
+
+            for (var uDoc in userDocs) {
+              final uData = uDoc.data() as Map<String, dynamic>;
+              final role = uData['role']?.toString() ?? 'user';
+              final compId = uData['companyId']?.toString() ?? '';
+
+              if (role == 'superadmin') {
+                superAdmins.add(uDoc);
+              } else if (usersByCompany.containsKey(compId)) {
+                usersByCompany[compId]!.add(uDoc);
+              } else {
+                usersByCompany['unassigned']!.add(uDoc);
               }
+            }
 
-              // Filter by search text
-              if (_searchQuery.isNotEmpty) {
-                final q = _searchQuery.toLowerCase();
-                if (!name.contains(q) && !email.contains(q)) return false;
-              }
-
-              return true;
-            }).toList();
-
-            return Column(
+            return ListView(
+              padding: const EdgeInsets.all(16),
               children: [
-                // Filter Header
+                // Info header
                 Container(
-                  color: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Column(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.black12),
+                  ),
+                  child: Row(
                     children: [
-                      // Search field
-                      TextField(
-                        controller: _searchCtrl,
-                        decoration: InputDecoration(
-                          hintText: 'Buscar usuario por nombre o correo...',
-                          hintStyle: const TextStyle(fontSize: 13),
-                          prefixIcon: const Icon(Icons.search, size: 20),
-                          suffixIcon: _searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear, size: 18),
-                                  onPressed: () {
-                                    _searchCtrl.clear();
-                                    setState(() => _searchQuery = '');
-                                  },
-                                )
-                              : null,
-                          filled: true,
-                          fillColor: Colors.grey[100],
-                          contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide.none,
-                          ),
+                      const Icon(Icons.apartment, color: AppTheme.primaryOrange, size: 22),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Usuarios agrupados por empresa. Tocá cualquier empresa para ver sus usuarios.',
+                          style: GoogleFonts.montserrat(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w500),
                         ),
-                        onChanged: (val) => setState(() => _searchQuery = val.trim()),
-                      ),
-                      const SizedBox(height: 10),
-                      // Company Dropdown filter
-                      Row(
-                        children: [
-                          const Icon(Icons.filter_list, size: 18, color: Colors.grey),
-                          const SizedBox(width: 8),
-                          Text('Filtrar Empresa:', style: GoogleFonts.montserrat(fontSize: 12, fontWeight: FontWeight.w600)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _selectedCompanyFilter,
-                              isExpanded: true,
-                              decoration: InputDecoration(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                filled: true,
-                                fillColor: Colors.grey[50],
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(color: Colors.grey[300]!),
-                                ),
-                              ),
-                              items: [
-                                const DropdownMenuItem(value: 'all', child: Text('🌐 Todas las Empresas')),
-                                ...companiesList.map((c) => DropdownMenuItem(
-                                      value: c['id']!,
-                                      child: Text('🏢 ${c['name']} (${c['id']})'),
-                                    )),
-                                const DropdownMenuItem(value: 'superadmin_only', child: Text('⚡ Solo SuperAdmins')),
-                              ],
-                              onChanged: (val) {
-                                if (val != null) setState(() => _selectedCompanyFilter = val);
-                              },
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
                 ),
-                const Divider(height: 1),
+                const SizedBox(height: 14),
 
-                // Users list
-                Expanded(
-                  child: filteredDocs.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.people_outline, size: 48, color: Colors.grey),
-                              const SizedBox(height: 12),
-                              Text('No se encontraron usuarios.', style: GoogleFonts.montserrat(color: Colors.grey)),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: filteredDocs.length,
-                          itemBuilder: (context, index) {
-                            final data = filteredDocs[index].data() as Map<String, dynamic>;
-                            final uid = filteredDocs[index].id;
-                            final name = data['name']?.toString() ?? 'Sin nombre';
-                            final email = data['email']?.toString() ?? '';
-                            final role = data['role']?.toString() ?? 'user';
-                            final compId = data['companyId']?.toString() ?? '';
-                            final compName = companyNames[compId] ?? (compId.isNotEmpty ? compId : 'Sin Empresa');
-
-                            return Card(
-                              elevation: 0,
-                              margin: const EdgeInsets.only(bottom: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                side: BorderSide(color: Colors.grey[200]!),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        CircleAvatar(
-                                          radius: 20,
-                                          backgroundColor: _roleColor(role).withOpacity(0.15),
-                                          child: Text(
-                                            name.isNotEmpty ? name[0].toUpperCase() : '?',
-                                            style: TextStyle(color: _roleColor(role), fontWeight: FontWeight.bold, fontSize: 16),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(name, style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 15)),
-                                              Text(email, style: const TextStyle(fontSize: 12, color: Colors.black54)),
-                                            ],
-                                          ),
-                                        ),
-                                        // Role badge
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: _roleColor(role).withOpacity(0.12),
-                                            borderRadius: BorderRadius.circular(8),
-                                            border: Border.all(color: _roleColor(role).withOpacity(0.4)),
-                                          ),
-                                          child: Text(
-                                            role.toUpperCase(),
-                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _roleColor(role)),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        PopupMenuButton<String>(
-                                          icon: const Icon(Icons.more_vert, size: 20),
-                                          tooltip: 'Cambiar Rol',
-                                          onSelected: (value) async {
-                                            if (value == 'superadmin' || value == 'admin' || value == 'user') {
-                                              await firestore.collection('users').doc(uid).update({'role': value});
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text('Rol de $name actualizado a $value'),
-                                                    backgroundColor: AppTheme.incomeGreen,
-                                                  ),
-                                                );
-                                              }
-                                            }
-                                          },
-                                          itemBuilder: (_) => [
-                                            const PopupMenuItem(value: 'user', child: Text('🙋 Asignar Rol Usuario (User)')),
-                                            const PopupMenuItem(value: 'admin', child: Text('🛡️ Asignar Rol Administrador (Admin)')),
-                                            const PopupMenuItem(value: 'superadmin', child: Text('⚡ Asignar Rol SuperAdmin')),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey[100],
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(role == 'superadmin' ? Icons.shield_outlined : Icons.business, size: 14, color: Colors.grey[700]),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            role == 'superadmin' ? 'SuperAdmin Global (Todas las empresas)' : 'Empresa: $compName ($compId)',
-                                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[800]),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                // SuperAdmins Global Group
+                _buildCompanyAccordion(
+                  context: context,
+                  firestore: firestore,
+                  title: '⚡ SuperAdmins Globales',
+                  subtitle: 'Control total de la plataforma SaaS',
+                  users: superAdmins,
+                  isSuperAdminGroup: true,
+                  color: AppTheme.primaryOrange,
+                  initiallyExpanded: false,
                 ),
+
+                // Companies Accordions
+                ...companiesDocs.map((cDoc) {
+                  final cData = cDoc.data() as Map<String, dynamic>;
+                  final compId = cDoc.id;
+                  final compName = cData['name']?.toString() ?? compId;
+                  final logoUrl = cData['logoUrl']?.toString();
+                  final isActive = cData['isActive'] == true;
+                  final compUsers = usersByCompany[compId] ?? [];
+
+                  return _buildCompanyAccordion(
+                    context: context,
+                    firestore: firestore,
+                    title: compName,
+                    subtitle: 'ID: $compId • ${isActive ? "Licencia Activa" : "Suspendida"}',
+                    logoUrl: logoUrl,
+                    users: compUsers,
+                    isSuperAdminGroup: false,
+                    color: isActive ? Colors.blue : Colors.grey,
+                    initiallyExpanded: true,
+                  );
+                }),
+
+                // Unassigned users group (if any)
+                if ((usersByCompany['unassigned'] ?? []).isNotEmpty)
+                  _buildCompanyAccordion(
+                    context: context,
+                    firestore: firestore,
+                    title: '⚠️ Sin Empresa Asignada',
+                    subtitle: 'Usuarios huérfanos o sin configurar',
+                    users: usersByCompany['unassigned']!,
+                    isSuperAdminGroup: false,
+                    color: Colors.red,
+                    initiallyExpanded: false,
+                  ),
               ],
             );
           },
         );
       },
+    );
+  }
+
+  Widget _buildCompanyAccordion({
+    required BuildContext context,
+    required FirebaseFirestore firestore,
+    required String title,
+    required String subtitle,
+    required List<DocumentSnapshot> users,
+    required bool isSuperAdminGroup,
+    required Color color,
+    required bool initiallyExpanded,
+    String? logoUrl,
+  }) {
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: initiallyExpanded,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          leading: logoUrl != null && logoUrl.trim().isNotEmpty
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    logoUrl.trim(),
+                    width: 38,
+                    height: 38,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => CircleAvatar(
+                      backgroundColor: color.withOpacity(0.12),
+                      child: Icon(Icons.business, color: color, size: 20),
+                    ),
+                  ),
+                )
+              : CircleAvatar(
+                  backgroundColor: color.withOpacity(0.12),
+                  child: Icon(isSuperAdminGroup ? Icons.shield : Icons.business, color: color, size: 20),
+                ),
+          title: Text(title, style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 15)),
+          subtitle: Text(subtitle, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+          trailing: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '${users.length} ${users.length == 1 ? "usuario" : "usuarios"}',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: color),
+            ),
+          ),
+          children: [
+            if (users.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text('No hay usuarios registrados en esta empresa.', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+              )
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                itemCount: users.length,
+                separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey[100]),
+                itemBuilder: (context, index) {
+                  final uDoc = users[index];
+                  final data = uDoc.data() as Map<String, dynamic>;
+                  final uid = uDoc.id;
+                  final name = data['name']?.toString() ?? 'Sin nombre';
+                  final email = data['email']?.toString() ?? '';
+                  final role = data['role']?.toString() ?? 'user';
+
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                    leading: CircleAvatar(
+                      radius: 18,
+                      backgroundColor: _roleColor(role).withOpacity(0.15),
+                      child: Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : '?',
+                        style: TextStyle(color: _roleColor(role), fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                    ),
+                    title: Text(name, style: GoogleFonts.montserrat(fontWeight: FontWeight.w600, fontSize: 14)),
+                    subtitle: Text(email, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: _roleColor(role).withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: _roleColor(role).withOpacity(0.3)),
+                          ),
+                          child: Text(
+                            role.toUpperCase(),
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _roleColor(role)),
+                          ),
+                        ),
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert, size: 20),
+                          tooltip: 'Gestionar Rol',
+                          onSelected: (newRole) async {
+                            if (newRole == 'user' || newRole == 'admin' || newRole == 'superadmin') {
+                              await firestore.collection('users').doc(uid).update({'role': newRole});
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Rol de $name cambiado a $newRole'),
+                                    backgroundColor: AppTheme.incomeGreen,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          itemBuilder: (_) => [
+                            const PopupMenuItem(value: 'user', child: Text('🙋 Cambiar a Usuario (User)')),
+                            const PopupMenuItem(value: 'admin', child: Text('🛡️ Cambiar a Administrador (Admin)')),
+                            const PopupMenuItem(value: 'superadmin', child: Text('⚡ Cambiar a SuperAdmin')),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -290,4 +284,5 @@ class _SuperAdminUsersTabState extends ConsumerState<SuperAdminUsersTab> {
     }
   }
 }
+
 
