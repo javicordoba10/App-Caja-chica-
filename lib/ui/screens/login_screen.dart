@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -26,9 +27,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _login() async {
     final email = _emailCtrl.text.trim();
-    if (email.isEmpty || _passCtrl.text.isEmpty) {
+    final pass = _passCtrl.text.trim();
+
+    if (email.isEmpty || pass.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, completa todos los campos.')),
+        const SnackBar(content: Text('Por favor completa todos los campos')),
       );
       return;
     }
@@ -38,7 +41,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
-        password: _passCtrl.text.trim(),
+        password: pass,
       );
 
       final firebaseUser = credential.user;
@@ -46,8 +49,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       await firebaseUser.reload();
       if (!firebaseUser.emailVerified) {
-        // StreamBuilder in main.dart will display UnverifiedEmailScreen
-        return;
+        throw Exception('Por favor verifica tu correo electrónico para ingresar.');
       }
 
       final userRepo = ref.read(userRepositoryProvider);
@@ -69,33 +71,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         }
 
         // Si es usuario regular / admin:
-        if (targetId == null || targetId.isEmpty) {
-          await FirebaseAuth.instance.signOut();
-          final userComp = user.companyId.isNotEmpty ? user.companyId : 'su_empresa';
-          throw Exception(
-            'Para ingresar debes acceder desde el enlace oficial de tu empresa:\nhttps://pettycashapp-80f5e.web.app/?comp=$userComp',
-          );
-        }
+        // En WEB: validar que coincida con la URL
+        if (kIsWeb) {
+          if (targetId == null || targetId.isEmpty) {
+            await FirebaseAuth.instance.signOut();
+            final userComp = user.companyId.isNotEmpty ? user.companyId : 'su_empresa';
+            throw Exception(
+              'Para ingresar debes acceder desde el enlace oficial de tu empresa:\nhttps://pettycashapp-80f5e.web.app/?comp=$userComp',
+            );
+          }
 
-        if (user.companyId != targetId) {
-          await FirebaseAuth.instance.signOut();
-          throw Exception(
-            'Este usuario no pertenece a la empresa "$targetId". Ingrese desde el enlace provisto por su empresa.',
-          );
+          if (user.companyId != targetId) {
+            await FirebaseAuth.instance.signOut();
+            throw Exception(
+              'Este usuario no pertenece a la empresa "$targetId". Ingrese desde el enlace provisto por su empresa.',
+            );
+          }
         }
 
         // Verificar si la empresa está activa
-        final compDoc = await FirebaseFirestore.instance.collection('companies_config').doc(targetId).get();
-        if (compDoc.exists && compDoc.data()?['isActive'] == false) {
-          await FirebaseAuth.instance.signOut();
-          throw Exception('El acceso para esta empresa se encuentra temporalmente suspendido.');
+        final effectiveCompId = user.companyId.isNotEmpty ? user.companyId : (targetId ?? '');
+        if (effectiveCompId.isNotEmpty) {
+          final compDoc = await FirebaseFirestore.instance.collection('companies_config').doc(effectiveCompId).get();
+          if (compDoc.exists && compDoc.data()?['isActive'] == false) {
+            await FirebaseAuth.instance.signOut();
+            throw Exception('El acceso para esta empresa se encuentra temporalmente suspendido.');
+          }
         }
 
         if (mounted) {
           _completeLogin(user);
         }
       } else {
-        if (targetId == null || targetId.isEmpty) {
+        if (kIsWeb && (targetId == null || targetId.isEmpty)) {
           await FirebaseAuth.instance.signOut();
           throw Exception('Para iniciar sesión debes ingresar desde el enlace provisto por tu empresa.');
         }
@@ -112,7 +120,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           establishments: const ['ADMINISTRACIÓN'],
           role: 'user',
           isActive: true, 
-          companyId: targetId,
+          companyId: targetId ?? '',
         );
         await userRepo.createUser(newUser);
 

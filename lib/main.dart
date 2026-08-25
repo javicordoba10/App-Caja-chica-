@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -97,26 +98,27 @@ class _HomeRouter extends ConsumerWidget {
                 return const SuperAdminHomeScreen();
               }
 
-              // 2. Usuario regular / Admin en URL base (sin ?comp=)
-              if (targetCompId == null || targetCompId.isEmpty) {
-                return _AccessDeniedScreen(
-                  user: user,
-                  message: 'Esta dirección es la URL base exclusiva para la consola de administración SaaS.\nPara ingresar al sistema de tu empresa debés acceder mediante tu enlace oficial.',
-                );
+              // 2. En WEB: Validar aislamiento estricto por parámetro de URL
+              if (kIsWeb) {
+                if (targetCompId == null || targetCompId.isEmpty) {
+                  return _AccessDeniedScreen(
+                    user: user,
+                    message: 'Esta dirección es la URL base exclusiva para la consola de administración SaaS.\nPara ingresar al sistema de tu empresa debés acceder mediante tu enlace oficial.',
+                  );
+                }
+
+                if (user.companyId != targetCompId) {
+                  return _AccessDeniedScreen(
+                    user: user,
+                    message: 'Tu cuenta pertenece a la empresa "${user.companyId}".\nNo tenés permisos para acceder al espacio de "$targetCompId".',
+                  );
+                }
               }
 
-              // 3. Usuario intentando acceder a una empresa que no es la suya
-              if (user.companyId != targetCompId) {
-                return _AccessDeniedScreen(
-                  user: user,
-                  message: 'Tu cuenta pertenece a la empresa "${user.companyId}".\nNo tenés permisos para acceder al espacio de "$targetCompId".',
-                );
-              }
-
-              // 4. Empresa suspendida en tiempo real
+              // 3. Empresa suspendida en tiempo real
               if (companyConfig != null && !companyConfig.isActive) {
                 return _SuspendedCompanyScreen(
-                  companyName: companyConfig.name.isNotEmpty ? companyConfig.name : targetCompId,
+                  companyName: companyConfig.name.isNotEmpty ? companyConfig.name : user.companyId,
                 );
               }
 
