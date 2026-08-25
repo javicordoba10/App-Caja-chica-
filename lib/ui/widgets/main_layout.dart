@@ -11,7 +11,7 @@ import 'package:petty_cash_app/ui/screens/users_screen.dart';
 import 'package:petty_cash_app/ui/screens/superadmin_screen.dart';
 import 'package:petty_cash_app/ui/screens/admin_recharges_screen.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
-
+import 'package:petty_cash_app/ui/widgets/company_logo_widget.dart';
 
 // State for navigation
 final navigationProvider = StateProvider<String>((ref) => 'dashboard');
@@ -86,21 +86,18 @@ class MainLayout extends ConsumerWidget {
                 padding: const EdgeInsets.only(right: 6.0),
                 child: Center(
                   child: Container(
-                    height: 32,
-                    width: 32,
+                    height: 34,
+                    width: 34,
                     padding: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Image.network(
-                        companyConfig!.logoUrl!.trim(),
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                      ),
+                    child: CompanyLogoWidget(
+                      logoUrl: companyConfig!.logoUrl,
+                      height: 28,
+                      width: 28,
                     ),
                   ),
                 ),

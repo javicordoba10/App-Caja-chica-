@@ -8,6 +8,7 @@ import 'package:petty_cash_app/models/company_config_model.dart';
 import 'package:petty_cash_app/ui/widgets/tenant_dialog.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
 import 'package:petty_cash_app/ui/widgets/main_layout.dart';
+import 'package:petty_cash_app/ui/widgets/company_logo_widget.dart';
 
 final saasListProvider = StreamProvider<List<CompanyConfigModel>>((ref) {
   return FirebaseFirestore.instance.collection('companies_config').snapshots().map((snapshot) {
@@ -105,15 +106,11 @@ class _TenantMetricsCard extends ConsumerWidget {
                     Row(
                       children: [
                         if (comp.logoUrl != null && comp.logoUrl!.trim().isNotEmpty) ...[
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              comp.logoUrl!.trim(),
-                              height: 38,
-                              width: 38,
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => const Icon(Icons.business, size: 28),
-                            ),
+                          CompanyLogoWidget(
+                            logoUrl: comp.logoUrl,
+                            height: 38,
+                            width: 38,
+                            borderRadius: 8,
                           ),
                           const SizedBox(width: 10),
                         ],

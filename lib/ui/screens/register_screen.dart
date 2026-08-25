@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
 import '../../providers/app_providers.dart';
 import '../theme/app_theme.dart';
+import '../widgets/company_logo_widget.dart';
 import 'login_screen.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -160,13 +161,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
                           ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: Image.network(
-                              companyConfig!.logoUrl!.trim(),
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => const Icon(Icons.business, size: 45, color: Colors.grey),
-                            ),
+                          child: CompanyLogoWidget(
+                            logoUrl: companyConfig!.logoUrl,
+                            height: 74,
+                            width: 74,
+                            borderRadius: 14,
+                            fallbackIconSize: 45,
                           ),
                         ),
                       ] else if (companyConfig != null) ...[

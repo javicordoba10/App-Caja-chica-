@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -55,53 +56,31 @@ class _TenantDialogState extends State<TenantDialog> {
     final picker = ImagePicker();
     final picked = await picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 512,
-      maxHeight: 512,
-      imageQuality: 90,
+      maxWidth: 400,
+      maxHeight: 400,
+      imageQuality: 85,
     );
     if (picked == null) return;
 
     final bytes = await picked.readAsBytes();
     final ext = picked.name.split('.').last.toLowerCase();
+    final dataUri = 'data:image/$ext;base64,${base64Encode(bytes)}';
 
     setState(() {
-      _isUploadingLogo = true;
-      _uploadProgress = 0;
       _previewBytes = bytes;
+      _logoUrlCtrl.text = dataUri;
     });
 
+    // Subir también a Firebase Storage en segundo plano
     try {
       final ref = FirebaseStorage.instance.ref('logos/$companyId.$ext');
-      final uploadTask = ref.putData(bytes, SettableMetadata(contentType: 'image/$ext'));
+      await ref.putData(bytes, SettableMetadata(contentType: 'image/$ext'));
+    } catch (_) {}
 
-      uploadTask.snapshotEvents.listen((snap) {
-        if (mounted) {
-          setState(() {
-            _uploadProgress = snap.bytesTransferred / (snap.totalBytes == 0 ? 1 : snap.totalBytes);
-          });
-        }
-      });
-
-      await uploadTask;
-      final downloadUrl = await ref.getDownloadURL();
-
-      if (mounted) {
-        setState(() {
-          _logoUrlCtrl.text = downloadUrl;
-          _isUploadingLogo = false;
-          _uploadProgress = 1;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Logo subido correctamente'), backgroundColor: AppTheme.incomeGreen),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isUploadingLogo = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al subir logo: $e'), backgroundColor: AppTheme.expenseRed),
-        );
-      }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Logo seleccionado y cargado correctamente'), backgroundColor: AppTheme.incomeGreen),
+      );
     }
   }
 
@@ -111,18 +90,21 @@ class _TenantDialogState extends State<TenantDialog> {
     try {
       final docId = _idCtrl.text.trim().toLowerCase().replaceAll(' ', '_');
       final docRef = FirebaseFirestore.instance.collection('companies_config').doc(docId);
+      final primaryHex = _primaryHexCtrl.text.trim().replaceAll('#', '');
+      final secondaryHex = _secondaryHexCtrl.text.trim().replaceAll('#', '');
+
       final Map<String, dynamic> data = {
         'name': _nameCtrl.text.trim(),
         'displayName': _nameCtrl.text.trim(),
         'logoUrl': _logoUrlCtrl.text.trim().isNotEmpty ? _logoUrlCtrl.text.trim() : null,
-        'primaryColor': '#',
-        'secondaryColor': '#',
+        'primaryColor': '#$primaryHex',
+        'secondaryColor': '#$secondaryHex',
         'isActive': _isActive,
       };
       await docRef.set(data, SetOptions(merge: true));
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al guardar: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

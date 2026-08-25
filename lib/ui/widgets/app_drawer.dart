@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
+import 'package:petty_cash_app/ui/widgets/company_logo_widget.dart';
 
 class AppDrawer extends ConsumerWidget {
   final String currentRoute;
@@ -61,13 +62,10 @@ class AppDrawer extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6)],
                           ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              companyConfig!.logoUrl!.trim(),
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => const Icon(Icons.business, color: Colors.grey, size: 24),
-                            ),
+                          child: CompanyLogoWidget(
+                            logoUrl: companyConfig!.logoUrl,
+                            height: 38,
+                            width: 38,
                           ),
                         ),
                     ],
@@ -169,16 +167,14 @@ class AppDrawer extends ConsumerWidget {
             child: Column(
               children: [
                 if (companyConfig?.logoUrl != null && companyConfig!.logoUrl!.trim().isNotEmpty) ...[
-                  Image.network(
-                    companyConfig!.logoUrl!.trim(),
-                    height: 48,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  CompanyLogoWidget(
+                    logoUrl: companyConfig!.logoUrl,
+                    height: 44,
                   ),
                   const SizedBox(height: 10),
                 ],
                 Text(
-                  (companyConfig?.name ?? 'AGROPECUARIA LAS MARÍAS').toUpperCase(),
+                  (companyConfig?.name ?? 'CONTROL DE CAJA').toUpperCase(),
                   textAlign: TextAlign.center,
                   style: GoogleFonts.montserrat(
                     color: Colors.black54,

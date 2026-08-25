@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
+import 'package:petty_cash_app/ui/widgets/company_logo_widget.dart';
 
 class SuperAdminUsersTab extends ConsumerWidget {
   const SuperAdminUsersTab({super.key});
@@ -162,18 +163,11 @@ class SuperAdminUsersTab extends ConsumerWidget {
           initiallyExpanded: initiallyExpanded,
           tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           leading: logoUrl != null && logoUrl.trim().isNotEmpty
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    logoUrl.trim(),
-                    width: 38,
-                    height: 38,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => CircleAvatar(
-                      backgroundColor: color.withOpacity(0.12),
-                      child: Icon(Icons.business, color: color, size: 20),
-                    ),
-                  ),
+              ? CompanyLogoWidget(
+                  logoUrl: logoUrl,
+                  width: 38,
+                  height: 38,
+                  borderRadius: 8,
                 )
               : CircleAvatar(
                   backgroundColor: color.withOpacity(0.12),
