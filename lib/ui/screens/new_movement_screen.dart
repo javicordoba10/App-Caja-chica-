@@ -273,9 +273,9 @@ class _NewMovementScreenState extends ConsumerState<NewMovementScreen> {
       final picker = ImagePicker();
       final image = await picker.pickImage(
         source: source, 
-        maxWidth: 1024, 
-        maxHeight: 1024, 
-        imageQuality: 70,
+        maxWidth: 800, 
+        maxHeight: 800, 
+        imageQuality: 65,
       );
       if (image != null) {
         final bytes = await image.readAsBytes();
