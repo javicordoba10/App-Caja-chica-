@@ -1,8 +1,12 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
-class CompanyLogoWidget extends StatelessWidget {
+// Memory cache to avoid re-fetching the same logo bytes multiple times
+final Map<String, Uint8List> _logoBytesCache = {};
+
+class CompanyLogoWidget extends StatefulWidget {
   final String? logoUrl;
   final double? width;
   final double? height;
@@ -23,56 +27,142 @@ class CompanyLogoWidget extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    if (logoUrl == null || logoUrl!.trim().isEmpty) {
-      return _buildFallback();
+  State<CompanyLogoWidget> createState() => _CompanyLogoWidgetState();
+}
+
+class _CompanyLogoWidgetState extends State<CompanyLogoWidget> {
+  Uint8List? _bytes;
+  bool _isLoading = false;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _processLogo();
+  }
+
+  @override
+  void didUpdateWidget(covariant CompanyLogoWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.logoUrl != widget.logoUrl) {
+      _processLogo();
+    }
+  }
+
+  Future<void> _processLogo() async {
+    final url = widget.logoUrl?.trim();
+    if (url == null || url.isEmpty) {
+      if (mounted) setState(() { _bytes = null; _isLoading = false; _hasError = false; });
+      return;
     }
 
-    final raw = logoUrl!.trim();
+    // 1. Check in-memory cache
+    if (_logoBytesCache.containsKey(url)) {
+      if (mounted) {
+        setState(() {
+          _bytes = _logoBytesCache[url];
+          _isLoading = false;
+          _hasError = false;
+        });
+      }
+      return;
+    }
 
-    // Check if it is a Base64 data URI or raw base64 string
-    if (raw.startsWith('data:image') || !raw.startsWith('http')) {
+    // 2. Base64 Data URI or raw base64
+    if (url.startsWith('data:image') || !url.startsWith('http')) {
       try {
-        final base64String = raw.contains(',') ? raw.split(',').last : raw;
-        final Uint8List bytes = base64Decode(base64String);
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(borderRadius),
-          child: Image.memory(
-            bytes,
-            width: width,
-            height: height,
-            fit: fit,
-            errorBuilder: (_, __, ___) => _buildFallback(),
-          ),
-        );
-      } catch (_) {
-        // If decoding fails, continue to fallback or network
+        final base64String = url.contains(',') ? url.split(',').last : url;
+        final decoded = base64Decode(base64String.replaceAll('\n', '').replaceAll('\r', '').trim());
+        _logoBytesCache[url] = decoded;
+        if (mounted) {
+          setState(() {
+            _bytes = decoded;
+            _isLoading = false;
+            _hasError = false;
+          });
+        }
+        return;
+      } catch (e) {
+        debugPrint('Error decoding base64 logo: $e');
       }
     }
 
-    // Network image
+    // 3. Firebase Storage URL -> Download bytes directly via Firebase Storage SDK (bypasses browser CORS)
+    if (url.contains('firebasestorage.googleapis.com') || url.contains('firebasestorage.app')) {
+      if (mounted) setState(() => _isLoading = true);
+      try {
+        final ref = FirebaseStorage.instance.refFromURL(url);
+        final data = await ref.getData(5 * 1024 * 1024); // max 5 MB
+        if (data != null && data.isNotEmpty) {
+          _logoBytesCache[url] = data;
+          if (mounted) {
+            setState(() {
+              _bytes = data;
+              _isLoading = false;
+              _hasError = false;
+            });
+          }
+          return;
+        }
+      } catch (e) {
+        debugPrint('Firebase Storage getData error (falling back): $e');
+      }
+    }
+
+    // 4. Regular HTTP image (or fallback)
+    if (mounted) {
+      setState(() {
+        _bytes = null;
+        _isLoading = false;
+        _hasError = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final url = widget.logoUrl?.trim();
+    if (url == null || url.isEmpty || _hasError) {
+      return _buildFallback();
+    }
+
+    if (_isLoading) {
+      return SizedBox(
+        width: widget.width,
+        height: widget.height,
+        child: const Center(
+          child: SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
+    // If we have byte data (Base64 or fetched from Firebase Storage)
+    if (_bytes != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(widget.borderRadius),
+        child: Image.memory(
+          _bytes!,
+          width: widget.width,
+          height: widget.height,
+          fit: widget.fit,
+          errorBuilder: (_, __, ___) => _buildFallback(),
+        ),
+      );
+    }
+
+    // Otherwise standard Image.network
     return ClipRRect(
-      borderRadius: BorderRadius.circular(borderRadius),
+      borderRadius: BorderRadius.circular(widget.borderRadius),
       child: Image.network(
-        raw,
-        width: width,
-        height: height,
-        fit: fit,
+        url,
+        width: widget.width,
+        height: widget.height,
+        fit: widget.fit,
         errorBuilder: (_, __, ___) => _buildFallback(),
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return SizedBox(
-            width: width,
-            height: height,
-            child: const Center(
-              child: SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-          );
-        },
       ),
     );
   }
@@ -80,8 +170,8 @@ class CompanyLogoWidget extends StatelessWidget {
   Widget _buildFallback() {
     return Icon(
       Icons.business,
-      size: fallbackIconSize,
-      color: fallbackColor ?? Colors.grey[500],
+      size: widget.fallbackIconSize,
+      color: widget.fallbackColor ?? Colors.grey[500],
     );
   }
 }

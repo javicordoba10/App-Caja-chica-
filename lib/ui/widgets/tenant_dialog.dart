@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:petty_cash_app/models/company_config_model.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
+import 'company_logo_widget.dart';
 
 class TenantDialog extends StatefulWidget {
   final CompanyConfigModel? company;
@@ -167,8 +168,12 @@ class _TenantDialogState extends State<TenantDialog> {
                       child: _previewBytes != null
                           ? Image.memory(_previewBytes!, fit: BoxFit.contain)
                           : (existingLogoUrl.isNotEmpty
-                              ? Image.network(existingLogoUrl, fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) => const Icon(Icons.business, size: 40, color: Colors.grey))
+                              ? CompanyLogoWidget(
+                                  logoUrl: existingLogoUrl,
+                                  width: 100,
+                                  height: 100,
+                                  fallbackIconSize: 40,
+                                )
                               : const Icon(Icons.image_outlined, size: 40, color: Colors.grey)),
                     ),
                   ),
