@@ -168,6 +168,15 @@ class _SuperAdminDrawer extends ConsumerWidget {
                 ),
                 const Divider(),
                 ListTile(
+                  leading: const Icon(Icons.delete_sweep_outlined, color: Colors.redAccent),
+                  title: const Text('Limpiar Datos de Prueba', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Eliminar empresas y movimientos de prueba'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _confirmAndPurge(context, ref);
+                  },
+                ),
+                ListTile(
                   leading: const Icon(Icons.person_outline),
                   title: const Text('Mi Perfil'),
                   onTap: () {
@@ -199,6 +208,85 @@ class _SuperAdminDrawer extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmAndPurge(BuildContext context, WidgetRef ref) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red),
+            SizedBox(width: 8),
+            Text('¿Purgar Datos de Prueba?'),
+          ],
+        ),
+        content: const Text(
+          'Esta acción eliminará todas las empresas, movimientos, recargas y usuarios de prueba, dejando únicamente tu cuenta de SuperAdmin (javicordoba10@gmail.com).\n\n¿Deseas continuar?',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sí, Limpiar Todo'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !context.mounted) return;
+
+    final firestore = FirebaseFirestore.instance;
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      // 1. Purgar movimientos
+      final movs = await firestore.collection('movements').get();
+      for (var d in movs.docs) {
+        await d.reference.delete();
+      }
+
+      // 2. Purgar recargas
+      final recharges = await firestore.collection('recharge_requests').get();
+      for (var d in recharges.docs) {
+        await d.reference.delete();
+      }
+
+      // 3. Purgar empresas
+      final comps = await firestore.collection('companies_config').get();
+      for (var d in comps.docs) {
+        await d.reference.delete();
+      }
+
+      // 4. Purgar usuarios que no sean javicordoba10@gmail.com
+      final users = await firestore.collection('users').get();
+      for (var d in users.docs) {
+        final email = (d.data()['email'] ?? '').toString().toLowerCase().trim();
+        if (email != 'javicordoba10@gmail.com') {
+          await d.reference.delete();
+        } else {
+          // Resetear saldo y rol de superadmin
+          await d.reference.update({
+            'role': 'superadmin',
+            'companyId': '',
+            'balances': {'Efectivo': 0.0, 'Tarjeta / Débito': 0.0},
+          });
+        }
+      }
+
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('✅ Base de datos limpiada exitosamente. App 100% limpia.'),
+          backgroundColor: AppTheme.incomeGreen,
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Error al limpiar datos: $e'), backgroundColor: AppTheme.expenseRed),
+      );
+    }
   }
 }
 
@@ -236,9 +324,9 @@ class _GlobalMetricsHeader extends StatelessWidget {
                   return Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _HeaderMetric(label: 'Empresas', value: '', sub: ' activas', color: AppTheme.primaryOrange),
-                      _HeaderMetric(label: 'Usuarios', value: '', sub: 'en total', color: Colors.blueAccent),
-                      _HeaderMetric(label: 'Movimientos', value: '', sub: 'globales', color: Colors.greenAccent),
+                      _HeaderMetric(label: 'Empresas', value: '$totalCompanies', sub: '$activeCompanies activas', color: AppTheme.primaryOrange),
+                      _HeaderMetric(label: 'Usuarios', value: '$totalUsers', sub: 'en total', color: Colors.blueAccent),
+                      _HeaderMetric(label: 'Movimientos', value: '$totalMovements', sub: 'globales', color: Colors.greenAccent),
                     ],
                   );
                 },
