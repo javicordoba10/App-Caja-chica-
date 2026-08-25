@@ -78,10 +78,10 @@ class _TenantMetricsCard extends ConsumerWidget {
           stream: firestore.collection('movements').where('companyId', isEqualTo: comp.id).snapshots(),
           builder: (context, movementsSnapshot) {
             final movementsCount = movementsSnapshot.data?.docs.length ?? 0;
-            final double mbUsed = movementsCount * 0.15;
+            final double mbUsed = movementsCount * 0.04;
             final String estimatedMB = mbUsed.toStringAsFixed(2);
             final String storageGB = (mbUsed / 1024).toStringAsFixed(3);
-            final int estimatedOcrTokens = (movementsCount * 1.5).toInt();
+            final int estimatedOcrTokens = movementsCount;
             final int estReads = movementsCount * 10;
             final int estWrites = movementsCount * 2;
 
