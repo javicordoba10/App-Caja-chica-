@@ -211,74 +211,105 @@ class _SuperAdminDrawer extends ConsumerWidget {
   }
 
   Future<void> _confirmAndPurge(BuildContext context, WidgetRef ref) async {
-    final confirm = await showDialog<bool>(
+    final firestore = FirebaseFirestore.instance;
+    final companiesSnap = await firestore.collection('companies_config').get();
+
+    if (!context.mounted) return;
+
+    if (companiesSnap.docs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hay empresas creadas para limpiar.')),
+      );
+      return;
+    }
+
+    String? selectedCompanyId = companiesSnap.docs.first.id;
+
+    final selectedId = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.red),
-            SizedBox(width: 8),
-            Text('¿Purgar Datos de Prueba?'),
-          ],
-        ),
-        content: const Text(
-          'Esta acción eliminará todas las empresas, movimientos, recargas y usuarios de prueba, dejando únicamente tu cuenta de SuperAdmin (javicordoba10@gmail.com).\n\n¿Deseas continuar?',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sí, Limpiar Todo'),
-          ),
-        ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.cleaning_services_rounded, color: AppTheme.primaryOrange),
+                SizedBox(width: 8),
+                Text('Limpiar Empresa Específica'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Selecciona qué empresa deseas limpiar. Se eliminarán sus movimientos y comprobantes sin afectar a las demás empresas:',
+                  style: TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: selectedCompanyId,
+                  decoration: const InputDecoration(
+                    labelText: 'Empresa a Limpiar',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: companiesSnap.docs.map((doc) {
+                    final data = doc.data();
+                    final name = data['name'] ?? doc.id;
+                    return DropdownMenuItem<String>(
+                      value: doc.id,
+                      child: Text(name.toString()),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    setDialogState(() {
+                      selectedCompanyId = val;
+                    });
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, null), child: const Text('Cancelar')),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryOrange, foregroundColor: Colors.white),
+                onPressed: () => Navigator.pop(ctx, selectedCompanyId),
+                child: const Text('Limpiar Empresa'),
+              ),
+            ],
+          );
+        },
       ),
     );
 
-    if (confirm != true || !context.mounted) return;
+    if (selectedId == null || !context.mounted) return;
 
-    final firestore = FirebaseFirestore.instance;
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      // 1. Purgar movimientos
-      final movs = await firestore.collection('movements').get();
+      // 1. Borrar movimientos de la empresa seleccionada
+      final movs = await firestore.collection('movements').where('companyId', isEqualTo: selectedId).get();
       for (var d in movs.docs) {
         await d.reference.delete();
       }
 
-      // 2. Purgar recargas
-      final recharges = await firestore.collection('recharge_requests').get();
+      // 2. Borrar recargas de la empresa seleccionada
+      final recharges = await firestore.collection('recharge_requests').where('companyId', isEqualTo: selectedId).get();
       for (var d in recharges.docs) {
         await d.reference.delete();
       }
 
-      // 3. Purgar empresas
-      final comps = await firestore.collection('companies_config').get();
-      for (var d in comps.docs) {
-        await d.reference.delete();
-      }
-
-      // 4. Purgar usuarios que no sean javicordoba10@gmail.com
-      final users = await firestore.collection('users').get();
+      // 3. Resetear saldos de usuarios de la empresa seleccionada
+      final users = await firestore.collection('users').where('companyId', isEqualTo: selectedId).get();
       for (var d in users.docs) {
-        final email = (d.data()['email'] ?? '').toString().toLowerCase().trim();
-        if (email != 'javicordoba10@gmail.com') {
-          await d.reference.delete();
-        } else {
-          // Resetear saldo y rol de superadmin
-          await d.reference.update({
-            'role': 'superadmin',
-            'companyId': '',
-            'balances': {'Efectivo': 0.0, 'Tarjeta / Débito': 0.0},
-          });
-        }
+        await d.reference.update({
+          'balances': {'Efectivo': 0.0, 'Tarjeta / Débito': 0.0},
+        });
       }
 
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('✅ Base de datos limpiada exitosamente. App 100% limpia.'),
+        SnackBar(
+          content: Text('✅ Movimientos y saldos de "$selectedId" limpiados correctamente.'),
           backgroundColor: AppTheme.incomeGreen,
         ),
       );

@@ -289,7 +289,17 @@ class _TenantMetricsCard extends ConsumerWidget {
                               Clipboard.setData(ClipboardData(text: link));
                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Enlace copiado para ${comp.name}')));
                             },
-                          )
+                          ),
+                          IconButton(
+                            tooltip: 'Limpiar Movimientos de esta Empresa',
+                            icon: const Icon(Icons.cleaning_services_outlined, size: 20, color: AppTheme.primaryOrange),
+                            onPressed: () => _cleanCompanyData(context, comp),
+                          ),
+                          IconButton(
+                            tooltip: 'Eliminar Empresa Definitivamente',
+                            icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                            onPressed: () => _deleteCompanyEntirely(context, comp),
+                          ),
                         ],
                       ),
                     )
@@ -301,6 +311,144 @@ class _TenantMetricsCard extends ConsumerWidget {
         );
       },
     );
+  }
+
+  Future<void> _cleanCompanyData(BuildContext context, CompanyConfigModel comp) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.cleaning_services_rounded, color: AppTheme.primaryOrange),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Limpiar "${comp.name}"', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 16))),
+          ],
+        ),
+        content: Text(
+          '¿Deseas eliminar todos los movimientos, comprobantes y solicitudes de recarga de la empresa "${comp.name}"?\n\n'
+          '• Se restablecerán los saldos de sus usuarios a \$0.00.\n'
+          '• La configuración y el logo de la empresa se conservarán.\n'
+          '• Las demás empresas no serán afectadas.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryOrange, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Limpiar Empresa'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !context.mounted) return;
+
+    final firestore = FirebaseFirestore.instance;
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      // 1. Borrar movimientos de esta empresa
+      final movs = await firestore.collection('movements').where('companyId', isEqualTo: comp.id).get();
+      for (var d in movs.docs) {
+        await d.reference.delete();
+      }
+
+      // 2. Borrar recargas de esta empresa
+      final recharges = await firestore.collection('recharge_requests').where('companyId', isEqualTo: comp.id).get();
+      for (var d in recharges.docs) {
+        await d.reference.delete();
+      }
+
+      // 3. Resetear saldos de usuarios de esta empresa
+      final users = await firestore.collection('users').where('companyId', isEqualTo: comp.id).get();
+      for (var d in users.docs) {
+        await d.reference.update({
+          'balances': {'Efectivo': 0.0, 'Tarjeta / Débito': 0.0},
+        });
+      }
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('✅ Datos de "${comp.name}" limpiados correctamente.'),
+          backgroundColor: AppTheme.incomeGreen,
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Error al limpiar datos: $e'), backgroundColor: AppTheme.expenseRed),
+      );
+    }
+  }
+
+  Future<void> _deleteCompanyEntirely(BuildContext context, CompanyConfigModel comp) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_forever, color: Colors.red),
+            SizedBox(width: 8),
+            Text('¿Eliminar Empresa?'),
+          ],
+        ),
+        content: Text(
+          '¿Estás seguro de que deseas eliminar COMPLETAMENTE la empresa "${comp.name}"?\n\n'
+          'Se borrará su configuración, accesos, movimientos y usuarios asociados.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar Definitivamente'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !context.mounted) return;
+
+    final firestore = FirebaseFirestore.instance;
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      // 1. Borrar movimientos
+      final movs = await firestore.collection('movements').where('companyId', isEqualTo: comp.id).get();
+      for (var d in movs.docs) {
+        await d.reference.delete();
+      }
+
+      // 2. Borrar recargas
+      final recharges = await firestore.collection('recharge_requests').where('companyId', isEqualTo: comp.id).get();
+      for (var d in recharges.docs) {
+        await d.reference.delete();
+      }
+
+      // 3. Borrar usuarios de esta empresa
+      final users = await firestore.collection('users').where('companyId', isEqualTo: comp.id).get();
+      for (var d in users.docs) {
+        final email = (d.data()['email'] ?? '').toString().toLowerCase().trim();
+        if (email != 'javicordoba10@gmail.com') {
+          await d.reference.delete();
+        }
+      }
+
+      // 4. Borrar documento de empresa
+      await firestore.collection('companies_config').doc(comp.id).delete();
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('🗑️ Empresa "${comp.name}" eliminada por completo.'),
+          backgroundColor: AppTheme.expenseRed,
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Error al eliminar empresa: $e'), backgroundColor: AppTheme.expenseRed),
+      );
+    }
   }
 }
 
