@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../providers/app_providers.dart';
 import '../theme/app_theme.dart';
+import '../widgets/main_layout.dart';
+import 'superadmin_home_screen.dart';
 import 'register_screen.dart';
 
 class UnverifiedEmailScreen extends ConsumerStatefulWidget {
@@ -33,7 +35,18 @@ class _UnverifiedEmailScreenState extends ConsumerState<UnverifiedEmailScreen> {
               backgroundColor: AppTheme.incomeGreen,
             ),
           );
-          setState(() {});
+          final userRepo = ref.read(userRepositoryProvider);
+          final uModel = await userRepo.getUser(currentUser.uid);
+          if (mounted) {
+            Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (_) => uModel?.role == 'superadmin'
+                    ? const SuperAdminHomeScreen()
+                    : const MainLayout(),
+              ),
+              (route) => false,
+            );
+          }
         }
       } else {
         if (mounted) {

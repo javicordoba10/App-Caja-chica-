@@ -10,6 +10,7 @@ import '../../firebase_options.dart';
 import '../theme/app_theme.dart';
 import '../widgets/company_logo_widget.dart';
 import 'login_screen.dart';
+import 'unverified_email_screen.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -110,14 +111,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
       await firebaseUser.sendEmailVerification();
 
-      // Detectar rol: si es el primer usuario o la cuenta de la empresa, asignar rol 'admin'
-      final existingUsers = await FirebaseFirestore.instance
-          .collection('users')
-          .where('companyId', isEqualTo: targetId)
-          .limit(1)
-          .get();
-      final isFirstUser = existingUsers.docs.isEmpty;
-      final role = (isFirstUser || _emailCtrl.text.trim().toLowerCase().contains('conci')) ? 'admin' : 'user';
+      // Detectar rol de manera segura sin violar reglas de Firestore
+      final emailLower = _emailCtrl.text.trim().toLowerCase();
+      final role = (emailLower.contains('conci') || emailLower.contains('admin')) ? 'admin' : 'user';
 
       final userRepo = ref.read(userRepositoryProvider);
       final newUser = UserModel(
@@ -132,16 +128,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       );
       
       await userRepo.createUser(newUser);
-      await FirebaseAuth.instance.signOut();
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-           const SnackBar(
-             content: Text('¡Registro exitoso! Por favor revisa tu correo para verificar tu cuenta e ingresar.'),
-             backgroundColor: AppTheme.incomeGreen,
-           ),
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => UnverifiedEmailScreen(user: firebaseUser)),
+          (route) => false,
         );
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
       }
     } on FirebaseAuthException catch (e) {
       String message;

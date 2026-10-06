@@ -40,18 +40,6 @@ Future<void> _ensureConciCompaniesSeeded() async {
         });
       }
     }
-
-    // Asegurar que el usuario de prueba jcordobaconci@gmail.com esté en 'las_marias' con rol 'admin'
-    final javiDocSnap = await fs.collection('users').where('email', isEqualTo: 'jcordobaconci@gmail.com').get();
-    for (final doc in javiDocSnap.docs) {
-      if (doc.data()['companyId'] != 'las_marias') {
-        await doc.reference.update({
-          'companyId': 'las_marias',
-          'role': 'admin',
-        });
-        debugPrint('Usuario jcordobaconci@gmail.com asignado a las_marias con exito.');
-      }
-    }
   } catch (e) {
     debugPrint('Error auto-seeding CONCI companies: $e');
   }
