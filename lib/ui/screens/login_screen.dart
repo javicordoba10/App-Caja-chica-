@@ -288,17 +288,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _completeLogin(UserModel userModel) {
     ref.read(currentUserIdProvider.notifier).state = userModel.id;
     if (mounted) {
-      if (userModel.role == 'superadmin') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const SuperAdminHomeScreen()),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainLayout()),
-        );
-      }
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => userModel.role == 'superadmin'
+              ? const SuperAdminHomeScreen()
+              : const MainLayout(),
+        ),
+        (route) => false,
+      );
     }
   }
 

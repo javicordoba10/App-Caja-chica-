@@ -147,7 +147,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       String message;
       switch (e.code) {
         case 'email-already-in-use':
-          message = 'Ya existe una cuenta con ese correo electrónico.';
+          message = 'Ya existe una cuenta con ese correo. Iniciá sesión directamente o pedile al Administrador que asigne tu empresa.';
           break;
         case 'invalid-email':
           message = 'El correo electrónico no es válido.';
@@ -280,6 +280,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             WidgetsBinding.instance.addPostFrameCallback((_) {
                               if (mounted && _selectedCompanyId == null) {
                                 setState(() => _selectedCompanyId = currentVal);
+                                ref.read(targetCompanyIdProvider.notifier).state = currentVal;
                               }
                             });
                           }
@@ -316,7 +317,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                       );
                                     }).toList(),
                                     onChanged: (val) {
-                                      if (val != null) setState(() => _selectedCompanyId = val);
+                                      if (val != null) {
+                                        setState(() => _selectedCompanyId = val);
+                                        ref.read(targetCompanyIdProvider.notifier).state = val;
+                                      }
                                     },
                                   ),
                                 ),

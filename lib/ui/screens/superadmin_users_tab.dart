@@ -94,6 +94,7 @@ class SuperAdminUsersTab extends ConsumerWidget {
                   users: superAdmins,
                   isSuperAdminGroup: true,
                   color: AppTheme.primaryOrange,
+                  allCompanies: companiesDocs,
                   initiallyExpanded: false,
                 ),
 
@@ -113,6 +114,7 @@ class SuperAdminUsersTab extends ConsumerWidget {
                     subtitle: 'ID: $compId • ${isActive ? "Licencia Activa" : "Suspendida"}',
                     logoUrl: logoUrl,
                     users: compUsers,
+                    allCompanies: companiesDocs,
                     isSuperAdminGroup: false,
                     color: isActive ? Colors.blue : Colors.grey,
                     initiallyExpanded: true,
@@ -127,6 +129,7 @@ class SuperAdminUsersTab extends ConsumerWidget {
                     title: '⚠️ Sin Empresa Asignada',
                     subtitle: 'Usuarios huérfanos o sin configurar',
                     users: usersByCompany['unassigned']!,
+                    allCompanies: companiesDocs,
                     isSuperAdminGroup: false,
                     color: Colors.red,
                     initiallyExpanded: false,
@@ -148,6 +151,7 @@ class SuperAdminUsersTab extends ConsumerWidget {
     required bool isSuperAdminGroup,
     required Color color,
     required bool initiallyExpanded,
+    List<DocumentSnapshot> allCompanies = const [],
     String? logoUrl,
   }) {
     return Card(
@@ -236,24 +240,31 @@ class SuperAdminUsersTab extends ConsumerWidget {
                         ),
                         PopupMenuButton<String>(
                           icon: const Icon(Icons.more_vert, size: 20),
-                          tooltip: 'Gestionar Rol',
-                          onSelected: (newRole) async {
-                            if (newRole == 'user' || newRole == 'admin' || newRole == 'superadmin') {
-                              await firestore.collection('users').doc(uid).update({'role': newRole});
+                          tooltip: 'Gestionar Usuario',
+                          onSelected: (action) async {
+                            if (action == 'user' || action == 'admin' || action == 'superadmin') {
+                              await firestore.collection('users').doc(uid).update({'role': action});
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('Rol de $name cambiado a $newRole'),
+                                    content: Text('Rol de $name cambiado a $action'),
                                     backgroundColor: AppTheme.incomeGreen,
                                   ),
                                 );
                               }
+                            } else if (action == 'change_company') {
+                              _showChangeCompanyDialog(context, firestore, uid, name, allCompanies);
+                            } else if (action == 'delete') {
+                              _showDeleteUserDialog(context, firestore, uid, name);
                             }
                           },
                           itemBuilder: (_) => [
-                            const PopupMenuItem(value: 'user', child: Text('🙋 Cambiar a Usuario (User)')),
-                            const PopupMenuItem(value: 'admin', child: Text('🛡️ Cambiar a Administrador (Admin)')),
-                            const PopupMenuItem(value: 'superadmin', child: Text('⚡ Cambiar a SuperAdmin')),
+                            const PopupMenuItem(value: 'user', child: Text('🙋 Cambiar Rol: Usuario')),
+                            const PopupMenuItem(value: 'admin', child: Text('🛡️ Cambiar Rol: Administrador')),
+                            const PopupMenuItem(value: 'superadmin', child: Text('⚡ Cambiar Rol: SuperAdmin')),
+                            const PopupMenuDivider(),
+                            const PopupMenuItem(value: 'change_company', child: Text('🏢 Cambiar de Empresa')),
+                            const PopupMenuItem(value: 'delete', child: Text('🗑️ Eliminar Usuario', style: TextStyle(color: Colors.red))),
                           ],
                         ),
                       ],
@@ -263,6 +274,104 @@ class SuperAdminUsersTab extends ConsumerWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showChangeCompanyDialog(
+    BuildContext context,
+    FirebaseFirestore firestore,
+    String uid,
+    String userName,
+    List<DocumentSnapshot> companies,
+  ) {
+    String? selectedCompId;
+    showDialog(
+      context: context,
+      builder: (dlgCtx) => StatefulBuilder(
+        builder: (context, setDlgState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Reasignar Empresa', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 16)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Seleccioná la nueva empresa para $userName:', style: const TextStyle(fontSize: 13, color: Colors.black87)),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: selectedCompId,
+                hint: const Text('Elegir empresa destino'),
+                items: companies.map((c) {
+                  final data = c.data() as Map<String, dynamic>;
+                  final name = data['name'] ?? c.id;
+                  return DropdownMenuItem<String>(value: c.id, child: Text(name));
+                }).toList(),
+                onChanged: (val) => setDlgState(() => selectedCompId = val),
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dlgCtx), child: const Text('CANCELAR')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryOrange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: selectedCompId == null
+                  ? null
+                  : () async {
+                      Navigator.pop(dlgCtx);
+                      await firestore.collection('users').doc(uid).update({'companyId': selectedCompId});
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('$userName fue reasignado exitosamente.'),
+                            backgroundColor: AppTheme.incomeGreen,
+                          ),
+                        );
+                      }
+                    },
+              child: const Text('GUARDAR'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteUserDialog(
+    BuildContext context,
+    FirebaseFirestore firestore,
+    String uid,
+    String userName,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dlgCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('¿Eliminar usuario?'),
+        content: Text('¿Estás seguro de que querés eliminar a $userName? Esta acción no se puede deshacer.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dlgCtx), child: const Text('CANCELAR')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () async {
+              Navigator.pop(dlgCtx);
+              await firestore.collection('users').doc(uid).delete();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Usuario $userName eliminado.'), backgroundColor: AppTheme.incomeGreen),
+                );
+              }
+            },
+            child: const Text('ELIMINAR'),
+          ),
+        ],
       ),
     );
   }

@@ -15,6 +15,7 @@ import 'package:petty_cash_app/firebase_options.dart';
 
 import 'package:petty_cash_app/services/ocr_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:petty_cash_app/ui/screens/login_screen.dart';
 
 // Provider to check the low-level socket connectivity to Firestore
 final connectivityStatusProvider = StreamProvider<bool>((ref) async* {
@@ -53,13 +54,6 @@ final superAdminInspectTenantProvider = StateProvider<String?>((ref) => null);
 /// Centralized robust logout helper
 Future<void> performLogout(dynamic ref, [BuildContext? context]) async {
   try {
-    if (context != null && Navigator.of(context, rootNavigator: true).canPop()) {
-      Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
-    }
-  } catch (e) {
-    debugPrint('Error pop route on logout: $e');
-  }
-  try {
     await FirebaseAuth.instance.signOut();
   } catch (e) {
     debugPrint('Error signOut: $e');
@@ -71,6 +65,16 @@ Future<void> performLogout(dynamic ref, [BuildContext? context]) async {
     ref.read(adminSelectedUserIdProvider.notifier).state = null;
   } catch (e) {
     debugPrint('Error resetting providers on logout: $e');
+  }
+  if (context != null) {
+    try {
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    } catch (e) {
+      debugPrint('Error navigating to LoginScreen on logout: $e');
+    }
   }
 }
 
