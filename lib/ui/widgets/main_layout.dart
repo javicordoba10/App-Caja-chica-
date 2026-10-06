@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:petty_cash_app/ui/widgets/app_drawer.dart';
 import 'package:petty_cash_app/ui/screens/dashboard_screen.dart';
 import 'package:petty_cash_app/ui/screens/history_screen.dart';
@@ -56,8 +55,7 @@ class MainLayout extends ConsumerWidget {
                   icon: const Icon(Icons.logout),
                   label: const Text('Cerrar Sesión'),
                   onPressed: () async {
-                    await FirebaseAuth.instance.signOut();
-                    ref.read(currentUserIdProvider.notifier).state = null;
+                    await performLogout(ref, context);
                   },
                 ),
               ],
@@ -75,11 +73,23 @@ class MainLayout extends ConsumerWidget {
           title: Text(_getTitle(currentRoute), style: const TextStyle(color: AppTheme.textDark, fontSize: 18)),
           backgroundColor: AppTheme.pureWhite,
           surfaceTintColor: AppTheme.pureWhite,
-          leading: IconButton(
-            icon: const Icon(Icons.menu, color: AppTheme.pureBlack),
-            onPressed: () => scaffoldKey.currentState?.openDrawer(),
-          ),
+          leading: Navigator.canPop(context)
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back, color: AppTheme.pureBlack),
+                  tooltip: 'Volver al Panel General',
+                  onPressed: () => Navigator.pop(context),
+                )
+              : IconButton(
+                  icon: const Icon(Icons.menu, color: AppTheme.pureBlack),
+                  onPressed: () => scaffoldKey.currentState?.openDrawer(),
+                ),
           actions: [
+            if (Navigator.canPop(context))
+              IconButton(
+                icon: const Icon(Icons.menu, color: AppTheme.pureBlack),
+                tooltip: 'Menú lateral',
+                onPressed: () => scaffoldKey.currentState?.openDrawer(),
+              ),
             // Circulo 1: Logo de la empresa al lado del signo "+"
             if (companyConfig?.logoUrl != null && companyConfig!.logoUrl!.trim().isNotEmpty)
               Padding(
@@ -107,6 +117,13 @@ class MainLayout extends ConsumerWidget {
                 icon: const Icon(Icons.add, color: AppTheme.primaryOrange),
                 onPressed: () => ref.read(navigationProvider.notifier).state = 'new',
               ),
+            IconButton(
+              icon: const Icon(Icons.logout_rounded, color: Colors.black54),
+              tooltip: 'Cerrar Sesión',
+              onPressed: () async {
+                await performLogout(ref, context);
+              },
+            ),
           ],
         ),
         drawer: AppDrawer(

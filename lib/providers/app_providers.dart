@@ -50,6 +50,30 @@ final targetCompanyIdProvider = StateProvider<String?>((ref) => null);
 // Tenant ID selected by SuperAdmin for "God-Mode" inspection
 final superAdminInspectTenantProvider = StateProvider<String?>((ref) => null);
 
+/// Centralized robust logout helper
+Future<void> performLogout(dynamic ref, [BuildContext? context]) async {
+  try {
+    if (context != null && Navigator.of(context, rootNavigator: true).canPop()) {
+      Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+    }
+  } catch (e) {
+    debugPrint('Error pop route on logout: $e');
+  }
+  try {
+    await FirebaseAuth.instance.signOut();
+  } catch (e) {
+    debugPrint('Error signOut: $e');
+  }
+  try {
+    ref.read(currentUserIdProvider.notifier).state = null;
+    ref.read(superAdminInspectTenantProvider.notifier).state = null;
+    ref.read(targetCompanyIdProvider.notifier).state = null;
+    ref.read(adminSelectedUserIdProvider.notifier).state = null;
+  } catch (e) {
+    debugPrint('Error resetting providers on logout: $e');
+  }
+}
+
 // Streams the current user's profile and live balance
 final currentUserProvider = StreamProvider<UserModel?>((ref) async* {
   final userId = ref.watch(currentUserIdProvider);

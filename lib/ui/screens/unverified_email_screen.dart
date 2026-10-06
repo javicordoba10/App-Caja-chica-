@@ -92,8 +92,7 @@ class _UnverifiedEmailScreenState extends ConsumerState<UnverifiedEmailScreen> {
   }
 
   Future<void> _signOut() async {
-    ref.read(currentUserIdProvider.notifier).state = null;
-    await FirebaseAuth.instance.signOut();
+    await performLogout(ref, context);
   }
 
   @override

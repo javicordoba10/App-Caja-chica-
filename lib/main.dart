@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'constants/conci_logo.dart';
 import 'models/user_model.dart';
 import 'ui/screens/login_screen.dart';
 import 'ui/screens/unverified_email_screen.dart';
@@ -14,16 +16,47 @@ import 'ui/theme/app_theme.dart';
 import 'providers/app_providers.dart';
 import 'services/platform_service.dart';
 
+Future<void> _ensureConciCompaniesSeeded() async {
+  if (DefaultFirebaseOptions.web.projectId != 'cajachica-conci') return;
+  try {
+    final fs = FirebaseFirestore.instance;
+    final companiesToSeed = [
+      {'id': 'conci_sa', 'name': 'CONCI S.A.'},
+      {'id': 'conci_srl', 'name': 'CONCI S.R.L.'},
+      {'id': 'las_marias', 'name': 'LAS MARÍAS'},
+    ];
+    for (final c in companiesToSeed) {
+      final docRef = fs.collection('companies_config').doc(c['id']);
+      final doc = await docRef.get();
+      if (!doc.exists) {
+        await docRef.set({
+          'name': c['name'],
+          'primaryColor': 0xFF212121,
+          'secondaryColor': 0xFFBA4817,
+          'logoUrl': kDefaultConciLogoBase64,
+          'isActive': true,
+          'maxUsers': 50,
+          'allowedEstablishments': ['ADMINISTRACIÓN', 'CAMPO', 'OBRA'],
+        });
+      }
+    }
+  } catch (e) {
+    debugPrint('Error auto-seeding CONCI companies: $e');
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   
   debugPrint('v30.5-ULTRA: MARCA BLANCA ACTIVA');
 
+  _ensureConciCompaniesSeeded();
+
   var initialCompId = PlatformService.getUriParameter('comp');
   if ((initialCompId == null || initialCompId.isEmpty) &&
       DefaultFirebaseOptions.web.projectId == 'cajachica-conci') {
-    initialCompId = 'conci';
+    initialCompId = 'conci_sa';
   }
   if (initialCompId != null) {
     debugPrint('TENANT ID CAPTURADO: $initialCompId');
@@ -94,6 +127,7 @@ class _HomeRouter extends ConsumerWidget {
           return userAsync.when(
             data: (user) {
               if (user == null) {
+                FirebaseAuth.instance.signOut();
                 return const LoginScreen();
               }
 
@@ -140,14 +174,15 @@ class _HomeRouter extends ConsumerWidget {
   }
 }
 
-class _AccessDeniedScreen extends StatelessWidget {
+class _AccessDeniedScreen extends ConsumerWidget {
   final UserModel user;
   final String message;
-  const _AccessDeniedScreen({required this.user, required this.message});
+  const _AccessDeniedScreen({super.key, required this.user, required this.message});
 
   @override
-  Widget build(BuildContext context) {
-    final companyUrl = 'https://pettycashapp-80f5e.web.app/?comp=${user.companyId}';
+  Widget build(BuildContext context, WidgetRef ref) {
+    final domain = kIsWeb ? Uri.base.origin : 'https://${DefaultFirebaseOptions.web.projectId}.web.app';
+    final companyUrl = '$domain/?comp=${user.companyId}';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -207,7 +242,7 @@ class _AccessDeniedScreen extends StatelessWidget {
                 icon: const Icon(Icons.logout),
                 label: const Text('Cerrar Sesión'),
                 onPressed: () async {
-                  await FirebaseAuth.instance.signOut();
+                  await performLogout(ref, context);
                 },
               ),
             ],
@@ -218,12 +253,12 @@ class _AccessDeniedScreen extends StatelessWidget {
   }
 }
 
-class _SuspendedCompanyScreen extends StatelessWidget {
+class _SuspendedCompanyScreen extends ConsumerWidget {
   final String companyName;
-  const _SuspendedCompanyScreen({required this.companyName});
+  const _SuspendedCompanyScreen({super.key, required this.companyName});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
@@ -268,7 +303,7 @@ class _SuspendedCompanyScreen extends StatelessWidget {
                 icon: const Icon(Icons.logout),
                 label: const Text('Cerrar Sesión'),
                 onPressed: () async {
-                  await FirebaseAuth.instance.signOut();
+                  await performLogout(ref, context);
                 },
               ),
             ],

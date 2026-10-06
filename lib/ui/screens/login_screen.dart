@@ -116,8 +116,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           if (targetId == null || targetId.isEmpty) {
             await FirebaseAuth.instance.signOut();
             final userComp = user.companyId.isNotEmpty ? user.companyId : 'su_empresa';
+            final domain = kIsWeb ? Uri.base.origin : 'https://${DefaultFirebaseOptions.web.projectId}.web.app';
             throw Exception(
-              'Para ingresar debes acceder desde el enlace oficial de tu empresa:\nhttps://pettycashapp-80f5e.web.app/?comp=$userComp',
+              'Para ingresar debes acceder desde el enlace oficial de tu empresa:\n$domain/?comp=$userComp',
             );
           }
 

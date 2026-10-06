@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:petty_cash_app/firebase_options.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:petty_cash_app/models/company_config_model.dart';
 import 'package:petty_cash_app/ui/widgets/tenant_dialog.dart';
@@ -44,7 +46,10 @@ class SuperadminScreen extends ConsumerWidget {
           itemCount: companies.length,
           itemBuilder: (context, index) {
             final comp = companies[index];
-            final link = 'https://pettycashapp-80f5e.web.app/?comp=${comp.id}';
+            final baseDomain = kIsWeb
+                ? Uri.base.origin
+                : 'https://${DefaultFirebaseOptions.web.projectId}.web.app';
+            final link = '$baseDomain/?comp=${comp.id}';
             return _TenantMetricsCard(comp: comp, link: link);
           },
         );

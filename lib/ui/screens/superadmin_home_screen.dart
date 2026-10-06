@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
 import 'package:petty_cash_app/ui/screens/superadmin_screen.dart';
 import 'package:petty_cash_app/ui/screens/superadmin_users_tab.dart';
 import 'package:petty_cash_app/ui/screens/profile_screen.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:petty_cash_app/ui/widgets/tenant_dialog.dart';
-import 'package:petty_cash_app/ui/widgets/main_layout.dart';
 import 'package:petty_cash_app/firebase_options.dart';
 
 class SuperAdminHomeScreen extends ConsumerStatefulWidget {
@@ -67,6 +65,16 @@ class _SuperAdminHomeScreenState extends ConsumerState<SuperAdminHomeScreen>
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.white),
+            tooltip: 'Cerrar Sesión',
+            onPressed: () async {
+              await performLogout(ref, context);
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: AppTheme.primaryOrange,
@@ -200,8 +208,7 @@ class _SuperAdminDrawer extends ConsumerWidget {
                   title: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
                   onTap: () async {
                     Navigator.pop(context);
-                    await FirebaseAuth.instance.signOut();
-                    ref.read(currentUserIdProvider.notifier).state = null;
+                    await performLogout(ref, context);
                   },
                 ),
               ],

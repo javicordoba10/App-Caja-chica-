@@ -156,7 +156,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: TextButton.icon(
-                          onPressed: () => FirebaseAuth.instance.signOut(),
+                          onPressed: () async {
+                            await performLogout(ref, context);
+                          },
                           icon: const Icon(Icons.logout, size: 18, color: AppTheme.expenseRed),
                           label: const Text('CERRAR SESIÓN', style: TextStyle(color: AppTheme.expenseRed, fontWeight: FontWeight.bold)),
                         ),

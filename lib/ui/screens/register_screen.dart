@@ -90,8 +90,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
       // Si es el proyecto dedicado CONCI y no existía el documento en Firestore, crearlo automáticamente
       if (!compDoc.exists && (targetId == 'conci' || isDedicatedConci)) {
-        await FirebaseFirestore.instance.collection('companies_config').doc('conci').set({
-          'name': 'CONCI',
+        final compName = (targetId == 'conci_sa')
+            ? 'CONCI S.A.'
+            : (targetId == 'conci_srl')
+                ? 'CONCI S.R.L.'
+                : (targetId == 'las_marias')
+                    ? 'LAS MARÍAS'
+                    : 'CONCI';
+        await FirebaseFirestore.instance.collection('companies_config').doc(targetId).set({
+          'name': compName,
           'primaryColor': 0xFF212121,
           'secondaryColor': 0xFFBA4817,
           'logoUrl': kDefaultConciLogoBase64,

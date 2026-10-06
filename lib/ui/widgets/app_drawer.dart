@@ -158,6 +158,20 @@ class AppDrawer extends ConsumerWidget {
             loading: () => const SizedBox.shrink(),
             error: (_, __) => const SizedBox.shrink(),
           ),
+
+          const Divider(height: 24, thickness: 1),
+
+          // Botón Cerrar Sesión universal
+          _DrawerItem(
+            icon: Icons.logout_rounded,
+            label: 'Cerrar Sesión',
+            isSelected: false,
+            color: Colors.redAccent,
+            onTap: () async {
+              Navigator.pop(context);
+              await performLogout(ref, context);
+            },
+          ),
           
           const Spacer(),
           
@@ -218,25 +232,30 @@ class _DrawerItem extends StatelessWidget {
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
+  final Color? color;
 
   const _DrawerItem({
     required this.icon,
     required this.label,
     required this.isSelected,
     required this.onTap,
+    this.color,
   });
 
   @override
   Widget build(BuildContext context) {
+    final effectiveColor = color ?? (isSelected ? AppTheme.primaryOrange : AppTheme.textGrey);
+    final effectiveTextColor = color ?? (isSelected ? AppTheme.primaryOrange : AppTheme.textDark);
+
     return ListTile(
       leading: Icon(
         icon,
-        color: isSelected ? AppTheme.primaryOrange : AppTheme.textGrey,
+        color: effectiveColor,
       ),
       title: Text(
         label,
         style: GoogleFonts.montserrat(
-          color: isSelected ? AppTheme.primaryOrange : AppTheme.textDark,
+          color: effectiveTextColor,
           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
           fontSize: 15,
         ),
