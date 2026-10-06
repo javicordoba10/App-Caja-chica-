@@ -20,7 +20,11 @@ void main() async {
   
   debugPrint('v30.5-ULTRA: MARCA BLANCA ACTIVA');
 
-  final initialCompId = PlatformService.getUriParameter('comp');
+  var initialCompId = PlatformService.getUriParameter('comp');
+  if ((initialCompId == null || initialCompId.isEmpty) &&
+      DefaultFirebaseOptions.web.projectId == 'cajachica-conci') {
+    initialCompId = 'conci';
+  }
   if (initialCompId != null) {
     debugPrint('TENANT ID CAPTURADO: $initialCompId');
   }
@@ -98,8 +102,9 @@ class _HomeRouter extends ConsumerWidget {
                 return const SuperAdminHomeScreen();
               }
 
-              // 2. En WEB: Validar aislamiento estricto por parámetro de URL
-              if (kIsWeb) {
+              // 2. En WEB: Validar aislamiento estricto por parámetro de URL solo en SaaS maestro
+              final isSaasMaster = DefaultFirebaseOptions.web.projectId == 'pettycashapp-80f5e';
+              if (kIsWeb && isSaasMaster) {
                 if (targetCompId == null || targetCompId.isEmpty) {
                   return _AccessDeniedScreen(
                     user: user,

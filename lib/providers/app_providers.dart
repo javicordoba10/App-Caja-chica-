@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
@@ -9,6 +10,8 @@ import 'package:petty_cash_app/repositories/user_repository.dart';
 import 'package:petty_cash_app/repositories/movement_repository.dart';
 import 'package:petty_cash_app/models/recharge_request_model.dart';
 import 'package:petty_cash_app/repositories/recharge_repository.dart';
+import 'package:petty_cash_app/constants/conci_logo.dart';
+import 'package:petty_cash_app/firebase_options.dart';
 
 import 'package:petty_cash_app/services/ocr_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -161,15 +164,36 @@ final companyConfigProvider = StreamProvider<CompanyConfigModel?>((ref) {
       ? user.companyId
       : targetId;
       
+  final firestore = ref.watch(firestoreProvider);
+
+  final isConci = DefaultFirebaseOptions.web.projectId == 'cajachica-conci';
+  final defaultConci = isConci
+      ? CompanyConfigModel(
+          id: 'conci',
+          name: 'CONCI',
+          logoUrl: kDefaultConciLogoBase64,
+          primaryColor: const Color(0xFF212121),
+          secondaryColor: const Color(0xFFBA4817),
+          isActive: true,
+        )
+      : null;
+
   if (companyId == null || companyId.isEmpty) {
+    if (isConci) {
+      return firestore.collection('companies_config').snapshots().map((snap) {
+        if (snap.docs.isNotEmpty) {
+          return CompanyConfigModel.fromMap(snap.docs.first.data(), snap.docs.first.id);
+        }
+        return defaultConci;
+      });
+    }
     return Stream.value(null);
   }
   
-  final firestore = ref.watch(firestoreProvider);
   return firestore.collection('companies_config').doc(companyId).snapshots().map((doc) {
     if (doc.exists && doc.data() != null) {
       return CompanyConfigModel.fromMap(doc.data()!, doc.id);
     }
-    return null;
+    return defaultConci;
   });
 });

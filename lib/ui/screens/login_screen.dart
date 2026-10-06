@@ -6,6 +6,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
 import '../../providers/app_providers.dart';
+import '../../constants/conci_logo.dart';
+import '../../firebase_options.dart';
 import '../theme/app_theme.dart';
 import '../widgets/main_layout.dart';
 import '../widgets/company_logo_widget.dart';
@@ -49,7 +51,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       await firebaseUser.reload();
       if (!firebaseUser.emailVerified) {
-        throw Exception('Por favor verifica tu correo electrónico para ingresar.');
+        throw Exception('Por favor verifica tu correo electrÃ³nico para ingresar.');
       }
 
       final userRepo = ref.read(userRepositoryProvider);
@@ -71,8 +73,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         }
 
         // Si es usuario regular / admin:
-        // En WEB: validar que coincida con la URL
-        if (kIsWeb) {
+        // En WEB: validar que coincida con la URL solo si es la plataforma SaaS maestra
+        final isSaasMaster = DefaultFirebaseOptions.web.projectId == 'pettycashapp-80f5e';
+        if (kIsWeb && isSaasMaster) {
           if (targetId == null || targetId.isEmpty) {
             await FirebaseAuth.instance.signOut();
             final userComp = user.companyId.isNotEmpty ? user.companyId : 'su_empresa';
@@ -90,7 +93,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         }
 
         // Verificar si la empresa está activa
-        final effectiveCompId = user.companyId.isNotEmpty ? user.companyId : (targetId ?? '');
+        final effectiveCompId = user.companyId.isNotEmpty 
+            ? user.companyId 
+            : (targetId ?? (DefaultFirebaseOptions.web.projectId == 'cajachica-conci' ? 'conci' : ''));
         if (effectiveCompId.isNotEmpty) {
           final compDoc = await FirebaseFirestore.instance.collection('companies_config').doc(effectiveCompId).get();
           if (compDoc.exists && compDoc.data()?['isActive'] == false) {
@@ -103,7 +108,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _completeLogin(user);
         }
       } else {
-        if (kIsWeb && (targetId == null || targetId.isEmpty)) {
+        final isSaasMaster = DefaultFirebaseOptions.web.projectId == 'pettycashapp-80f5e';
+        if (kIsWeb && isSaasMaster && (targetId == null || targetId.isEmpty)) {
           await FirebaseAuth.instance.signOut();
           throw Exception('Para iniciar sesión debes ingresar desde el enlace provisto por tu empresa.');
         }
@@ -111,6 +117,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         final displayName = firebaseUser.displayName ?? 
             firebaseUser.email?.split('@').first ?? 'Usuario';
         
+        final effectiveCompanyId = (targetId != null && targetId.isNotEmpty) 
+            ? targetId 
+            : (DefaultFirebaseOptions.web.projectId == 'cajachica-conci' ? 'conci' : '');
+
         final newUser = UserModel(
           id: firebaseUser.uid,
           name: displayName,
@@ -120,7 +130,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           establishments: const ['ADMINISTRACIÓN'],
           role: 'user',
           isActive: true, 
-          companyId: targetId ?? '',
+          companyId: effectiveCompanyId,
         );
         await userRepo.createUser(newUser);
 
@@ -129,9 +139,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         }
       }
     } on FirebaseAuthException catch (e) {
-      String message = 'Error de autenticación: ${e.message}';
+      String message = 'Error de autenticaciÃ³n: ${e.message}';
       if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
-        message = 'Usuario o contraseña incorrectos.';
+        message = 'Usuario o contraseÃ±a incorrectos.';
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: AppTheme.expenseRed));
@@ -157,7 +167,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Restablecer Contraseña',
+                'Restablecer ContraseÃ±a',
                 style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),
@@ -168,7 +178,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Ingresá tu correo electrónico y te enviaremos un link para restablecer tu contraseña.',
+              'IngresÃ¡ tu correo electrÃ³nico y te enviaremos un link para restablecer tu contraseÃ±a.',
               style: GoogleFonts.montserrat(fontSize: 12, color: AppTheme.textGrey),
             ),
             const SizedBox(height: 16),
@@ -177,7 +187,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               keyboardType: TextInputType.emailAddress,
               autofocus: true,
               decoration: InputDecoration(
-                labelText: 'Correo electrónico',
+                labelText: 'Correo electrÃ³nico',
                 prefixIcon: const Icon(Icons.email_outlined),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -203,7 +213,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               final email = emailCtrl.text.trim();
               if (email.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Por favor, ingresá tu correo electrónico.')),
+                  const SnackBar(content: Text('Por favor, ingresÃ¡ tu correo electrÃ³nico.')),
                 );
                 return;
               }
@@ -213,7 +223,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('✅ Mail de restablecimiento enviado a $email. Revisá también tu carpeta de SPAM.'),
+                      content: Text('âœ… Mail de restablecimiento enviado a $email. RevisÃ¡ tambiÃ©n tu carpeta de SPAM.'),
                       backgroundColor: Colors.green.shade700,
                       duration: const Duration(seconds: 6),
                     ),
@@ -258,6 +268,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final companyConfig = ref.watch(companyConfigProvider).value;
+    final isConci = DefaultFirebaseOptions.web.projectId == 'cajachica-conci';
+    final effectiveLogoUrl = companyConfig?.logoUrl ?? (isConci ? kDefaultConciLogoBase64 : null);
+    final effectiveCompanyName = companyConfig?.name ?? (isConci ? 'CONCI' : 'CONTROL DE\nCAJA CHICA');
 
     return Scaffold(
       body: Container(
@@ -272,22 +285,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (companyConfig?.logoUrl != null && companyConfig!.logoUrl!.trim().isNotEmpty) ...[
+                      if (effectiveLogoUrl != null && effectiveLogoUrl.trim().isNotEmpty) ...[
                         Container(
                           height: 90,
                           width: 90,
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
                           ),
-                          child: CompanyLogoWidget(
-                            logoUrl: companyConfig!.logoUrl,
-                            height: 74,
-                            width: 74,
-                            borderRadius: 14,
-                            fallbackIconSize: 45,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: CompanyLogoWidget(
+                              logoUrl: effectiveLogoUrl,
+                              height: 78,
+                              width: 78,
+                              borderRadius: 14,
+                              fallbackIconSize: 45,
+                            ),
                           ),
                         ),
                       ] else if (companyConfig != null) ...[
@@ -312,7 +328,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ],
                       const SizedBox(height: 16),
                       Text(
-                        (companyConfig?.name ?? 'CONTROL DE\nCAJA CHICA').toUpperCase(),
+                        effectiveCompanyName.toUpperCase(),
                         textAlign: TextAlign.center,
                         style: GoogleFonts.montserrat(
                           color: Colors.white,
@@ -349,7 +365,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     children: [
                       _buildTextField(_emailCtrl, 'Usuario / Correo', Icons.email_outlined),
                       const SizedBox(height: 20),
-                      _buildTextField(_passCtrl, 'Contraseña', Icons.lock_outline,
+                      _buildTextField(_passCtrl, 'ContraseÃ±a', Icons.lock_outline,
                         obscure: _obscurePassword, isPassword: true,
                         onToggle: () => setState(() => _obscurePassword = !_obscurePassword)),
                       const SizedBox(height: 12),
@@ -357,7 +373,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         alignment: Alignment.center,
                         child: TextButton(
                           onPressed: _showForgotPasswordDialog,
-                          child: const Text('¿Olvidaste tu contraseña?', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                          child: const Text('Â¿Olvidaste tu contraseÃ±a?', style: TextStyle(color: Colors.grey, fontSize: 13)),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -384,7 +400,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text("¿No tienes cuenta? ", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                          const Text("Â¿No tienes cuenta? ", style: TextStyle(color: Colors.grey, fontSize: 14)),
                           GestureDetector(
                             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen())),
                             child: Text("Registrarse", style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.bold, fontSize: 14)),
@@ -394,13 +410,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       const SizedBox(height: 30),
                       Column(
                         children: [
-                          if (companyConfig != null) ...[
-                             Text('SISTEMA GESTIONADO POR', style: GoogleFonts.montserrat(color: Colors.black45, fontSize: 11, letterSpacing: 2)),
-                             Text(companyConfig.name.toUpperCase(), textAlign: TextAlign.center, style: GoogleFonts.montserrat(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-                          ] else ...[
-                             Text('PLATAFORMA MULTI-EMPRESA', style: GoogleFonts.montserrat(color: Colors.black45, fontSize: 11, letterSpacing: 2)),
-                             Text('PETTY CASH SAAS', style: GoogleFonts.montserrat(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-                          ]
+                          Text('PETTY CASH SAAS', style: GoogleFonts.montserrat(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                          const SizedBox(height: 4),
+                          Text('Desarrollado por Javier Córdoba', textAlign: TextAlign.center, style: GoogleFonts.montserrat(color: Colors.black45, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.0)),
                         ],
                       ),
                     ],
@@ -485,3 +497,4 @@ class SurgicalLogoPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
