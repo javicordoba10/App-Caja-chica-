@@ -51,7 +51,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       await firebaseUser.reload();
       if (!firebaseUser.emailVerified) {
-        throw Exception('Por favor verifica tu correo electrÃ³nico para ingresar.');
+        throw Exception('Por favor verifica tu correo electrónico para ingresar.');
       }
 
       final userRepo = ref.read(userRepositoryProvider);
@@ -139,9 +139,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         }
       }
     } on FirebaseAuthException catch (e) {
-      String message = 'Error de autenticaciÃ³n: ${e.message}';
+      String message = 'Error de autenticación: ${e.message}';
       if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
-        message = 'Usuario o contraseÃ±a incorrectos.';
+        message = 'Usuario o contraseña incorrectos.';
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: AppTheme.expenseRed));
@@ -167,7 +167,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Restablecer ContraseÃ±a',
+                'Restablecer Contraseña',
                 style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),
@@ -178,7 +178,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'IngresÃ¡ tu correo electrÃ³nico y te enviaremos un link para restablecer tu contraseÃ±a.',
+              'Ingresá tu correo electrónico y te enviaremos un link para restablecer tu contraseña.',
               style: GoogleFonts.montserrat(fontSize: 12, color: AppTheme.textGrey),
             ),
             const SizedBox(height: 16),
@@ -187,7 +187,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               keyboardType: TextInputType.emailAddress,
               autofocus: true,
               decoration: InputDecoration(
-                labelText: 'Correo electrÃ³nico',
+                labelText: 'Correo electrónico',
                 prefixIcon: const Icon(Icons.email_outlined),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -213,7 +213,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               final email = emailCtrl.text.trim();
               if (email.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Por favor, ingresÃ¡ tu correo electrÃ³nico.')),
+                  const SnackBar(content: Text('Por favor, ingresá tu correo electrónico.')),
                 );
                 return;
               }
@@ -223,7 +223,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('âœ… Mail de restablecimiento enviado a $email. RevisÃ¡ tambiÃ©n tu carpeta de SPAM.'),
+                      content: Text('âœ… Mail de restablecimiento enviado a $email. Revisá también tu carpeta de SPAM.'),
                       backgroundColor: Colors.green.shade700,
                       duration: const Duration(seconds: 6),
                     ),
@@ -365,7 +365,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     children: [
                       _buildTextField(_emailCtrl, 'Usuario / Correo', Icons.email_outlined),
                       const SizedBox(height: 20),
-                      _buildTextField(_passCtrl, 'ContraseÃ±a', Icons.lock_outline,
+                      _buildTextField(_passCtrl, 'Contraseña', Icons.lock_outline,
                         obscure: _obscurePassword, isPassword: true,
                         onToggle: () => setState(() => _obscurePassword = !_obscurePassword)),
                       const SizedBox(height: 12),
@@ -373,7 +373,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         alignment: Alignment.center,
                         child: TextButton(
                           onPressed: _showForgotPasswordDialog,
-                          child: const Text('Â¿Olvidaste tu contraseÃ±a?', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                          child: const Text('¿Olvidaste tu contraseña?', style: TextStyle(color: Colors.grey, fontSize: 13)),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -400,7 +400,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text("Â¿No tienes cuenta? ", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                          const Text("¿No tienes cuenta? ", style: TextStyle(color: Colors.grey, fontSize: 14)),
                           GestureDetector(
                             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen())),
                             child: Text("Registrarse", style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.bold, fontSize: 14)),
