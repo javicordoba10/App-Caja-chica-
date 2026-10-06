@@ -276,6 +276,24 @@ class _TenantMetricsCard extends ConsumerWidget {
                         children: [
                           Expanded(child: Text(link, style: const TextStyle(color: Colors.black54, fontSize: 12), overflow: TextOverflow.ellipsis)),
                           IconButton(
+                            tooltip: 'Entrar a ${comp.name}',
+                            icon: const Icon(Icons.open_in_new_rounded, size: 20, color: AppTheme.incomeGreen),
+                            onPressed: () {
+                              ref.read(targetCompanyIdProvider.notifier).state = comp.id;
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ProviderScope(
+                                    overrides: [
+                                      targetCompanyIdProvider.overrideWith((ref) => comp.id),
+                                    ],
+                                    child: const MainLayout(),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          IconButton(
                             tooltip: 'Editar Configuración / Logo',
                             icon: const Icon(Icons.edit, size: 20, color: Colors.black54),
                             onPressed: () {

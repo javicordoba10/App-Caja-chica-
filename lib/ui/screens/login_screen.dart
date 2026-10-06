@@ -64,6 +64,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           throw Exception('Tu cuenta ha sido bloqueada por un administrador.');
         }
 
+        // En el proyecto CONCI, la cuenta principal (cajachicaconci@gmail.com) es SuperAdmin
+        if (DefaultFirebaseOptions.web.projectId == 'cajachica-conci' &&
+            user.email.toLowerCase() == 'cajachicaconci@gmail.com') {
+          final fs = FirebaseFirestore.instance;
+          if (user.role != 'superadmin') {
+            await fs.collection('users').doc(user.id).update({'role': 'superadmin'});
+          }
+
+          // Seeder automático de las 3 razones sociales del grupo CONCI
+          final companiesToSeed = [
+            {'id': 'conci_sa', 'name': 'CONCI S.A.'},
+            {'id': 'conci_srl', 'name': 'CONCI S.R.L.'},
+            {'id': 'las_marias', 'name': 'LAS MARÍAS'},
+          ];
+
+          for (final c in companiesToSeed) {
+            final doc = await fs.collection('companies_config').doc(c['id']).get();
+            if (!doc.exists) {
+              await fs.collection('companies_config').doc(c['id']).set({
+                'name': c['name'],
+                'primaryColor': 0xFF212121,
+                'secondaryColor': 0xFFBA4817,
+                'logoUrl': kDefaultConciLogoBase64,
+                'isActive': true,
+                'maxUsers': 50,
+                'allowedEstablishments': ['ADMINISTRACIÓN', 'CAMPO', 'OBRA'],
+              });
+            }
+          }
+
+          if (mounted) {
+            final superUser = user.copyWith(role: 'superadmin');
+            _completeLogin(superUser);
+            return;
+          }
+        }
+
         // Si el usuario es SuperAdmin, acceso global permitido
         if (user.role == 'superadmin') {
           if (mounted) {

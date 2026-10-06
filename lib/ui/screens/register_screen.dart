@@ -27,15 +27,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  String? _selectedCompanyId;
 
   Future<void> _register() async {
     final isDedicatedConci = DefaultFirebaseOptions.web.projectId == 'cajachica-conci';
-    final targetId = ref.read(targetCompanyIdProvider) ?? (isDedicatedConci ? 'conci' : null);
+    final targetId = _selectedCompanyId ?? ref.read(targetCompanyIdProvider) ?? (isDedicatedConci ? 'conci_sa' : null);
 
     if (targetId == null || targetId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Para registrarte debes acceder desde el enlace provisto por tu empresa (ej: ?comp=nombre_empresa).'),
+          content: Text('Para registrarte debes seleccionar o acceder desde el enlace de tu empresa.'),
           backgroundColor: AppTheme.expenseRed,
           duration: Duration(seconds: 5),
         ),
@@ -169,6 +170,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final isConci = DefaultFirebaseOptions.web.projectId == 'cajachica-conci';
     final effectiveLogoUrl = companyConfig?.logoUrl ?? (isConci ? kDefaultConciLogoBase64 : null);
     final effectiveCompanyName = companyConfig?.name ?? (isConci ? 'CONCI' : 'CONTROL DE\nCAJA CHICA');
+    final targetId = ref.watch(targetCompanyIdProvider);
 
     return Scaffold(
       body: Container(
@@ -259,6 +261,64 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance.collection('companies_config').snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return const SizedBox.shrink();
+                          final docs = snapshot.data!.docs.where((d) => d.id != 'conci').toList();
+                          if (docs.isEmpty) return const SizedBox.shrink();
+                          
+                          final currentVal = _selectedCompanyId ?? (docs.any((d) => d.id == targetId) ? targetId : docs.first.id);
+                          if (_selectedCompanyId == null) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted && _selectedCompanyId == null) {
+                                setState(() => _selectedCompanyId = currentVal);
+                              }
+                            });
+                          }
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF4F5F7),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: docs.any((d) => d.id == _selectedCompanyId) ? _selectedCompanyId : currentVal,
+                                    isExpanded: true,
+                                    icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.black54),
+                                    items: docs.map((doc) {
+                                      final data = doc.data() as Map<String, dynamic>;
+                                      final name = data['name'] ?? doc.id;
+                                      return DropdownMenuItem<String>(
+                                        value: doc.id,
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.business_outlined, size: 20, color: Colors.black54),
+                                            const SizedBox(width: 10),
+                                            Text(
+                                              name,
+                                              style: GoogleFonts.montserrat(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                    onChanged: (val) {
+                                      if (val != null) setState(() => _selectedCompanyId = val);
+                                    },
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                          );
+                        },
+                      ),
                       _buildTextField(_nameCtrl, 'Nombre Completo', Icons.person_outline),
                       const SizedBox(height: 16),
                       _buildTextField(_emailCtrl, 'Correo Electrónico', Icons.email_outlined),

@@ -10,6 +10,7 @@ import 'package:petty_cash_app/ui/screens/profile_screen.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:petty_cash_app/ui/widgets/tenant_dialog.dart';
 import 'package:petty_cash_app/ui/widgets/main_layout.dart';
+import 'package:petty_cash_app/firebase_options.dart';
 
 class SuperAdminHomeScreen extends ConsumerStatefulWidget {
   const SuperAdminHomeScreen({super.key});
@@ -37,6 +38,7 @@ class _SuperAdminHomeScreenState extends ConsumerState<SuperAdminHomeScreen>
   @override
   Widget build(BuildContext context) {
     final firestore = ref.watch(firestoreProvider);
+    final isConci = DefaultFirebaseOptions.web.projectId == 'cajachica-conci';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
@@ -53,10 +55,16 @@ class _SuperAdminHomeScreenState extends ConsumerState<SuperAdminHomeScreen>
                 color: AppTheme.primaryOrange,
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: Text('SUPER', style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11)),
+              child: Text(
+                isConci ? 'CONCI' : 'SUPER',
+                style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11),
+              ),
             ),
             const SizedBox(width: 8),
-            Text('Panel SaaS', style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+            Text(
+              isConci ? 'Gestión Corporativa' : 'Panel SaaS',
+              style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+            ),
           ],
         ),
         bottom: TabBar(
