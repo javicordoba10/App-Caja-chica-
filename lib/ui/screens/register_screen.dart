@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
 import '../../providers/app_providers.dart';
+import '../../constants/conci_logo.dart';
+import '../../firebase_options.dart';
 import '../theme/app_theme.dart';
 import '../widgets/company_logo_widget.dart';
 import 'login_screen.dart';
@@ -27,7 +29,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _obscureConfirmPassword = true;
 
   Future<void> _register() async {
-    final targetId = ref.read(targetCompanyIdProvider);
+    final isDedicatedConci = DefaultFirebaseOptions.web.projectId == 'cajachica-conci';
+    final targetId = ref.read(targetCompanyIdProvider) ?? (isDedicatedConci ? 'conci' : null);
+
     if (targetId == null || targetId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -65,11 +69,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     try {
       // Validar que la empresa exista y esté activa
       final compDoc = await FirebaseFirestore.instance.collection('companies_config').doc(targetId).get();
-      if (!compDoc.exists) {
-        throw Exception('El enlace de la empresa "$targetId" no es válido.');
-      }
-      if (compDoc.data()?['isActive'] == false) {
-        throw Exception('El registro para la empresa "$targetId" se encuentra deshabilitado.');
+      if (compDoc.exists) {
+        if (compDoc.data()?['isActive'] == false) {
+          throw Exception('El registro para la empresa "$targetId" se encuentra deshabilitado.');
+        }
+      } else {
+        if (!isDedicatedConci && targetId != 'conci') {
+          throw Exception('El enlace de la empresa "$targetId" no es válido.');
+        }
       }
 
       final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -80,7 +87,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       final firebaseUser = credential.user;
       if (firebaseUser == null) throw Exception('No se pudo crear el usuario.');
 
+      // Si es el proyecto dedicado CONCI y no existía el documento en Firestore, crearlo automáticamente
+      if (!compDoc.exists && (targetId == 'conci' || isDedicatedConci)) {
+        await FirebaseFirestore.instance.collection('companies_config').doc('conci').set({
+          'name': 'CONCI',
+          'primaryColor': 0xFF212121,
+          'secondaryColor': 0xFFBA4817,
+          'logoUrl': kDefaultConciLogoBase64,
+          'isActive': true,
+          'maxUsers': 50,
+          'allowedEstablishments': ['ADMINISTRACIÓN', 'CAMPO', 'OBRA'],
+        });
+      }
+
       await firebaseUser.sendEmailVerification();
+
+      // Detectar rol: si es el primer usuario o la cuenta de la empresa, asignar rol 'admin'
+      final existingUsers = await FirebaseFirestore.instance
+          .collection('users')
+          .where('companyId', isEqualTo: targetId)
+          .limit(1)
+          .get();
+      final isFirstUser = existingUsers.docs.isEmpty;
+      final role = (isFirstUser || _emailCtrl.text.trim().toLowerCase().contains('conci')) ? 'admin' : 'user';
 
       final userRepo = ref.read(userRepositoryProvider);
       final newUser = UserModel(
@@ -89,8 +118,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         email: _emailCtrl.text.trim(),
         balances: {'Efectivo': 0.0, 'Tarjeta / Débito': 0.0},
         paymentMethods: const ['Efectivo', 'Tarjeta / Débito'],
-        establishments: const ['ADMINISTRACIÓN'],
-        role: 'user',
+        establishments: const ['ADMINISTRACIÓN', 'CAMPO', 'OBRA'],
+        role: role,
         companyId: targetId,
       );
       
@@ -137,6 +166,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final companyConfig = ref.watch(companyConfigProvider).value;
+    final isConci = DefaultFirebaseOptions.web.projectId == 'cajachica-conci';
+    final effectiveLogoUrl = companyConfig?.logoUrl ?? (isConci ? kDefaultConciLogoBase64 : null);
+    final effectiveCompanyName = companyConfig?.name ?? (isConci ? 'CONCI' : 'CONTROL DE\nCAJA CHICA');
 
     return Scaffold(
       body: Container(
@@ -151,22 +183,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (companyConfig?.logoUrl != null && companyConfig!.logoUrl!.trim().isNotEmpty) ...[
+                      if (effectiveLogoUrl != null && effectiveLogoUrl.trim().isNotEmpty) ...[
                         Container(
                           height: 90,
                           width: 90,
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
                           ),
-                          child: CompanyLogoWidget(
-                            logoUrl: companyConfig!.logoUrl,
-                            height: 74,
-                            width: 74,
-                            borderRadius: 14,
-                            fallbackIconSize: 45,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: CompanyLogoWidget(
+                              logoUrl: effectiveLogoUrl,
+                              height: 78,
+                              width: 78,
+                              borderRadius: 14,
+                              fallbackIconSize: 45,
+                            ),
                           ),
                         ),
                       ] else if (companyConfig != null) ...[
@@ -191,7 +226,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ],
                       const SizedBox(height: 16),
                       Text(
-                        (companyConfig?.name ?? 'REGISTRO DE\nUSUARIO').toUpperCase(),
+                        effectiveCompanyName.toUpperCase(),
                         textAlign: TextAlign.center,
                         style: GoogleFonts.montserrat(
                           color: Colors.white,
@@ -270,13 +305,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       const SizedBox(height: 30),
                       Column(
                         children: [
-                          if (companyConfig != null) ...[
-                             Text('SISTEMA GESTIONADO POR', style: GoogleFonts.montserrat(color: Colors.black45, fontSize: 11, letterSpacing: 2)),
-                             Text(companyConfig.name.toUpperCase(), textAlign: TextAlign.center, style: GoogleFonts.montserrat(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-                          ] else ...[
-                             Text('PLATAFORMA MULTI-EMPRESA', style: GoogleFonts.montserrat(color: Colors.black45, fontSize: 11, letterSpacing: 2)),
-                             Text('PETTY CASH SAAS', style: GoogleFonts.montserrat(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-                          ]
+                          Text('PETTY CASH SAAS', style: GoogleFonts.montserrat(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                          const SizedBox(height: 4),
+                          Text('Desarrollado por Javier Córdoba', textAlign: TextAlign.center, style: GoogleFonts.montserrat(color: Colors.black45, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.0)),
                         ],
                       ),
                     ],
