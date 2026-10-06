@@ -183,6 +183,17 @@ class AppDrawer extends ConsumerWidget {
                     letterSpacing: 1.2,
                   ),
                 ),
+                const SizedBox(height: 4),
+                Text(
+                  'Desarrollado por Javier Córdoba',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.montserrat(
+                    color: Colors.black38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.5,
+                  ),
+                ),
               ],
             ),
           ),

@@ -203,7 +203,7 @@ class _SuperAdminDrawer extends ConsumerWidget {
           // Footer
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Text('Sistema de Gestión SaaS', style: TextStyle(color: Colors.grey[400], fontSize: 11)),
+            child: Text('Sistema de Gestión SaaS\nDesarrollado por Javier Córdoba', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[400], fontSize: 11)),
           ),
         ],
       ),
