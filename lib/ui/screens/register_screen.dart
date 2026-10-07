@@ -32,12 +32,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _register() async {
     final isDedicatedConci = DefaultFirebaseOptions.web.projectId == 'cajachica-conci';
-    final targetId = _selectedCompanyId ?? ref.read(targetCompanyIdProvider) ?? (isDedicatedConci ? 'conci_sa' : null);
+    final targetId = _selectedCompanyId ?? ref.read(targetCompanyIdProvider);
 
     if (targetId == null || targetId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Para registrarte debes seleccionar o acceder desde el enlace de tu empresa.'),
+          content: Text('Por favor seleccioná a qué empresa pertenecés en el menú desplegable.'),
           backgroundColor: AppTheme.expenseRed,
           duration: Duration(seconds: 5),
         ),
@@ -267,12 +267,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           final docs = snapshot.data!.docs.where((d) => d.id != 'conci').toList();
                           if (docs.isEmpty) return const SizedBox.shrink();
                           
-                          final currentVal = _selectedCompanyId ?? (docs.any((d) => d.id == targetId) ? targetId : docs.first.id);
-                          if (_selectedCompanyId == null) {
+                          final isTargetValid = targetId != null && docs.any((d) => d.id == targetId);
+                          if (_selectedCompanyId == null && isTargetValid) {
                             WidgetsBinding.instance.addPostFrameCallback((_) {
                               if (mounted && _selectedCompanyId == null) {
-                                setState(() => _selectedCompanyId = currentVal);
-                                ref.read(targetCompanyIdProvider.notifier).state = currentVal;
+                                setState(() => _selectedCompanyId = targetId);
                               }
                             });
                           }
@@ -285,10 +284,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFF4F5F7),
                                   borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: _selectedCompanyId == null ? AppTheme.primaryOrange.withOpacity(0.5) : Colors.black12,
+                                    width: 1.2,
+                                  ),
                                 ),
                                 child: DropdownButtonHideUnderline(
                                   child: DropdownButton<String>(
-                                    value: docs.any((d) => d.id == _selectedCompanyId) ? _selectedCompanyId : currentVal,
+                                    value: _selectedCompanyId,
+                                    hint: Row(
+                                      children: [
+                                        const Icon(Icons.business_outlined, size: 20, color: AppTheme.primaryOrange),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          'Elegí tu empresa...',
+                                          style: GoogleFonts.montserrat(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black54,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                     isExpanded: true,
                                     icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.black54),
                                     items: docs.map((doc) {

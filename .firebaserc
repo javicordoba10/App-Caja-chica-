@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "pettycashapp-80f5e"
+    "default": "pettycashapp-80f5e",
+    "conci": "cajachica-conci"
   }
 }

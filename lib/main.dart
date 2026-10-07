@@ -54,12 +54,10 @@ void main() async {
   _ensureConciCompaniesSeeded();
 
   var initialCompId = PlatformService.getUriParameter('comp');
-  if ((initialCompId == null || initialCompId.isEmpty) &&
-      DefaultFirebaseOptions.web.projectId == 'cajachica-conci') {
-    initialCompId = 'conci_sa';
-  }
-  if (initialCompId != null) {
+  if (initialCompId != null && initialCompId.isNotEmpty) {
     debugPrint('TENANT ID CAPTURADO: $initialCompId');
+  } else {
+    initialCompId = null;
   }
 
   runApp(

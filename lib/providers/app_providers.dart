@@ -110,7 +110,10 @@ final movementsProvider = StreamProvider<List<MovementModel>>((ref) {
 
   final currentUser = ref.watch(currentUserProvider).value;
   final role = currentUser?.role ?? 'user';
-  final companyId = currentUser?.companyId ?? '';
+  final targetCompId = ref.watch(targetCompanyIdProvider);
+  final companyId = (currentUser?.role == 'superadmin' && targetCompId != null && targetCompId.isNotEmpty)
+      ? targetCompId
+      : (currentUser?.companyId ?? '');
   final viewAll = ref.watch(adminViewAllProvider);
   
   final movementRepository = ref.watch(movementRepositoryProvider);
@@ -136,7 +139,10 @@ final allRechargeRequestsProvider = StreamProvider<List<RechargeRequestModel>>((
   final user = ref.watch(currentUserProvider).value;
   if (user == null || user.role == 'user') return Stream.value([]);
   
-  final effectiveCompanyId = user.companyId;
+  final targetCompId = ref.watch(targetCompanyIdProvider);
+  final effectiveCompanyId = (user.role == 'superadmin' && targetCompId != null && targetCompId.isNotEmpty)
+      ? targetCompId
+      : user.companyId;
   final repo = ref.read(rechargeRepositoryProvider);
   return repo.getCompanyRechargeRequests(effectiveCompanyId).map((list) {
     list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -152,7 +158,10 @@ final adminSelectedUserIdProvider = StateProvider<String?>((ref) => null);
 final selectedUserMovementsProvider = StreamProvider.family<List<MovementModel>, String>((ref, userId) {
   final movementRepository = ref.watch(movementRepositoryProvider);
   final currentUser = ref.watch(currentUserProvider).value;
-  final companyId = currentUser?.companyId ?? '';
+  final targetCompId = ref.watch(targetCompanyIdProvider);
+  final companyId = (currentUser?.role == 'superadmin' && targetCompId != null && targetCompId.isNotEmpty)
+      ? targetCompId
+      : (currentUser?.companyId ?? '');
 
   return movementRepository.getMovements(userId, 'user', companyId); 
 });
@@ -164,8 +173,12 @@ final allUsersProvider = StreamProvider<List<UserModel>>((ref) {
     return const Stream.empty();
   }
   
+  final targetCompId = ref.watch(targetCompanyIdProvider);
+  final effectiveCompanyId = (user.role == 'superadmin' && targetCompId != null && targetCompId.isNotEmpty)
+      ? targetCompId
+      : user.companyId;
   final userRepository = ref.watch(userRepositoryProvider);
-  return userRepository.streamAllUsers(user.role, user.companyId);
+  return userRepository.streamAllUsers(user.role, effectiveCompanyId);
 });
 
 // Provides the sum of balances of ALL users (Consolidated Corporate Balance)
@@ -187,10 +200,12 @@ final companyConfigProvider = StreamProvider<CompanyConfigModel?>((ref) {
   final user = ref.watch(currentUserProvider).value;
   final targetId = ref.watch(targetCompanyIdProvider);
   
-  // Priority: Logged In User (if not superadmin) > URL Param (?comp=)
-  final companyId = (user != null && user.role != 'superadmin' && user.companyId.isNotEmpty)
-      ? user.companyId
-      : targetId;
+  // Priority: If superadmin inspecting, targetId takes priority; otherwise user's company > URL param
+  final companyId = (user != null && user.role == 'superadmin' && targetId != null && targetId.isNotEmpty)
+      ? targetId
+      : ((user != null && user.companyId.isNotEmpty)
+          ? user.companyId
+          : targetId);
       
   final firestore = ref.watch(firestoreProvider);
 
@@ -208,12 +223,7 @@ final companyConfigProvider = StreamProvider<CompanyConfigModel?>((ref) {
 
   if (companyId == null || companyId.isEmpty) {
     if (isConci) {
-      return firestore.collection('companies_config').snapshots().map((snap) {
-        if (snap.docs.isNotEmpty) {
-          return CompanyConfigModel.fromMap(snap.docs.first.data(), snap.docs.first.id);
-        }
-        return defaultConci;
-      });
+      return Stream.value(defaultConci);
     }
     return Stream.value(null);
   }

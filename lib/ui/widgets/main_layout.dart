@@ -10,6 +10,8 @@ import 'package:petty_cash_app/ui/screens/users_screen.dart';
 import 'package:petty_cash_app/ui/screens/superadmin_screen.dart';
 import 'package:petty_cash_app/ui/screens/admin_recharges_screen.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:petty_cash_app/ui/screens/superadmin_home_screen.dart';
 import 'package:petty_cash_app/ui/widgets/company_logo_widget.dart';
 
 // State for navigation
@@ -84,6 +86,70 @@ class MainLayout extends ConsumerWidget {
                   onPressed: () => scaffoldKey.currentState?.openDrawer(),
                 ),
           actions: [
+            if (currentUser?.role == 'superadmin')
+              Padding(
+                padding: const EdgeInsets.only(right: 6.0),
+                child: Center(
+                  child: PopupMenuButton<String>(
+                    tooltip: 'Auditoría: Cambiar Empresa',
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: AppTheme.pureBlack,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppTheme.primaryOrange, width: 1.2),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.verified_user_outlined, size: 14, color: AppTheme.primaryOrange),
+                          const SizedBox(width: 5),
+                          Text(
+                            companyConfig?.name ?? 'CONCI',
+                            style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                          ),
+                          const SizedBox(width: 3),
+                          const Icon(Icons.arrow_drop_down, color: Colors.white70, size: 16),
+                        ],
+                      ),
+                    ),
+                    onSelected: (selectedId) {
+                      if (selectedId == 'saas_console') {
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (_) => const SuperAdminHomeScreen()),
+                          (route) => false,
+                        );
+                      } else {
+                        ref.read(targetCompanyIdProvider.notifier).state = selectedId;
+                      }
+                    },
+                    itemBuilder: (ctx) => [
+                      const PopupMenuItem(
+                        enabled: false,
+                        child: Text(
+                          'AUDITAR SUB-EMPRESA',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey),
+                        ),
+                      ),
+                      const PopupMenuItem(value: 'conci_sa', child: Text('🏢 CONCI S.A.')),
+                      const PopupMenuItem(value: 'conci_srl', child: Text('🏢 CONCI S.R.L.')),
+                      const PopupMenuItem(value: 'las_marias', child: Text('🏢 LAS MARÍAS')),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(
+                        value: 'saas_console',
+                        child: Row(
+                          children: [
+                            Icon(Icons.dashboard_customize_rounded, size: 16, color: AppTheme.primaryOrange),
+                            SizedBox(width: 8),
+                            Text('⚡ Panel Global SaaS', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             if (Navigator.canPop(context))
               IconButton(
                 icon: const Icon(Icons.menu, color: AppTheme.pureBlack),
