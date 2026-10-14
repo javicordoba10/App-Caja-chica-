@@ -125,8 +125,7 @@ class _HomeRouter extends ConsumerWidget {
           return userAsync.when(
             data: (user) {
               if (user == null) {
-                FirebaseAuth.instance.signOut();
-                return const LoginScreen();
+                return const SplashScreen();
               }
 
               // 1. SuperAdmin: Acceso global a su consola SaaS

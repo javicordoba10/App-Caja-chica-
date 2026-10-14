@@ -80,19 +80,11 @@ Future<void> performLogout(dynamic ref, [BuildContext? context]) async {
 
 // Streams the current user's profile and live balance
 final currentUserProvider = StreamProvider<UserModel?>((ref) async* {
-  final userId = ref.watch(currentUserIdProvider);
+  final userId = ref.watch(currentUserIdProvider) ?? FirebaseAuth.instance.currentUser?.uid;
   if (userId == null) { yield null; return; }
   
   final userRepository = ref.watch(userRepositoryProvider);
   await for (final user in userRepository.streamUser(userId)) {
-    if (user != null) {
-      final targetId = ref.read(targetCompanyIdProvider);
-      if (targetId != null && user.companyId != targetId && user.role != 'superadmin') {
-         FirebaseAuth.instance.signOut();
-         yield null;
-         return;
-      }
-    }
     yield user;
   }
 });
@@ -105,7 +97,7 @@ final adminViewAllProvider = StateProvider<bool>((ref) => true);
 
 // Streams the current user's movements (or ALL movements if admin and toggle is true)
 final movementsProvider = StreamProvider<List<MovementModel>>((ref) {
-  final userId = ref.watch(currentUserIdProvider);
+  final userId = ref.watch(currentUserIdProvider) ?? FirebaseAuth.instance.currentUser?.uid;
   if (userId == null) return const Stream.empty();
 
   final currentUser = ref.watch(currentUserProvider).value;
@@ -124,7 +116,7 @@ final movementsProvider = StreamProvider<List<MovementModel>>((ref) {
 
 // Streams the current user's active recharge requests
 final userRechargeRequestsProvider = StreamProvider<List<RechargeRequestModel>>((ref) {
-  final userId = ref.watch(currentUserIdProvider);
+  final userId = ref.watch(currentUserIdProvider) ?? FirebaseAuth.instance.currentUser?.uid;
   if (userId == null) return Stream.value([]);
   
   final repo = ref.read(rechargeRepositoryProvider);
