@@ -43,7 +43,7 @@ class MovementModel {
     this.userName,
     this.userEmail,
     this.category,
-    this.companyId = 'alm_agro',
+    this.companyId = '',
     this.otherTaxes = 0.0,
     this.otherTaxesDetails,
   });
@@ -95,7 +95,7 @@ class MovementModel {
       category: map['category'] != null 
           ? MovementCategory.values.firstWhere((e) => e.name == map['category'], orElse: () => MovementCategory.otros)
           : null,
-      companyId: map['companyId'] ?? 'alm_agro',
+      companyId: map['companyId'] ?? '',
       otherTaxes: (map['otherTaxes'] ?? 0.0).toDouble(),
       otherTaxesDetails: map['otherTaxesDetails'] != null
           ? (map['otherTaxesDetails'] as List<dynamic>).map((e) => Map<String, dynamic>.from(e as Map)).toList()

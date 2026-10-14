@@ -55,7 +55,7 @@ class _RechargeRequestFormState extends ConsumerState<RechargeRequestForm> {
     final request = RechargeRequestModel(
       id: const Uuid().v4(),
       userId: user.id,
-      companyId: user.companyId ?? 'alm_agro',
+      companyId: user.companyId,
       userName: user.name,
       amount: amount,
       paymentMethod: _selectedPayment,

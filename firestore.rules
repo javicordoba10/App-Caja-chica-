@@ -22,11 +22,28 @@ service cloud.firestore {
         isSuperAdmin() ||
         (resource != null && isAdminOf(resource.data.companyId))
       );
-      allow write: if request.auth != null && (
-        request.auth.uid == userId || 
+      
+      // Creación de usuario (registro): no permite auto-asignarse superadmin
+      allow create: if request.auth != null && (
+        (request.auth.uid == userId && request.resource.data.get('role', 'user') != 'superadmin') ||
+        isSuperAdmin() ||
+        isAdminOf(request.resource.data.companyId)
+      );
+      
+      // Actualización de usuario: usuarios comunes no pueden auto-escalarse a superadmin ni cambiarse de empresa
+      allow update: if request.auth != null && (
         isSuperAdmin() ||
         (resource != null && isAdminOf(resource.data.companyId)) ||
-        (resource == null && isAdminOf(request.resource.data.companyId))
+        (request.auth.uid == userId && 
+         request.resource.data.get('role', '') == resource.data.get('role', '') &&
+         request.resource.data.get('companyId', '') == resource.data.get('companyId', ''))
+      );
+      
+      // Eliminación (Derecho al olvido / baja de cuenta)
+      allow delete: if request.auth != null && (
+        request.auth.uid == userId ||
+        isSuperAdmin() ||
+        (resource != null && isAdminOf(resource.data.companyId))
       );
     }
     
@@ -57,10 +74,14 @@ service cloud.firestore {
       );
     }
 
-    // Company Config - Public Read
+    // Company Config - Lectura pública para login/onboarding, escritura segura
     match /companies_config/{companyId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if request.auth != null && (
+        isSuperAdmin() || 
+        isAdminOf(companyId) ||
+        !exists(/databases/$(database)/documents/companies_config/$(companyId))
+      );
     }
   }
 }

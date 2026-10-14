@@ -452,8 +452,9 @@ class _TenantMetricsCard extends ConsumerWidget {
       // 3. Borrar usuarios de esta empresa
       final users = await firestore.collection('users').where('companyId', isEqualTo: comp.id).get();
       for (var d in users.docs) {
+        final role = (d.data()['role'] ?? '').toString().toLowerCase().trim();
         final email = (d.data()['email'] ?? '').toString().toLowerCase().trim();
-        if (email != 'javicordoba10@gmail.com') {
+        if (role != 'superadmin' && email != 'javicordoba10@gmail.com') {
           await d.reference.delete();
         }
       }

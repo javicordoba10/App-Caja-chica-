@@ -6,6 +6,7 @@ import 'package:petty_cash_app/models/user_model.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'legal_terms_screen.dart';
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
@@ -156,11 +157,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: TextButton.icon(
+                          onPressed: () => LegalTermsScreen.showLegalDialog(context),
+                          icon: const Icon(Icons.shield_outlined, size: 18, color: AppTheme.textGrey),
+                          label: Text(
+                            'Términos del Servicio y Privacidad',
+                            style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontWeight: FontWeight.w600, fontSize: 13),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: TextButton.icon(
                           onPressed: () async {
                             await performLogout(ref, context);
                           },
                           icon: const Icon(Icons.logout, size: 18, color: AppTheme.expenseRed),
                           label: const Text('CERRAR SESIÓN', style: TextStyle(color: AppTheme.expenseRed, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: TextButton.icon(
+                          onPressed: () => _confirmDeleteAccount(user!),
+                          icon: const Icon(Icons.delete_forever_outlined, size: 16, color: Colors.grey),
+                          label: Text(
+                            'Eliminar mi cuenta / Solicitar baja',
+                            style: GoogleFonts.montserrat(color: Colors.grey, fontSize: 11.5, decoration: TextDecoration.underline),
+                          ),
                         ),
                       ),
                     ],
@@ -186,27 +211,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             shape: BoxShape.circle,
             border: Border.all(color: AppTheme.primaryOrange, width: 2),
           ),
-          child: GestureDetector(
-            onLongPress: () async {
-              if (user != null && user.role != 'superadmin') {
-                await FirebaseFirestore.instance.collection('users').doc(user.id).update({'role': 'superadmin'});
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('¡Modo SuperAdmin Activado! Refresca la app (Ctrl+F5) para ver la Consola SaaS.'), backgroundColor: AppTheme.incomeGreen),
-                  );
-                }
-              }
-            },
-            child: CircleAvatar(
-              radius: 50,
-              backgroundColor: AppTheme.pureBlack,
-              child: Text(
-                initials,
-                style: GoogleFonts.montserrat(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                ),
+          child: CircleAvatar(
+            radius: 50,
+            backgroundColor: AppTheme.pureBlack,
+            child: Text(
+              initials,
+              style: GoogleFonts.montserrat(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
@@ -396,5 +409,61 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         );
       }
     }
+  }
+
+  void _confirmDeleteAccount(UserModel user) {
+    if (user.role == 'superadmin') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por seguridad, la cuenta SuperAdmin no puede ser eliminada desde la aplicación.'),
+          backgroundColor: AppTheme.expenseRed,
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          '¿Solicitar baja de cuenta?',
+          style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        content: Text(
+          'En cumplimiento de las políticas de privacidad y protección de datos (Ley 25.326 y normativas de tiendas de aplicaciones), tu cuenta será desactivada y desvinculada de la organización.\n\n¿Estás seguro de que deseas proceder?',
+          style: GoogleFonts.montserrat(fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('CANCELAR', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                await ref.read(userRepositoryProvider).updateUserStatus(user.id, false);
+                try {
+                  await FirebaseAuth.instance.currentUser?.delete();
+                } catch (_) {
+                  // Fallback si requiere reautenticación
+                }
+                if (mounted) {
+                  await performLogout(ref, context);
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error al procesar la baja: $e'), backgroundColor: AppTheme.expenseRed),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.expenseRed),
+            child: const Text('CONFIRMAR BAJA', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 }

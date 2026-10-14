@@ -393,7 +393,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
       userName:      currentUser?.name,
       userEmail:     currentUser?.email,
       category:      _selectedCategory,
-      companyId:     currentUser?.companyId ?? 'alm_agro',
+      companyId:     (widget.existingMovement?.companyId.isNotEmpty == true) ? widget.existingMovement!.companyId : (currentUser?.companyId ?? ''),
       otherTaxes:    totalOtherTaxes,
       otherTaxesDetails: taxDetails.isNotEmpty ? taxDetails : null,
     );
@@ -448,30 +448,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
     );
   }
 
-  void _startBackgroundUpload(String uid, String mid, Uint8List? bytes, String imagePath, bool isPdf, MovementRepository repo) async {
-    try {
-      final ext = isPdf ? 'pdf' : 'jpg';
-      final refStorage = FirebaseStorage.instance.ref().child('receipts/$uid/$mid.$ext');
-      final meta = SettableMetadata(contentType: isPdf ? 'application/pdf' : 'image/jpeg');
-      
-      TaskSnapshot snapshot;
-      if (!kIsWeb && imagePath.isNotEmpty && !imagePath.startsWith('http') && io.File(imagePath).existsSync()) {
-        snapshot = await refStorage.putFile(io.File(imagePath), meta);
-      } else if (bytes != null && bytes.isNotEmpty) {
-        snapshot = await refStorage.putData(bytes, meta);
-      } else {
-        return;
-      }
 
-      final url = await snapshot.ref.getDownloadURL();
-      await repo.updateImageUrl(mid, url);
-      debugPrint('>>> Subida en segundo plano exitosa: $mid -> $url');
-    } catch (e) {
-      debugPrint('>>> ERROR en subida silenciosa ($mid): $e');
-    }
-  }
-
-  // Eliminamos _uploadInBackground ya que ahora es síncrono
 
   // ── date picker ──────────────────────────────────────────────────────
   Future<void> _pickDate() async {
@@ -634,6 +611,20 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
 
                         // ── Gradient Save Button ──────────────────────────────
                         _saveButton(),
+                        if (widget.existingMovement != null && !widget.isReadOnly) ...[
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: TextButton.icon(
+                              onPressed: _isLoading ? null : _confirmDeleteMovement,
+                              icon: const Icon(Icons.delete_forever, color: AppTheme.expenseRed, size: 20),
+                              label: Text(
+                                'ELIMINAR MOVIMIENTO',
+                                style: GoogleFonts.montserrat(color: AppTheme.expenseRed, fontWeight: FontWeight.w700, fontSize: 13),
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 40),
                       ],
                     ),
@@ -682,6 +673,14 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
         icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
         onPressed: () => Navigator.pop(context),
       ),
+      actions: [
+        if (widget.existingMovement != null && !widget.isReadOnly)
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.white),
+            tooltip: 'Eliminar movimiento',
+            onPressed: _confirmDeleteMovement,
+          ),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: BoxDecoration(
@@ -1165,6 +1164,58 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                   style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.w800, letterSpacing: 1.2, fontSize: 14),
                 ),
         ),
+      ),
+    );
+  }
+
+  void _confirmDeleteMovement() {
+    final movement = widget.existingMovement;
+    if (movement == null) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('¿Eliminar movimiento?', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+        content: Text(
+          'Esta acción borrará el comprobante y revertirá el saldo de \$ ${movement.grossAmount.toStringAsFixed(2)} en el método "${movement.paymentMethod}". ¿Estás seguro?',
+          style: GoogleFonts.montserrat(fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('CANCELAR', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              setState(() {
+                _isLoading = true;
+                _loadingMessage = 'Eliminando movimiento...';
+              });
+              try {
+                await ref.read(userRepositoryProvider).deleteMovementWithBalanceUpdate(movement);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Movimiento eliminado y saldo recalculado ✓'), backgroundColor: AppTheme.incomeGreen),
+                  );
+                  Navigator.of(context).pop();
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error al eliminar: $e'), backgroundColor: AppTheme.expenseRed),
+                  );
+                }
+              } finally {
+                if (mounted) {
+                  setState(() => _isLoading = false);
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.expenseRed),
+            child: const Text('ELIMINAR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }

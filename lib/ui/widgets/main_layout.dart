@@ -31,7 +31,7 @@ class MainLayout extends ConsumerWidget {
     // Pantalla neutra si el usuario normal no tiene empresa asignada
     final hasNoCompany = companyConfig == null && currentUser != null
         && currentUser.role != 'superadmin'
-        && (currentUser.companyId == null || currentUser.companyId!.isEmpty);
+        && currentUser.companyId.isEmpty;
 
     if (hasNoCompany) {
       return Scaffold(
@@ -171,7 +171,7 @@ class MainLayout extends ConsumerWidget {
                       boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
                     ),
                     child: CompanyLogoWidget(
-                      logoUrl: companyConfig!.logoUrl,
+                      logoUrl: companyConfig.logoUrl,
                       height: 28,
                       width: 28,
                     ),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
 import 'package:petty_cash_app/ui/widgets/company_logo_widget.dart';
+import 'package:petty_cash_app/ui/screens/legal_terms_screen.dart';
 
 class AppDrawer extends ConsumerWidget {
   final String currentRoute;
@@ -63,7 +64,7 @@ class AppDrawer extends ConsumerWidget {
                             boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6)],
                           ),
                           child: CompanyLogoWidget(
-                            logoUrl: companyConfig!.logoUrl,
+                            logoUrl: companyConfig.logoUrl,
                             height: 38,
                             width: 38,
                           ),
@@ -80,7 +81,7 @@ class AppDrawer extends ConsumerWidget {
                     ),
                   ),
                   Text(
-                    '${(user?.jobRole ?? 'Sin Rol').toUpperCase()} (${companyConfig?.name ?? 'ALM'})',
+                    '${(user?.jobRole ?? 'Sin Rol').toUpperCase()} (${companyConfig?.name ?? 'EMPRESA'})',
                     style: GoogleFonts.montserrat(
                       color: Colors.white60,
                       fontSize: 11,
@@ -161,6 +162,16 @@ class AppDrawer extends ConsumerWidget {
 
           const Divider(height: 24, thickness: 1),
 
+          _DrawerItem(
+            icon: Icons.shield_outlined,
+            label: 'Términos y Privacidad',
+            isSelected: false,
+            onTap: () {
+              Navigator.pop(context);
+              LegalTermsScreen.showLegalDialog(context);
+            },
+          ),
+
           // Botón Cerrar Sesión universal
           _DrawerItem(
             icon: Icons.logout_rounded,
@@ -182,7 +193,7 @@ class AppDrawer extends ConsumerWidget {
               children: [
                 if (companyConfig?.logoUrl != null && companyConfig!.logoUrl!.trim().isNotEmpty) ...[
                   CompanyLogoWidget(
-                    logoUrl: companyConfig!.logoUrl,
+                    logoUrl: companyConfig.logoUrl,
                     height: 44,
                   ),
                   const SizedBox(height: 10),

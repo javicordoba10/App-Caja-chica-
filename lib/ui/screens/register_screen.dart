@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 import '../widgets/company_logo_widget.dart';
 import 'login_screen.dart';
 import 'unverified_email_screen.dart';
+import 'legal_terms_screen.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -350,7 +351,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       _buildTextField(_confirmPassCtrl, 'Confirmar Contraseña', Icons.lock_reset_outlined, 
                         obscure: _obscureConfirmPassword, isPassword: true, 
                         onToggle: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword)),
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text('Al crear tu cuenta, aceptas los ', style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11)),
+                          GestureDetector(
+                            onTap: () => LegalTermsScreen.showLegalDialog(context, initialTab: 0),
+                            child: Text('Términos', style: GoogleFonts.montserrat(color: theme.primaryColor, fontSize: 11, fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
+                          ),
+                          Text(' y la ', style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11)),
+                          GestureDetector(
+                            onTap: () => LegalTermsScreen.showLegalDialog(context, initialTab: 1),
+                            child: Text('Privacidad', style: GoogleFonts.montserrat(color: theme.primaryColor, fontSize: 11, fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
                       Container(
                         width: double.infinity,
                         height: 55,

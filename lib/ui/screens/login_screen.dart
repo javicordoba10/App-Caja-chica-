@@ -13,6 +13,7 @@ import '../widgets/main_layout.dart';
 import '../widgets/company_logo_widget.dart';
 import 'register_screen.dart';
 import 'superadmin_home_screen.dart';
+import 'legal_terms_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -442,7 +443,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 20),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text('Al ingresar, aceptas los ', style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11)),
+                          GestureDetector(
+                            onTap: () => LegalTermsScreen.showLegalDialog(context, initialTab: 0),
+                            child: Text('Términos', style: GoogleFonts.montserrat(color: theme.primaryColor, fontSize: 11, fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
+                          ),
+                          Text(' y ', style: GoogleFonts.montserrat(color: AppTheme.textGrey, fontSize: 11)),
+                          GestureDetector(
+                            onTap: () => LegalTermsScreen.showLegalDialog(context, initialTab: 1),
+                            child: Text('Privacidad', style: GoogleFonts.montserrat(color: theme.primaryColor, fontSize: 11, fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
                       Column(
                         children: [
                           Text('PETTY CASH SAAS', style: GoogleFonts.montserrat(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5)),

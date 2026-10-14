@@ -23,7 +23,7 @@ class UserModel {
     this.jobRole = 'Sin Rol',
     this.establishments = const ['ADMINISTRACIÓN'],
     this.isActive = true,
-    this.companyId = 'alm_agro',
+    this.companyId = '',
   });
 
   UserModel copyWith({
@@ -133,7 +133,7 @@ class UserModel {
       jobRole: map['jobRole'] ?? 'Sin Rol',
       isActive: map['isActive'] ?? true,
       establishments: establishmentsList,
-      companyId: map['companyId'] ?? 'alm_agro',
+      companyId: map['companyId'] ?? '',
     );
   }
 }

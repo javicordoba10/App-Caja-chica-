@@ -1,43 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Petty Cash SaaS v30.5 - Marca Blanca">
+  <meta name="description" content="Sistema de Gestión y Rendición de Fondos Fijos (Caja Chica)">
   <meta name="app-version" content="v30.5-ULTRA">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="petty_cash_app">
+  <meta name="apple-mobile-web-app-title" content="Caja Chica">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>Petty Cash SaaS v30.5</title>
+  <title>Caja Chica - Gestión y Rendición de Gastos</title>
   <link rel="manifest" href="manifest.json">
-  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@2.12.313/build/pdf.js"></script>
-  <script type="text/javascript">
-    window.PDFJS = pdfjsLib;
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@2.12.313/build/pdf.worker.js";
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  
+  <!-- Carga diferida de librerías secundarias para máxima velocidad de inicio -->
+  <script defer src="https://cdn.jsdelivr.net/npm/pdfjs-dist@2.12.313/build/pdf.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script type="text/javascript">
     async function performWebOCR(base64Data, isPdf) {
       try {
@@ -45,6 +30,10 @@
         
         if (isPdf) {
           try {
+            if (typeof pdfjsLib !== 'undefined') {
+              window.PDFJS = pdfjsLib;
+              pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@2.12.313/build/pdf.worker.js";
+            }
             const res = await fetch('data:application/pdf;base64,' + base64Data);
             const blob = await res.blob();
             const arrayBuffer = await blob.arrayBuffer();
@@ -71,16 +60,13 @@
         try {
           console.log('Starting Tesseract.js worker...');
           const worker = await Tesseract.createWorker('spa');
-          // No need for loadLanguage/initialize in newer v5 if created with 'spa', 
-          // but logging the progress is helpful.
-          
           const result = await worker.recognize(imageDataUrl);
           console.log('Tesseract.js OCR complete.');
           await worker.terminate();
           
           if (!result || !result.data || !result.data.text) {
              console.error('OCR returned no text.');
-             return '[OCR EMPTY ERROR] No se detectó texto en el documento (v12).';
+             return '[OCR EMPTY ERROR] No se detectó texto en el documento.';
           }
           return result.data.text;
         } catch (tessErr) {
@@ -93,20 +79,67 @@
       }
     }
   </script>
+  <style>
+    #cookie-consent-banner {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(24, 24, 27, 0.94);
+      backdrop-filter: blur(8px);
+      color: #f4f4f5;
+      padding: 12px 20px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      z-index: 99999;
+      max-width: 90%;
+      width: 640px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-sizing: border-box;
+    }
+    #cookie-consent-banner button {
+      background: #e65100;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+    #cookie-consent-banner button:hover {
+      background: #f57c00;
+    }
+  </style>
 </head>
 <body>
+  <div id="cookie-consent-banner" style="display: none;">
+    <span>Utilizamos almacenamiento local y cookies técnicas estrictamente necesarias para el inicio de sesión y la operatividad contable, garantizando la privacidad de tus datos.</span>
+    <button onclick="acceptCookieConsent()">Entendido</button>
+  </div>
   <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.getRegistrations().then((registrations) => {
-          for (let registration of registrations) {
-            registration.unregister();
-            console.log('ServiceWorker aniquilado para Cache Busting.');
-          }
-        });
-      });
+    function checkCookieConsent() {
+      try {
+        if (!localStorage.getItem('petty_cash_cookie_consent')) {
+          document.getElementById('cookie-consent-banner').style.display = 'flex';
+        }
+      } catch (e) {}
     }
+    function acceptCookieConsent() {
+      try {
+        localStorage.setItem('petty_cash_cookie_consent', 'true');
+        document.getElementById('cookie-consent-banner').style.display = 'none';
+      } catch (e) {}
+    }
+    window.addEventListener('load', checkCookieConsent);
   </script>
-  <script src="flutter_bootstrap.js?v=ULTRA" async></script>
+  <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
