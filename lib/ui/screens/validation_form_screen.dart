@@ -4,17 +4,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:petty_cash_app/models/movement_model.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
-import 'package:petty_cash_app/repositories/movement_repository.dart';
 import 'package:petty_cash_app/services/ocr_service.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:petty_cash_app/ui/widgets/responsive_layout.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:petty_cash_app/services/pdf_service.dart';
+import 'package:petty_cash_app/ui/widgets/main_layout.dart';
 
 const Map<MovementCategory, String> _categoryNames = {
   MovementCategory.combustible: 'Combustible',
@@ -405,6 +405,7 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
           content: Text('Guardado exitosamente con comprobante ✓'),
           backgroundColor: AppTheme.incomeGreen,
         ));
+        ref.read(navigationProvider.notifier).state = 'dashboard';
         Navigator.pop(context);
       }
     } catch (e) {
@@ -609,21 +610,83 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
                         _buildCategoryChips(),
                         const SizedBox(height: 40),
 
-                        // ── Gradient Save Button ──────────────────────────────
-                        _saveButton(),
-                        if (widget.existingMovement != null && !widget.isReadOnly) ...[
-                          const SizedBox(height: 14),
-                          SizedBox(
-                            width: double.infinity,
-                            child: TextButton.icon(
-                              onPressed: _isLoading ? null : _confirmDeleteMovement,
-                              icon: const Icon(Icons.delete_forever, color: AppTheme.expenseRed, size: 20),
-                              label: Text(
-                                'ELIMINAR MOVIMIENTO',
-                                style: GoogleFonts.montserrat(color: AppTheme.expenseRed, fontWeight: FontWeight.w700, fontSize: 13),
+                        // ── Gradient Save / Print Button ──────────────────────
+                        if (widget.isReadOnly && widget.existingMovement != null) ...[
+                          GestureDetector(
+                            onTap: _printMovementReceipt,
+                            child: Container(
+                              height: 56,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [AppTheme.primaryOrange, Color(0xFFFF9E40)],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppTheme.primaryOrange.withOpacity(0.35),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 6),
+                                  )
+                                ],
+                              ),
+                              child: Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.print_outlined, color: Colors.white, size: 22),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      'IMPRIMIR COMPROBANTE',
+                                      style: GoogleFonts.montserrat(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 1.2,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
+                        ] else ...[
+                          _saveButton(),
+                          if (widget.existingMovement != null) ...[
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  side: const BorderSide(color: AppTheme.primaryOrange, width: 1.5),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                ),
+                                onPressed: _printMovementReceipt,
+                                icon: const Icon(Icons.print_outlined, color: AppTheme.primaryOrange, size: 20),
+                                label: Text(
+                                  'IMPRIMIR COMPROBANTE',
+                                  style: GoogleFonts.montserrat(color: AppTheme.primaryOrange, fontWeight: FontWeight.w700, fontSize: 13),
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (widget.existingMovement != null && !widget.isReadOnly) ...[
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              child: TextButton.icon(
+                                onPressed: _isLoading ? null : _confirmDeleteMovement,
+                                icon: const Icon(Icons.delete_forever, color: AppTheme.expenseRed, size: 20),
+                                label: Text(
+                                  'ELIMINAR MOVIMIENTO',
+                                  style: GoogleFonts.montserrat(color: AppTheme.expenseRed, fontWeight: FontWeight.w700, fontSize: 13),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                         const SizedBox(height: 40),
                       ],
@@ -674,6 +737,12 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
         onPressed: () => Navigator.pop(context),
       ),
       actions: [
+        if (widget.existingMovement != null)
+          IconButton(
+            icon: const Icon(Icons.print_outlined, color: Colors.white),
+            tooltip: 'Imprimir Comprobante',
+            onPressed: _printMovementReceipt,
+          ),
         if (widget.existingMovement != null && !widget.isReadOnly)
           IconButton(
             icon: const Icon(Icons.delete_outline, color: Colors.white),
@@ -1218,5 +1287,12 @@ class _ValidationFormScreenState extends ConsumerState<ValidationFormScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _printMovementReceipt() async {
+    final movement = widget.existingMovement;
+    if (movement == null) return;
+    final companyConfig = ref.read(companyConfigProvider).value;
+    await PDFService.printMovementReceipt(movement, companyName: companyConfig?.name);
   }
 }

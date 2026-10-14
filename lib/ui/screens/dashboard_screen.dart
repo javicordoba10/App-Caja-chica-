@@ -17,6 +17,7 @@ import 'package:petty_cash_app/ui/screens/validation_form_screen.dart';
 import 'package:petty_cash_app/ui/widgets/main_layout.dart';
 import 'package:petty_cash_app/ui/widgets/responsive_layout.dart';
 import 'package:petty_cash_app/models/recharge_request_model.dart';
+import 'package:petty_cash_app/ui/widgets/receipt_viewer_dialog.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -865,15 +866,9 @@ class DashboardScreen extends ConsumerWidget {
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                         icon: const Icon(Icons.remove_red_eye_outlined, size: 22, color: AppTheme.primaryOrange),
-                        onPressed: () async {
-                          if (kIsWeb) {
-                            PlatformService.openUrl(m.imageUrl!);
-                          } else {
-                            final uri = Uri.parse(m.imageUrl!);
-                            if (await canLaunchUrl(uri)) {
-                              await launchUrl(uri, mode: LaunchMode.externalApplication);
-                            }
-                          }
+                        onPressed: () {
+                          final companyConfig = ref.read(companyConfigProvider).value;
+                          ReceiptViewerDialog.show(context, movement: m, companyName: companyConfig?.name);
                         },
                         tooltip: 'Ver Comprobante',
                       ),

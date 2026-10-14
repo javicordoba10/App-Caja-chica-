@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -341,5 +344,263 @@ class PDFService {
     );
 
     await Printing.layoutPdf(onLayout: (PdfPageFormat form) async => pdf.save());
+  }
+
+  static Future<void> printMovementReceipt(MovementModel movement, {String? companyName}) async {
+    final pdf = pw.Document();
+    final format = NumberFormat.currency(locale: 'es_AR', symbol: '\$');
+
+    pw.MemoryImage? receiptImage;
+    if (movement.imageUrl != null && movement.imageUrl!.isNotEmpty) {
+      try {
+        final url = movement.imageUrl!;
+        if (url.startsWith('data:image')) {
+          final base64String = url.split(',').last;
+          final bytes = base64Decode(base64String);
+          receiptImage = pw.MemoryImage(bytes);
+        } else if (url.startsWith('http')) {
+          final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
+          if (response.statusCode == 200) {
+            receiptImage = pw.MemoryImage(response.bodyBytes);
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error loading receipt image for print: $e');
+        }
+      }
+    }
+
+    final isIncome = movement.type == MovementType.income;
+    final primaryColor = isIncome ? PdfColors.green800 : PdfColors.red800;
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.symmetric(horizontal: 36, vertical: 32),
+        build: (pw.Context context) {
+          return [
+            // ── HEADER ──
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      (companyName != null && companyName.isNotEmpty) ? companyName.toUpperCase() : 'CAJA CHICA',
+                      style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.black),
+                    ),
+                    pw.SizedBox(height: 3),
+                    pw.Text(
+                      'COMPROBANTE DE MOVIMIENTO',
+                      style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: primaryColor),
+                    ),
+                  ],
+                ),
+                pw.Container(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: PdfColors.grey400, width: 1),
+                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+                    color: PdfColors.grey100,
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text(
+                        'COMPROBANTE N°',
+                        style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700),
+                      ),
+                      pw.Text(
+                        movement.invoiceNumber?.isNotEmpty == true ? movement.invoiceNumber! : 'S/N',
+                        style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+                      ),
+                      pw.SizedBox(height: 2),
+                      pw.Text(
+                        'Fecha: ${DateFormat('dd/MM/yyyy HH:mm').format(movement.date)}',
+                        style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 12),
+            pw.Divider(thickness: 1, color: primaryColor),
+            pw.SizedBox(height: 12),
+
+            // ── DETAILS GRID ──
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey300),
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+                color: PdfColors.grey50,
+              ),
+              child: pw.Column(
+                children: [
+                  _pdfRow('Tipo de Operación:', isIncome ? 'INGRESO' : 'EGRESO', isBoldVal: true, valColor: primaryColor),
+                  pw.SizedBox(height: 6),
+                  _pdfRow('Concepto / Descripción:', movement.description),
+                  pw.SizedBox(height: 6),
+                  _pdfRow('Tipo de Comprobante:', movement.invoiceType),
+                  pw.SizedBox(height: 6),
+                  _pdfRow('Fecha del Comprobante:', DateFormat('dd/MM/yyyy').format(movement.invoiceDate ?? movement.date)),
+                  pw.SizedBox(height: 6),
+                  _pdfRow('Solicitante / Rendidor:', movement.userName ?? 'Usuario'),
+                  pw.SizedBox(height: 6),
+                  _pdfRow('Centro de Costo / Sucursal:', movement.establishment),
+                  pw.SizedBox(height: 6),
+                  _pdfRow('Método de Pago:', movement.paymentMethod),
+                  if (movement.category != null) ...[
+                    pw.SizedBox(height: 6),
+                    _pdfRow('Rubro / Categoría:', movement.category!.displayName),
+                  ],
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 12),
+
+            // ── TAX & AMOUNT BREAKDOWN ──
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey300),
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+              ),
+              child: pw.Column(
+                children: [
+                  if (movement.type == MovementType.expense && movement.netAmount > 0) ...[
+                    _pdfRow('Subtotal (Neto gravado):', format.format(movement.netAmount)),
+                    pw.SizedBox(height: 4),
+                  ],
+                  if (movement.vat > 0) ...[
+                    _pdfRow('IVA Liquidado:', format.format(movement.vat)),
+                    pw.SizedBox(height: 4),
+                  ],
+                  if (movement.otherTaxes > 0) ...[
+                    _pdfRow('Otros Impuestos / Percepciones:', format.format(movement.otherTaxes)),
+                    pw.SizedBox(height: 4),
+                  ],
+                  pw.Divider(color: PdfColors.grey300),
+                  pw.SizedBox(height: 4),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('MONTO TOTAL:', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(
+                        format.format(movement.grossAmount),
+                        style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold, color: primaryColor),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 16),
+
+            // ── RECEIPT IMAGE / ATTACHMENT ──
+            if (receiptImage != null) ...[
+              pw.Text('COMPROBANTE ADJUNTO:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey800)),
+              pw.SizedBox(height: 6),
+              pw.Container(
+                alignment: pw.Alignment.center,
+                height: 280,
+                padding: const pw.EdgeInsets.all(8),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey300),
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+                ),
+                child: pw.Image(receiptImage, fit: pw.BoxFit.contain),
+              ),
+              pw.SizedBox(height: 20),
+            ] else if (movement.imageUrl != null && movement.imageUrl!.isNotEmpty) ...[
+              pw.Container(
+                padding: const pw.EdgeInsets.all(12),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey300),
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+                  color: PdfColors.grey100,
+                ),
+                child: pw.Row(
+                  children: [
+                    pw.Text('Adjunto digital: Comprobante registrado en el sistema.', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey800)),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 20),
+            ],
+
+            // ── SIGNATURES ──
+            pw.Spacer(),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Container(
+                  width: 200,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Container(height: 1, color: PdfColors.black),
+                      pw.SizedBox(height: 4),
+                      pw.Text('Firma del Solicitante / Rendidor', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(movement.userName ?? 'Usuario', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                    ],
+                  ),
+                ),
+                pw.Container(
+                  width: 200,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Container(height: 1, color: PdfColors.black),
+                      pw.SizedBox(height: 4),
+                      pw.Text('Aprobado por Administración', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      pw.Text('Firma y Sello', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 16),
+            pw.Center(
+              child: pw.Text(
+                'Documento emitido por Sistema de Caja Chica • Desarrollado por Javier Córdoba',
+                style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey500),
+              ),
+            ),
+          ];
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat form) async => pdf.save(),
+      name: 'Comprobante_${movement.invoiceNumber ?? movement.id}.pdf',
+    );
+  }
+
+  static pw.Widget _pdfRow(String label, String value, {bool isBoldVal = false, PdfColor? valColor}) {
+    return pw.Row(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.SizedBox(
+          width: 150,
+          child: pw.Text(label, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700)),
+        ),
+        pw.Expanded(
+          child: pw.Text(
+            value,
+            style: pw.TextStyle(
+              fontSize: 9,
+              fontWeight: isBoldVal ? pw.FontWeight.bold : pw.FontWeight.normal,
+              color: valColor ?? PdfColors.black,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

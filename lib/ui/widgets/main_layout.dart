@@ -69,23 +69,34 @@ class MainLayout extends ConsumerWidget {
 
     return Theme(
       data: AppTheme.buildDynamicTheme(companyConfig),
-      child: Scaffold(
-        key: scaffoldKey,
-        appBar: AppBar(
-          title: Text(_getTitle(currentRoute), style: const TextStyle(color: AppTheme.textDark, fontSize: 18)),
-          backgroundColor: AppTheme.pureWhite,
-          surfaceTintColor: AppTheme.pureWhite,
-          leading: Navigator.canPop(context)
-              ? IconButton(
-                  icon: const Icon(Icons.arrow_back, color: AppTheme.pureBlack),
-                  tooltip: 'Volver al Panel General',
-                  onPressed: () => Navigator.pop(context),
-                )
-              : IconButton(
-                  icon: const Icon(Icons.menu, color: AppTheme.pureBlack),
-                  onPressed: () => scaffoldKey.currentState?.openDrawer(),
-                ),
-          actions: [
+      child: PopScope(
+        canPop: currentRoute == 'dashboard',
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+          if (currentRoute != 'dashboard') {
+            ref.read(navigationProvider.notifier).state = 'dashboard';
+          }
+        },
+        child: Scaffold(
+          key: scaffoldKey,
+          appBar: AppBar(
+            title: Text(_getTitle(currentRoute), style: const TextStyle(color: AppTheme.textDark, fontSize: 18)),
+            backgroundColor: AppTheme.pureWhite,
+            surfaceTintColor: AppTheme.pureWhite,
+            leading: currentRoute != 'dashboard'
+                ? IconButton(
+                    icon: const Icon(Icons.arrow_back, color: AppTheme.pureBlack),
+                    tooltip: 'Volver al Panel General',
+                    onPressed: () {
+                      ref.read(navigationProvider.notifier).state = 'dashboard';
+                    },
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.menu, color: AppTheme.pureBlack),
+                    tooltip: 'Menú lateral',
+                    onPressed: () => scaffoldKey.currentState?.openDrawer(),
+                  ),
+            actions: [
             if (currentUser?.role == 'superadmin')
               Padding(
                 padding: const EdgeInsets.only(right: 6.0),
@@ -150,7 +161,7 @@ class MainLayout extends ConsumerWidget {
                   ),
                 ),
               ),
-            if (Navigator.canPop(context))
+            if (currentRoute != 'dashboard')
               IconButton(
                 icon: const Icon(Icons.menu, color: AppTheme.pureBlack),
                 tooltip: 'Menú lateral',
@@ -201,7 +212,8 @@ class MainLayout extends ConsumerWidget {
         ),
         body: _buildBody(currentRoute),
       ),
-    );
+    ),
+  );
   }
 
   String _getTitle(String route) {

@@ -5,9 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:petty_cash_app/providers/app_providers.dart';
 import 'package:petty_cash_app/models/movement_model.dart';
 import 'package:petty_cash_app/models/user_model.dart';
-import 'package:petty_cash_app/ui/screens/validation_form_screen.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
-import 'package:petty_cash_app/services/ocr_service.dart';
+import 'package:petty_cash_app/ui/widgets/receipt_viewer_dialog.dart';
 
 class UserHistoryScreen extends ConsumerStatefulWidget {
   final UserModel user;
@@ -327,14 +326,8 @@ class _UserHistoryScreenState extends ConsumerState<UserHistoryScreen> {
   }
 
   void _viewReceipt(MovementModel m) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => ValidationFormScreen(
-        data: ExtractedReceiptData(imagePath: m.imageUrl ?? ''),
-        existingMovement: m,
-        isReadOnly: true,
-      )),
-    );
+    final companyConfig = ref.read(companyConfigProvider).value;
+    ReceiptViewerDialog.show(context, movement: m, companyName: companyConfig?.name);
   }
 
   Widget _buildEmptyState() {

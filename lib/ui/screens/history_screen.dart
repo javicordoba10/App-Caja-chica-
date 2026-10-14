@@ -12,6 +12,7 @@ import 'package:petty_cash_app/ui/screens/validation_form_screen.dart';
 import 'package:petty_cash_app/ui/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:petty_cash_app/ui/widgets/responsive_layout.dart';
+import 'package:petty_cash_app/ui/widgets/receipt_viewer_dialog.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
@@ -453,7 +454,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         InkWell(
-                          onTap: () => _openReceipt(m.imageUrl!),
+                          onTap: () {
+                            final companyConfig = ref.read(companyConfigProvider).value;
+                            ReceiptViewerDialog.show(context, movement: m, companyName: companyConfig?.name);
+                          },
                           borderRadius: BorderRadius.circular(8),
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
