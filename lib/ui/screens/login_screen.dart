@@ -149,35 +149,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _completeLogin(user);
         }
       } else {
-        final isSaasMaster = DefaultFirebaseOptions.web.projectId == 'pettycashapp-80f5e';
-        if (kIsWeb && isSaasMaster && (targetId == null || targetId.isEmpty)) {
-          await FirebaseAuth.instance.signOut();
-          throw Exception('Para iniciar sesión debes ingresar desde el enlace provisto por tu empresa.');
-        }
-
-        final displayName = firebaseUser.displayName ?? 
-            firebaseUser.email?.split('@').first ?? 'Usuario';
-        
-        final effectiveCompanyId = (targetId != null && targetId.isNotEmpty) 
-            ? targetId 
-            : (DefaultFirebaseOptions.web.projectId == 'cajachica-conci' ? 'conci' : '');
-
-        final newUser = UserModel(
-          id: firebaseUser.uid,
-          name: displayName,
-          email: firebaseUser.email ?? email,
-          balances: {'Efectivo': 0.0, 'Tarjeta / Débito': 0.0},
-          paymentMethods: const ['Efectivo', 'Tarjeta / Débito'],
-          establishments: const ['ADMINISTRACIÓN'],
-          role: 'user',
-          isActive: true, 
-          companyId: effectiveCompanyId,
-        );
-        await userRepo.createUser(newUser);
-
-        if (mounted) {
-          _completeLogin(newUser);
-        }
+        await FirebaseAuth.instance.signOut();
+        throw Exception('Este usuario no existe o ha sido eliminado del sistema.');
       }
     } on FirebaseAuthException catch (e) {
       String message = 'Error de autenticación: ${e.message}';

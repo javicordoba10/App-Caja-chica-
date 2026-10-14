@@ -126,8 +126,12 @@ class _HomeRouter extends ConsumerWidget {
           return userAsync.when(
             data: (user) {
               if (user == null) {
-                _autoCreateUser(currentUser);
-                return const SplashScreen();
+                // El usuario no existe en Firestore (fue eliminado o dado de baja).
+                // Cerrar sesión y redirigir inmediatamente al login sin recrear el usuario.
+                WidgetsBinding.instance.addPostFrameCallback((_) async {
+                  await performLogout(ref, context);
+                });
+                return const LoginScreen();
               }
 
               // 1. SuperAdmin: Acceso global a su consola SaaS
@@ -317,30 +321,6 @@ class _SuspendedCompanyScreen extends ConsumerWidget {
         ),
       ),
     );
-  }
-}
-
-Future<void> _autoCreateUser(User currentUser) async {
-  try {
-    final email = currentUser.email ?? '';
-    final isSuper = email.toLowerCase() == 'cajachicaconci@gmail.com' ||
-                    email.toLowerCase() == 'javicordoba10@gmail.com';
-    final isConci = DefaultFirebaseOptions.web.projectId == 'cajachica-conci';
-    final defaultComp = isConci ? 'conci_sa' : '';
-    final newUser = UserModel(
-      id: currentUser.uid,
-      name: currentUser.displayName ?? (email.isNotEmpty ? email.split('@').first : 'Usuario'),
-      email: email,
-      balances: {'Efectivo': 0.0, 'Tarjeta / Débito': 0.0},
-      paymentMethods: const ['Efectivo', 'Tarjeta / Débito'],
-      establishments: const ['ADMINISTRACIÓN', 'CAMPO', 'OBRA'],
-      role: isSuper ? 'superadmin' : 'user',
-      isActive: true,
-      companyId: defaultComp,
-    );
-    await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).set(newUser.toMap());
-  } catch (e) {
-    debugPrint('Error auto-creating user in main: $e');
   }
 }
 
