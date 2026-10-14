@@ -65,19 +65,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           throw Exception('Tu cuenta ha sido bloqueada por un administrador.');
         }
 
-        // En el proyecto CONCI, la cuenta principal (cajachicaconci@gmail.com) es SuperAdmin
+        // En el proyecto CONCI, la cuenta principal (cajachicaconci@gmail.com o javicordoba10@gmail.com) es SuperAdmin
+        final lowerEmail = user.email.toLowerCase();
         if (DefaultFirebaseOptions.web.projectId == 'cajachica-conci' &&
-            user.email.toLowerCase() == 'cajachicaconci@gmail.com') {
+            (lowerEmail == 'cajachicaconci@gmail.com' || lowerEmail == 'javicordoba10@gmail.com')) {
           final fs = FirebaseFirestore.instance;
           if (user.role != 'superadmin') {
             await fs.collection('users').doc(user.id).update({'role': 'superadmin'});
           }
 
-          // Seeder automático de las 3 razones sociales del grupo CONCI
+          // Seeder automático de las 3 razones sociales del grupo CONCI + fallback conci
           final companiesToSeed = [
             {'id': 'conci_sa', 'name': 'CONCI S.A.'},
             {'id': 'conci_srl', 'name': 'CONCI S.R.L.'},
             {'id': 'las_marias', 'name': 'LAS MARÍAS'},
+            {'id': 'conci', 'name': 'CONCI'},
           ];
 
           for (final c in companiesToSeed) {

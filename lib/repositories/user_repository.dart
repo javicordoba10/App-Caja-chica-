@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:petty_cash_app/firebase_options.dart';
 import 'package:petty_cash_app/models/user_model.dart';
 import 'package:petty_cash_app/models/movement_model.dart';
 
@@ -24,9 +26,38 @@ class UserRepository {
   }
 
   Stream<UserModel?> streamUser(String id) {
-    return _users.doc(id).snapshots().map((doc) {
-      if (doc.exists) {
+    return _users.doc(id).snapshots().asyncMap((doc) async {
+      if (doc.exists && doc.data() != null) {
         return UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      }
+
+      // AUTO-REPAIR: Si el documento no existe en Firestore pero está autenticado en FirebaseAuth
+      final authUser = FirebaseAuth.instance.currentUser;
+      if (authUser != null && authUser.uid == id) {
+        try {
+          final email = authUser.email ?? '';
+          final isConci = DefaultFirebaseOptions.web.projectId == 'cajachica-conci';
+          final isSuper = email.toLowerCase() == 'cajachicaconci@gmail.com' ||
+                          email.toLowerCase() == 'javicordoba10@gmail.com';
+          final defaultComp = isConci ? 'conci_sa' : '';
+
+          final recoveredUser = UserModel(
+            id: id,
+            name: authUser.displayName ?? (email.isNotEmpty ? email.split('@').first : 'Usuario'),
+            email: email,
+            balances: {'Efectivo': 0.0, 'Tarjeta / Débito': 0.0},
+            paymentMethods: const ['Efectivo', 'Tarjeta / Débito'],
+            establishments: const ['ADMINISTRACIÓN', 'CAMPO', 'OBRA'],
+            role: isSuper ? 'superadmin' : 'user',
+            isActive: true,
+            companyId: defaultComp,
+          );
+
+          await _users.doc(id).set(recoveredUser.toMap());
+          return recoveredUser;
+        } catch (e) {
+          // ignore error
+        }
       }
       return null;
     });

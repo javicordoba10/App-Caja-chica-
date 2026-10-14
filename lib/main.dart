@@ -24,6 +24,7 @@ Future<void> _ensureConciCompaniesSeeded() async {
       {'id': 'conci_sa', 'name': 'CONCI S.A.'},
       {'id': 'conci_srl', 'name': 'CONCI S.R.L.'},
       {'id': 'las_marias', 'name': 'LAS MARÍAS'},
+      {'id': 'conci', 'name': 'CONCI'},
     ];
     for (final c in companiesToSeed) {
       final docRef = fs.collection('companies_config').doc(c['id']);
@@ -125,11 +126,19 @@ class _HomeRouter extends ConsumerWidget {
           return userAsync.when(
             data: (user) {
               if (user == null) {
+                _autoCreateUser(currentUser);
                 return const SplashScreen();
               }
 
               // 1. SuperAdmin: Acceso global a su consola SaaS
-              if (user.role == 'superadmin') {
+              final email = user.email.toLowerCase();
+              final isSuper = user.role == 'superadmin' ||
+                              email == 'cajachicaconci@gmail.com' ||
+                              email == 'javicordoba10@gmail.com';
+              if (isSuper) {
+                if (user.role != 'superadmin') {
+                  FirebaseFirestore.instance.collection('users').doc(user.id).update({'role': 'superadmin'});
+                }
                 return const SuperAdminHomeScreen();
               }
 
@@ -311,20 +320,100 @@ class _SuspendedCompanyScreen extends ConsumerWidget {
   }
 }
 
-class SplashScreen extends StatelessWidget {
+Future<void> _autoCreateUser(User currentUser) async {
+  try {
+    final email = currentUser.email ?? '';
+    final isSuper = email.toLowerCase() == 'cajachicaconci@gmail.com' ||
+                    email.toLowerCase() == 'javicordoba10@gmail.com';
+    final isConci = DefaultFirebaseOptions.web.projectId == 'cajachica-conci';
+    final defaultComp = isConci ? 'conci_sa' : '';
+    final newUser = UserModel(
+      id: currentUser.uid,
+      name: currentUser.displayName ?? (email.isNotEmpty ? email.split('@').first : 'Usuario'),
+      email: email,
+      balances: {'Efectivo': 0.0, 'Tarjeta / Débito': 0.0},
+      paymentMethods: const ['Efectivo', 'Tarjeta / Débito'],
+      establishments: const ['ADMINISTRACIÓN', 'CAMPO', 'OBRA'],
+      role: isSuper ? 'superadmin' : 'user',
+      isActive: true,
+      companyId: defaultComp,
+    );
+    await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).set(newUser.toMap());
+  } catch (e) {
+    debugPrint('Error auto-creating user in main: $e');
+  }
+}
+
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  bool _showHelp = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _showHelp = true);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const CircularProgressIndicator(color: Colors.grey),
+              const CircularProgressIndicator(color: AppTheme.primaryOrange),
               const SizedBox(height: 20),
-              Text('Cargando Identidad...', style: TextStyle(color: Colors.grey[600], fontSize: 16)),
+              Text(
+                'Cargando Identidad...',
+                style: GoogleFonts.montserrat(color: Colors.grey[700], fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              if (_showHelp) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'La conexión está demorando unos segundos.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Consumer(
+                      builder: (ctx, ref, _) => OutlinedButton.icon(
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text('Reintentar'),
+                        onPressed: () {
+                          ref.invalidate(currentUserProvider);
+                          ref.invalidate(companyConfigProvider);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Consumer(
+                      builder: (ctx, ref, _) => ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.expenseRed,
+                          foregroundColor: Colors.white,
+                        ),
+                        icon: const Icon(Icons.logout, size: 18),
+                        label: const Text('Cerrar Sesión'),
+                        onPressed: () => performLogout(ref, context),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -332,4 +421,5 @@ class SplashScreen extends StatelessWidget {
     );
   }
 }
+
 
