@@ -67,7 +67,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
         // En el proyecto CONCI, la cuenta principal (cajachicaconci@gmail.com o javicordoba10@gmail.com) es SuperAdmin
         final lowerEmail = user.email.toLowerCase();
-        if (DefaultFirebaseOptions.web.projectId == 'cajachica-conci' &&
+        if (DefaultFirebaseOptions.web.projectId.contains('conci') &&
             (lowerEmail == 'cajachicaconci@gmail.com' || lowerEmail == 'javicordoba10@gmail.com')) {
           final fs = FirebaseFirestore.instance;
           if (user.role != 'superadmin') {
@@ -136,7 +136,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         // Verificar si la empresa está activa
         final effectiveCompId = user.companyId.isNotEmpty 
             ? user.companyId 
-            : (targetId ?? (DefaultFirebaseOptions.web.projectId == 'cajachica-conci' ? 'conci' : ''));
+            : (targetId ?? (DefaultFirebaseOptions.web.projectId.contains('conci') ? 'conci' : ''));
         if (effectiveCompId.isNotEmpty) {
           final compDoc = await FirebaseFirestore.instance.collection('companies_config').doc(effectiveCompId).get();
           if (compDoc.exists && compDoc.data()?['isActive'] == false) {
@@ -279,7 +279,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final companyConfig = ref.watch(companyConfigProvider).value;
-    final isConci = DefaultFirebaseOptions.web.projectId == 'cajachica-conci';
+    final isConci = DefaultFirebaseOptions.web.projectId.contains('conci');
     final effectiveLogoUrl = companyConfig?.logoUrl ?? (isConci ? kDefaultConciLogoBase64 : null);
     final effectiveCompanyName = companyConfig?.name ?? (isConci ? 'CONCI' : 'CONTROL DE\nCAJA CHICA');
 

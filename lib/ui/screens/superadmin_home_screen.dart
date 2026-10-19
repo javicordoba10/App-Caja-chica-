@@ -36,7 +36,7 @@ class _SuperAdminHomeScreenState extends ConsumerState<SuperAdminHomeScreen>
   @override
   Widget build(BuildContext context) {
     final firestore = ref.watch(firestoreProvider);
-    final isConci = DefaultFirebaseOptions.web.projectId == 'cajachica-conci';
+    final isConci = DefaultFirebaseOptions.web.projectId.contains('conci');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),

@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "930594315010",
-    "project_id": "cajachica-conci",
-    "storage_bucket": "cajachica-conci.firebasestorage.app"
+    "project_number": "272109087873",
+    "project_id": "conci-cajachica",
+    "storage_bucket": "conci-cajachica.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:930594315010:android:fd1051f6fc681c1d4d401b",
+        "mobilesdk_app_id": "1:272109087873:android:51ed72a58ecf4e18993180",
         "android_client_info": {
           "package_name": "com.example.petty_cash_app"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCoXaHabxUcGycBHfoyeGXQwjD6ojj5cW0"
+          "current_key": "AIzaSyD44Wh8CCO2wKlLBs7-_-1LP4MQof7ViSA"
         }
       ],
       "services": {

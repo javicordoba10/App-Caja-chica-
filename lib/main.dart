@@ -17,7 +17,7 @@ import 'providers/app_providers.dart';
 import 'services/platform_service.dart';
 
 Future<void> _ensureConciCompaniesSeeded() async {
-  if (DefaultFirebaseOptions.web.projectId != 'cajachica-conci') return;
+  if (!DefaultFirebaseOptions.web.projectId.contains('conci')) return;
   try {
     final fs = FirebaseFirestore.instance;
     final companiesToSeed = [

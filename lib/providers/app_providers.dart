@@ -201,7 +201,7 @@ final companyConfigProvider = StreamProvider<CompanyConfigModel?>((ref) {
       
   final firestore = ref.watch(firestoreProvider);
 
-  final isConci = DefaultFirebaseOptions.web.projectId == 'cajachica-conci';
+  final isConci = DefaultFirebaseOptions.web.projectId.contains('conci');
   final defaultConci = isConci
       ? CompanyConfigModel(
           id: 'conci',

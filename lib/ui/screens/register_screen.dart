@@ -32,7 +32,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String? _selectedCompanyId;
 
   Future<void> _register() async {
-    final isDedicatedConci = DefaultFirebaseOptions.web.projectId == 'cajachica-conci';
+    final isDedicatedConci = DefaultFirebaseOptions.web.projectId.contains('conci');
     final targetId = _selectedCompanyId ?? ref.read(targetCompanyIdProvider);
 
     if (targetId == null || targetId.isEmpty) {
@@ -167,7 +167,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final companyConfig = ref.watch(companyConfigProvider).value;
-    final isConci = DefaultFirebaseOptions.web.projectId == 'cajachica-conci';
+    final isConci = DefaultFirebaseOptions.web.projectId.contains('conci');
     final effectiveLogoUrl = companyConfig?.logoUrl ?? (isConci ? kDefaultConciLogoBase64 : null);
     final effectiveCompanyName = companyConfig?.name ?? (isConci ? 'CONCI' : 'CONTROL DE\nCAJA CHICA');
     final targetId = ref.watch(targetCompanyIdProvider);

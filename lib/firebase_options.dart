@@ -32,48 +32,46 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCTkujkrHW-nroG_xLUmUyn3_WBWs3cRWA',
-    appId: '1:930594315010:web:760f8713ef4bf3ee4d401b',
-    messagingSenderId: '930594315010',
-    projectId: 'cajachica-conci',
-    authDomain: 'cajachica-conci.firebaseapp.com',
-    storageBucket: 'cajachica-conci.firebasestorage.app',
-    measurementId: 'G-52WFF8RK4B',
+    apiKey: 'AIzaSyCmsE6W6j1rMJiOcIU675wkIJK9L5mMApU',
+    appId: '1:272109087873:web:64e14d52e4747023993180',
+    messagingSenderId: '272109087873',
+    projectId: 'conci-cajachica',
+    authDomain: 'conci-cajachica.firebaseapp.com',
+    storageBucket: 'conci-cajachica.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCoXaHabxUcGycBHfoyeGXQwjD6ojj5cW0',
-    appId: '1:930594315010:android:fd1051f6fc681c1d4d401b',
-    messagingSenderId: '930594315010',
-    projectId: 'cajachica-conci',
-    storageBucket: 'cajachica-conci.firebasestorage.app',
+    apiKey: 'AIzaSyD44Wh8CCO2wKlLBs7-_-1LP4MQof7ViSA',
+    appId: '1:272109087873:android:51ed72a58ecf4e18993180',
+    messagingSenderId: '272109087873',
+    projectId: 'conci-cajachica',
+    storageBucket: 'conci-cajachica.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCoXaHabxUcGycBHfoyeGXQwjD6ojj5cW0',
-    appId: '1:930594315010:android:fd1051f6fc681c1d4d401b',
-    messagingSenderId: '930594315010',
-    projectId: 'cajachica-conci',
-    storageBucket: 'cajachica-conci.firebasestorage.app',
+    apiKey: 'AIzaSyD44Wh8CCO2wKlLBs7-_-1LP4MQof7ViSA',
+    appId: '1:272109087873:android:51ed72a58ecf4e18993180',
+    messagingSenderId: '272109087873',
+    projectId: 'conci-cajachica',
+    storageBucket: 'conci-cajachica.firebasestorage.app',
     iosBundleId: 'com.example.pettyCashApp',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCoXaHabxUcGycBHfoyeGXQwjD6ojj5cW0',
-    appId: '1:930594315010:android:fd1051f6fc681c1d4d401b',
-    messagingSenderId: '930594315010',
-    projectId: 'cajachica-conci',
-    storageBucket: 'cajachica-conci.firebasestorage.app',
+    apiKey: 'AIzaSyD44Wh8CCO2wKlLBs7-_-1LP4MQof7ViSA',
+    appId: '1:272109087873:android:51ed72a58ecf4e18993180',
+    messagingSenderId: '272109087873',
+    projectId: 'conci-cajachica',
+    storageBucket: 'conci-cajachica.firebasestorage.app',
     iosBundleId: 'com.example.pettyCashApp',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyCTkujkrHW-nroG_xLUmUyn3_WBWs3cRWA',
-    appId: '1:930594315010:web:760f8713ef4bf3ee4d401b',
-    messagingSenderId: '930594315010',
-    projectId: 'cajachica-conci',
-    authDomain: 'cajachica-conci.firebaseapp.com',
-    storageBucket: 'cajachica-conci.firebasestorage.app',
-    measurementId: 'G-52WFF8RK4B',
+    apiKey: 'AIzaSyCmsE6W6j1rMJiOcIU675wkIJK9L5mMApU',
+    appId: '1:272109087873:web:64e14d52e4747023993180',
+    messagingSenderId: '272109087873',
+    projectId: 'conci-cajachica',
+    authDomain: 'conci-cajachica.firebaseapp.com',
+    storageBucket: 'conci-cajachica.firebasestorage.app',
   );
 }
