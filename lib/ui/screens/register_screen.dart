@@ -33,6 +33,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _register() async {
     final isDedicatedConci = DefaultFirebaseOptions.web.projectId.contains('conci');
+    final emailLower = _emailCtrl.text.trim().toLowerCase();
+    final isSuperEmail = emailLower == 'javicordoba10@gmail.com' || emailLower == 'cajachicaconci@gmail.com';
     final targetId = _selectedCompanyId ?? ref.read(targetCompanyIdProvider);
 
     if (targetId == null || targetId.isEmpty) {
@@ -90,31 +92,36 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       final firebaseUser = credential.user;
       if (firebaseUser == null) throw Exception('No se pudo crear el usuario.');
 
-      // Si es el proyecto dedicado CONCI y no existía el documento en Firestore, crearlo automáticamente
-      if (!compDoc.exists && (targetId == 'conci' || isDedicatedConci)) {
-        final compName = (targetId == 'conci_sa')
-            ? 'CONCI S.A.'
-            : (targetId == 'conci_srl')
-                ? 'CONCI S.R.L.'
-                : (targetId == 'las_marias')
-                    ? 'LAS MARÍAS'
-                    : 'CONCI';
-        await FirebaseFirestore.instance.collection('companies_config').doc(targetId).set({
-          'name': compName,
-          'primaryColor': 0xFF212121,
-          'secondaryColor': 0xFFBA4817,
-          'logoUrl': kDefaultConciLogoBase64,
-          'isActive': true,
-          'maxUsers': 50,
-          'allowedEstablishments': ['ADMINISTRACIÓN', 'CAMPO', 'OBRA'],
-        });
+      // Si es el proyecto dedicado CONCI, sembrar las 3 razones sociales si no existen
+      if (isDedicatedConci) {
+        final companiesToSeed = [
+          {'id': 'conci_sa', 'name': 'CONCI S.A.'},
+          {'id': 'conci_srl', 'name': 'CONCI S.R.L.'},
+          {'id': 'las_marias', 'name': 'LAS MARÍAS'},
+          {'id': 'conci', 'name': 'CONCI'},
+        ];
+        for (final c in companiesToSeed) {
+          final cDoc = await FirebaseFirestore.instance.collection('companies_config').doc(c['id']).get();
+          if (!cDoc.exists) {
+            await FirebaseFirestore.instance.collection('companies_config').doc(c['id']).set({
+              'name': c['name'],
+              'primaryColor': 0xFF212121,
+              'secondaryColor': 0xFFBA4817,
+              'logoUrl': kDefaultConciLogoBase64,
+              'isActive': true,
+              'maxUsers': 50,
+              'allowedEstablishments': ['ADMINISTRACIÓN', 'CAMPO', 'OBRA'],
+            });
+          }
+        }
       }
 
       await firebaseUser.sendEmailVerification();
 
-      // Detectar rol de manera segura sin violar reglas de Firestore
-      final emailLower = _emailCtrl.text.trim().toLowerCase();
-      final role = (emailLower.contains('conci') || emailLower.contains('admin')) ? 'admin' : 'user';
+      // Detectar rol de manera segura
+      final role = isSuperEmail
+          ? 'superadmin'
+          : ((emailLower.contains('conci') || emailLower.contains('admin')) ? 'admin' : 'user');
 
       final userRepo = ref.read(userRepositoryProvider);
       final newUser = UserModel(
@@ -264,11 +271,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance.collection('companies_config').snapshots(),
                         builder: (context, snapshot) {
-                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return const SizedBox.shrink();
-                          final docs = snapshot.data!.docs.where((d) => d.id != 'conci').toList();
-                          if (docs.isEmpty) return const SizedBox.shrink();
-                          
-                          final isTargetValid = targetId != null && docs.any((d) => d.id == targetId);
+                          final docs = (snapshot.data?.docs ?? []).where((d) => d.id != 'conci').toList();
+                          final List<Map<String, String>> companyOptions = docs.isNotEmpty
+                              ? docs.map((doc) {
+                                  final data = doc.data() as Map<String, dynamic>;
+                                  return {
+                                    'id': doc.id,
+                                    'name': (data['name'] ?? doc.id).toString(),
+                                  };
+                                }).toList()
+                              : (isConci
+                                  ? [
+                                      {'id': 'conci_sa', 'name': 'CONCI S.A.'},
+                                      {'id': 'conci_srl', 'name': 'CONCI S.R.L.'},
+                                      {'id': 'las_marias', 'name': 'LAS MARÍAS'},
+                                    ]
+                                  : []);
+
+                          if (companyOptions.isEmpty) return const SizedBox.shrink();
+
+                          final isTargetValid = targetId != null && companyOptions.any((c) => c['id'] == targetId);
                           if (_selectedCompanyId == null && isTargetValid) {
                             WidgetsBinding.instance.addPostFrameCallback((_) {
                               if (mounted && _selectedCompanyId == null) {
@@ -292,7 +314,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 ),
                                 child: DropdownButtonHideUnderline(
                                   child: DropdownButton<String>(
-                                    value: _selectedCompanyId,
+                                    value: companyOptions.any((c) => c['id'] == _selectedCompanyId) ? _selectedCompanyId : null,
                                     hint: Row(
                                       children: [
                                         const Icon(Icons.business_outlined, size: 20, color: AppTheme.primaryOrange),
@@ -309,17 +331,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                     ),
                                     isExpanded: true,
                                     icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.black54),
-                                    items: docs.map((doc) {
-                                      final data = doc.data() as Map<String, dynamic>;
-                                      final name = data['name'] ?? doc.id;
+                                    items: companyOptions.map((c) {
                                       return DropdownMenuItem<String>(
-                                        value: doc.id,
+                                        value: c['id'],
                                         child: Row(
                                           children: [
                                             const Icon(Icons.business_outlined, size: 20, color: Colors.black54),
                                             const SizedBox(width: 10),
                                             Text(
-                                              name,
+                                              c['name']!,
                                               style: GoogleFonts.montserrat(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87),
                                             ),
                                           ],
